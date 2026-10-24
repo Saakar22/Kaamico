@@ -34,11 +34,14 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          # The runner's cached Node 24 can be older than engines requires (>=24.22).
+          check-latest: true
           cache: npm
+      - run: node --version && npm --version
       - run: npm ci
       - run: npm run db:create
       - run: npm run lint
