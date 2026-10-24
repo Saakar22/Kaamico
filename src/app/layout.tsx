@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Baloo_2, Inter } from 'next/font/google'
+import { Toaster } from '@/components/ui/toaster'
 import { brand } from '@/config/brand'
 import './globals.css'
 
@@ -30,7 +31,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="en-IN" className={`${inter.variable} ${baloo.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <Toaster />
+      </body>
     </html>
   )
 }

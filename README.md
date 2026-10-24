@@ -2,7 +2,7 @@
 
 **Local Skills. Fair Prices.** A hyperlocal marketplace for household services in India. Professionals set their own prices, and customers can agree a fair price with them through transparent offers.
 
-> **Status: Phase 1 (Foundation).** The app currently has a placeholder home page and a health check only. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
+> **Status: Phase 2 (Brand and design system).** The app has a placeholder home page, a health check and the design system. Browse the components at <http://localhost:3000/dev/ui> while running `npm run dev`. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
 
 ## Tech stack
 
@@ -47,11 +47,17 @@ Check the database connection at <http://localhost:3000/api/health>. It returns 
 
 ```
 src/
-  app/            Routes, layouts and API route handlers (/api/*)
-  config/         Brand config and validated environment (env.ts)
+  app/            Routes, layouts and API route handlers (/api/*); dev-only pages in app/dev
+  components/
+    ui/           Design-system primitives (Button, FormField, MoneyInput, Dialog/Sheet, …)
+    patterns/     Page patterns (EmptyState, ErrorState, PageHeader, Stepper, StatTile)
+    domain/       Kaamico concepts (VerificationBadge, SimulationBadge, PriceLockedBadge)
+    layout/       Customer, worker and admin shells and navigation
+    brand/        Logo
+  config/         Brand, navigation, feature flags and validated environment (env.ts)
   db/             Database client (schema and migrations arrive in Phase 3)
-  lib/            Shared helpers: errors, HTTP wrapper, logger, money (paise), IST time
-  styles/         Design tokens
+  lib/            Shared helpers: cn, errors, HTTP wrapper, logger, money (paise), IST time
+  styles/         Design tokens (colours, radii, animations)
 e2e/              Playwright tests
 scripts/          Developer scripts
 ```
@@ -62,3 +68,7 @@ scripts/          Developer scripts
 - **API errors** use one envelope: `{ error: { code, message, details?, requestId } }`. Wrap route handlers with `route()` from `src/lib/http.ts`.
 - **Environment** is read through `getEnv()`. In production, simulated OTP and payment modes are refused unless `ALLOW_SIMULATION_IN_PRODUCTION=true`.
 - Server-only modules import `server-only`, so they cannot leak into client bundles.
+- **Styling** uses the tokens in `src/styles/tokens.css` (e.g. `bg-brand-600`, `text-ink-600`); never hard-code hex colours in components. Combine classes with `cn()`.
+- **Accessibility:** every page must pass the axe scan in `e2e/a11y.spec.ts` (WCAG 2.2 AA). Touch targets are at least 44px.
+- Anything simulated (OTP, payments, payouts) must show `<SimulationBadge />`.
+- `/dev/*` pages are disabled in production unless `ENABLE_UI_GALLERY=true` (set in CI only).

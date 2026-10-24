@@ -17,6 +17,8 @@ env:
   # E2E runs `next start` (NODE_ENV=production) with simulated OTP/payments.
   ALLOW_SIMULATION_IN_PRODUCTION: 'true'
   CRON_SECRET: ci-only-cron-secret-not-used-in-production
+  # Builds /dev/* pages into the production build so E2E can run the accessibility scan.
+  ENABLE_UI_GALLERY: 'true'
 
 jobs:
   check:
