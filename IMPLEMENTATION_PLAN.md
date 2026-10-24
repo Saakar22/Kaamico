@@ -982,6 +982,8 @@ async function acceptOffer(actor: Actor, offerId: string, expectedVersion: numbe
 }
 ```
 
+**Verified in Phase 3** (`src/db/integrity.int.test.ts`): with eight racing confirmations for one worker's slot, the exclusion constraint alone lets exactly one win, but some losers fail with a deadlock (`40P01`) instead of a conflict. Locking the worker row first turns every loser into a clean `23P01`. Map `23P01` to `409 SLOT_TAKEN`, and retry a `40P01` once before returning 409.
+
 Two simultaneous accepts serialise on the booking row lock. The second one sees `version` changed or the status CONFIRMED and gets `409`. Two different bookings racing for the same worker slot serialise on the worker row lock, and the exclusion constraint is the final guard.
 
 ### 11.3 Booking lifecycle

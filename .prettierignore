@@ -4,6 +4,7 @@ coverage
 playwright-report
 test-results
 storage
+src/db/migrations
 package-lock.json
 next-env.d.ts
 AGENTS.md

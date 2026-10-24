@@ -2,11 +2,14 @@ import 'server-only'
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { getEnv } from '@/config/env'
+import * as schema from './schema/index.ts'
+
+export type Database = PostgresJsDatabase<typeof schema>
 
 // Reuse one pool across hot reloads in development.
 const globalForDb = globalThis as unknown as {
   kaamicoSql?: postgres.Sql
-  kaamicoDb?: PostgresJsDatabase
+  kaamicoDb?: Database
 }
 
 export function getSql(): postgres.Sql {
@@ -18,7 +21,7 @@ export function getSql(): postgres.Sql {
   return globalForDb.kaamicoSql
 }
 
-export function getDb(): PostgresJsDatabase {
-  globalForDb.kaamicoDb ??= drizzle({ client: getSql() })
+export function getDb(): Database {
+  globalForDb.kaamicoDb ??= drizzle({ client: getSql(), schema, casing: 'snake_case' })
   return globalForDb.kaamicoDb
 }

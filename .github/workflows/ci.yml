@@ -46,6 +46,9 @@ jobs:
       - run: node --version && npm --version
       - run: npm ci
       - run: npm run db:create
+      - run: npm run db:migrate
+      - run: npm run db:seed
+      - run: npx drizzle-kit check
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run format:check
