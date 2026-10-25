@@ -52,7 +52,7 @@
 | Architecture | Modular monolith in **one Next.js (App Router) + TypeScript** application, with domain modules in `src/modules/*` |
 | Data | **PostgreSQL 18** (already installed and running locally) with **Drizzle ORM**. Money is stored as **integer paise**. Integrity is enforced by the database through check constraints, partial unique indexes, a `btree_gist` exclusion constraint against double booking, and immutability triggers. |
 | API | Versioned **REST route handlers** at `/api/v1/*` on top of a framework-independent service layer, plus Zod-validated contracts shared with the UI |
-| Auth | **Phone OTP** (passwordless) for customers and workers, **email + password** for admins. Better Auth is the candidate library, to be confirmed by a spike in Phase 4. OTP is **simulated** locally. |
+| Auth | **Phone OTP** (passwordless) for customers and workers, **email + password** for admins. **Decided in Phase 4:** our own opaque database sessions (the documented fallback), because the Better Auth spike showed it needs placeholder emails for phone-only users. OTP is **simulated** locally. |
 | Geo | Latitude/longitude columns with a bounding-box prefilter and Haversine distance. "Distance" is always shown as straight-line distance. Arrival is shown as a labelled estimate range, never a promise. PostGIS is deferred because it is not installed locally. |
 | Real-time | Polling with TanStack Query in P0, server-sent events in P1 |
 | Payments | P0: cash-on-completion plus a **clearly labelled simulated** online payment. P1: Razorpay test mode. |
@@ -404,7 +404,7 @@ src/
 | Data fetching / caching | Server: direct service calls in RSC. Client: **TanStack Query** for mutations, polling (negotiation 5 s, active booking 10 s), optimistic UI | Polling is simple and robust; works on serverless | SWR; WebSockets | Low | None |
 | State management | URL state (filters, wizard step) + TanStack Query; **no global store** | Avoids a second source of truth | Zustand (add only if needed) | Low | — |
 | API style | **REST route handlers `/api/v1/*`** + service layer; **no Server Actions for mutations in P0** | One mutation path that is testable with HTTP, reusable by a future Android app, and idempotency headers are natural | Server Actions (less boilerplate, but a second surface); tRPC | Medium | — |
-| Auth | **Better Auth** (phone-number OTP plugin + email/password for admin; DB sessions in Postgres) — **confirm in a Phase 4 spike** | Self-hosted, no vendor cost, OTP sender is a callback (simulated locally, MSG91/Twilio later) | Auth.js v5 (phone OTP needs custom work); custom sessions with `jose` (fallback); Firebase Auth / Clerk (vendor) | Medium | SMS provider only in production |
+| Auth | **Own opaque DB sessions** (random token in an HttpOnly cookie, SHA-256 stored in `auth_sessions`), HMAC-hashed OTP challenges, scrypt admin passwords, Postgres rate limits. **Phase 4 spike result:** Better Auth 1.7's phone-number plugin creates phone-only users with a placeholder email and the phone as `name`, plus its own user/session/account tables, which conflicts with the phone-first `users` model. | No fake data; small, testable code using only `node:crypto`; OTP sender stays pluggable (simulated locally, MSG91 later) | Better Auth (rejected after spike); Auth.js v5; Firebase Auth / Clerk (vendor) | Medium | SMS provider only in production |
 | Authorization | Roles array on user (`CUSTOMER`, `WORKER`, `ADMIN`) + per-resource ownership checks in services + Postgres constraints | Backend-enforced; a person can be both customer and worker with one phone | CASL | Low | — |
 | Validation & errors | Zod at the boundary; typed `AppError(code, httpStatus, details)`; standard error envelope (§10.0) | Consistent client handling | — | Low | — |
 | Rate limiting | Postgres-backed fixed-window counters (`rate_limits` table) for OTP send/verify, login, offers, uploads | Works on serverless without Redis | Upstash Redis (P1 if needed) | Low | — |
@@ -1340,7 +1340,7 @@ Road routing and travel time; real-time GPS sharing; masked calling; Hindi and r
 | Negotiation round limit | 3 per side | Enough to agree without endless haggling |
 | Customer cancellation fee after worker starts travel | min(₹99, worker min charge), simulated | Compensates worker time; transparent |
 | ORM | Drizzle | Constraint-heavy design; Prisma is an acceptable alternative if preferred |
-| Auth | Better Auth (spike) | Self-hosted phone OTP; fallback ready |
+| Auth | ~~Better Auth (spike)~~ **Resolved in Phase 4:** own DB sessions | Better Auth needed placeholder emails for phone-only users |
 | Hosting | Vercel + Neon (Mumbai) | Free tiers, minimal ops |
 | Brand fonts | Baloo 2 + Inter | Friendly and Indic-ready + legible numerals |
 | Document retention | 90 days after decision | Minimises sensitive-data risk; confirm legally |

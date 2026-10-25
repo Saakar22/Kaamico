@@ -23,30 +23,49 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ DATABASE_URL: 'mysql://x' })).toThrow(/postgres/)
   })
 
+  const secrets = { CRON_SECRET: 'x'.repeat(32), AUTH_SECRET: 'y'.repeat(32) }
+
   it('refuses simulated modes in production', () => {
-    expect(() =>
-      parseEnv({ ...base, NODE_ENV: 'production', CRON_SECRET: 'x'.repeat(32) }),
-    ).toThrow(/OTP_MODE: simulated mode is not allowed/)
+    expect(() => parseEnv({ ...base, ...secrets, NODE_ENV: 'production' })).toThrow(
+      /OTP_MODE: simulated mode is not allowed/,
+    )
   })
 
   it('allows simulated modes in production for explicit demos', () => {
     const env = parseEnv({
       ...base,
+      ...secrets,
       NODE_ENV: 'production',
-      CRON_SECRET: 'x'.repeat(32),
       ALLOW_SIMULATION_IN_PRODUCTION: 'true',
     })
     expect(env.OTP_MODE).toBe('simulated')
   })
 
-  it('requires CRON_SECRET in production', () => {
+  it.each(['CRON_SECRET', 'AUTH_SECRET'])(
+    'requires %s in production, even for simulated demos',
+    (key) => {
+      expect(() =>
+        parseEnv({
+          ...base,
+          ...secrets,
+          [key]: undefined,
+          NODE_ENV: 'production',
+          ALLOW_SIMULATION_IN_PRODUCTION: 'true',
+        }),
+      ).toThrow(new RegExp(`${key}: required in production`))
+    },
+  )
+
+  it('refuses loosened rate limits in real production', () => {
     expect(() =>
       parseEnv({
         ...base,
+        ...secrets,
         NODE_ENV: 'production',
         OTP_MODE: 'msg91',
         PAYMENTS_MODE: 'razorpay',
+        RATE_LIMIT_MULTIPLIER: '20',
       }),
-    ).toThrow(/CRON_SECRET: required in production/)
+    ).toThrow(/RATE_LIMIT_MULTIPLIER: must be 1 in production/)
   })
 })

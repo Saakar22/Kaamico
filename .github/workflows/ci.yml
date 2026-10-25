@@ -19,6 +19,10 @@ env:
   CRON_SECRET: ci-only-cron-secret-not-used-in-production
   # Builds /dev/* pages into the production build so E2E can run the accessibility scan.
   ENABLE_UI_GALLERY: 'true'
+  AUTH_SECRET: ci-only-auth-secret-not-used-in-production-0123
+  # Repeated E2E logins (desktop + mobile, retries) would otherwise hit OTP limits.
+  RATE_LIMIT_MULTIPLIER: '20'
+  SEED_ADMIN_PASSWORD: ci-admin-password
 
 jobs:
   check:

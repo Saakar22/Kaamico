@@ -7,6 +7,7 @@ import {
   index,
   integer,
   pgTable,
+  text,
   unique,
   uniqueIndex,
   uuid,
@@ -29,6 +30,8 @@ export const users = pgTable(
     phoneVerifiedAt: timestamptz(),
     email: citext().unique(),
     emailVerified: boolean().notNull().default(false),
+    /** scrypt hash; set only for admin accounts (customers and workers sign in with OTP). */
+    passwordHash: text(),
     /** Null until onboarding. */
     name: varchar({ length: 80 }),
     roles: userRole()
@@ -46,6 +49,7 @@ export const users = pgTable(
     check('users_contact_present', sql`${t.phone} is not null or ${t.email} is not null`),
     check('users_phone_format', sql`${t.phone} ~ '^\\+91[6-9][0-9]{9}$'`),
     check('users_roles_not_empty', sql`cardinality(${t.roles}) > 0`),
+    check('users_password_admin_only', sql`${t.passwordHash} is null or 'ADMIN' = any(${t.roles})`),
     index('users_roles_idx').using('gin', t.roles),
   ],
 )

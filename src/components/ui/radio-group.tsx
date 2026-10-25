@@ -28,7 +28,8 @@ export function RadioOption({
   return (
     <label
       className={cn(
-        'flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[[data-state=checked]]:border-brand-600 has-[[data-state=checked]]:bg-brand-50',
+        // Disabled options use a muted background, not opacity, so their text keeps full contrast.
+        'flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 has-[:disabled]:cursor-not-allowed has-[:disabled]:border-dashed has-[:disabled]:bg-surface-muted has-[[data-state=checked]]:border-brand-600 has-[[data-state=checked]]:bg-brand-50',
         className,
       )}
     >

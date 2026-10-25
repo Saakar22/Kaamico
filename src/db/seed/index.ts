@@ -1,9 +1,10 @@
 // Deterministic demo data. Replaces ALL data in DATABASE_URL.
 //   npm run db:seed
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { sql as dsql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
+import { hashPassword } from '../../modules/auth/password.ts'
 import * as s from '../schema/index.ts'
 import {
   CATEGORIES,
@@ -170,6 +171,9 @@ CATEGORIES.forEach((c, i) => {
 
 // ---------- admins ----------
 
+// SEED_ADMIN_PASSWORD (e.g. in .env.local or CI) or a random one printed once at the end.
+const adminPassword = process.env.SEED_ADMIN_PASSWORD || randomBytes(12).toString('base64url')
+const adminPasswordHash = await hashPassword(adminPassword)
 const admins = [
   { name: 'Kaamico Admin', email: 'admin@kaamico.local' },
   { name: 'Ops Reviewer', email: 'ops@kaamico.local' },
@@ -179,6 +183,7 @@ const admins = [
     id,
     email: a.email,
     emailVerified: true,
+    passwordHash: adminPasswordHash,
     name: a.name,
     roles: ['ADMIN'],
     createdAt: at(NOW, -200 * DAY),
@@ -1138,6 +1143,11 @@ try {
   )
   console.log(
     `Demo: customer ${phone(1)} · worker ${phone(101)} (Rakesh) · pending worker ${phone(105)} · admin admin@kaamico.local`,
+  )
+  console.log(
+    process.env.SEED_ADMIN_PASSWORD
+      ? 'Admin password: the value of SEED_ADMIN_PASSWORD.'
+      : `Admin password (random, shown once): ${adminPassword}`,
   )
   console.log(
     `Demo request ${demoRequestId} is waiting for Rakesh; negotiation ${demoNegotiationId} is waiting for Aditya.`,

@@ -1,6 +1,7 @@
 import { ZodError } from 'zod'
 import { AppError } from './errors'
 import { logger } from './logger'
+import { assertSameOrigin } from './request'
 
 export type ErrorBody = {
   error: {
@@ -52,16 +53,28 @@ export function errorResponse(error: unknown, requestId: string): Response {
   })
 }
 
+function appOrigins(): string[] {
+  try {
+    return process.env.APP_URL ? [new URL(process.env.APP_URL).origin] : []
+  } catch {
+    return []
+  }
+}
+
 /**
- * Wraps a route handler: assigns a request ID, converts thrown errors into the
- * standard error envelope, and echoes the request ID on every response.
+ * Wraps a route handler: assigns a request ID, rejects cross-site mutations (CSRF),
+ * converts thrown errors into the standard error envelope, and echoes the request ID
+ * on every response. Pass `{ csrf: false }` only for server-to-server endpoints such
+ * as signed webhooks.
  */
 export function route<Ctx = unknown>(
   handler: (request: Request, ctx: Ctx, meta: { requestId: string }) => Promise<Response>,
+  options: { csrf?: boolean } = {},
 ) {
   return async (request: Request, ctx: Ctx): Promise<Response> => {
     const requestId = getRequestId(request)
     try {
+      if (options.csrf !== false) assertSameOrigin(request, appOrigins())
       const response = await handler(request, ctx, { requestId })
       response.headers.set(REQUEST_ID_HEADER, requestId)
       return response

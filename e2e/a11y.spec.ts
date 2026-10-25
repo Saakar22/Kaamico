@@ -1,7 +1,9 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 const pages = [
+  '/login',
+  '/admin/login',
   '/',
   '/dev/ui',
   '/dev/shells/customer',
@@ -10,9 +12,25 @@ const pages = [
   '/no-such-page',
 ]
 
+/**
+ * Opens a page and checks it really rendered. /dev/* pages exist in `next dev` and in
+ * builds made with ENABLE_UI_GALLERY=true (CI); elsewhere they are skipped, not scanned as 404s.
+ */
+async function open(page: Page, path: string) {
+  const response = await page.goto(path)
+  const status = response?.status()
+  if (path.startsWith('/dev/')) {
+    test.skip(
+      status === 404 && process.env.ENABLE_UI_GALLERY !== 'true',
+      'Developer pages are disabled in this build',
+    )
+  }
+  expect(status).toBe(path === '/no-such-page' ? 404 : 200)
+}
+
 for (const path of pages) {
   test(`no serious accessibility violations on ${path}`, async ({ page }) => {
-    await page.goto(path)
+    await open(page, path)
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
       .analyze()
@@ -28,7 +46,7 @@ for (const path of pages) {
 }
 
 test('the gallery dialog traps focus and closes with Escape', async ({ page }) => {
-  await page.goto('/dev/ui')
+  await open(page, '/dev/ui')
   await page.getByRole('button', { name: 'Cancel booking…' }).click()
   const dialog = page.getByRole('dialog', { name: 'Cancel this booking?' })
   await expect(dialog).toBeVisible()
@@ -38,7 +56,7 @@ test('the gallery dialog traps focus and closes with Escape', async ({ page }) =
 })
 
 test('bottom tabs show on phones and the top nav on desktop', async ({ page, isMobile }) => {
-  await page.goto('/dev/shells/customer')
+  await open(page, '/dev/shells/customer')
   const tabs = page
     .getByRole('navigation', { name: 'Main' })
     .filter({ has: page.getByText('Bookings') })

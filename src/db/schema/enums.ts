@@ -3,6 +3,7 @@ import { pgEnum } from 'drizzle-orm/pg-core'
 // Users and roles
 export const userRole = pgEnum('user_role', ['CUSTOMER', 'WORKER', 'ADMIN'])
 export const userStatus = pgEnum('user_status', ['ACTIVE', 'SUSPENDED', 'DELETED'])
+export const sessionScope = pgEnum('session_scope', ['USER', 'ADMIN'])
 export const actorRole = pgEnum('actor_role', ['CUSTOMER', 'WORKER', 'ADMIN', 'SYSTEM'])
 
 // Workers
