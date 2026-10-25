@@ -30,10 +30,13 @@ function HomeLink({ href = '/' }: { href?: string }) {
 export function CustomerShell({
   children,
   headerSlot,
+  actions,
 }: {
   children: ReactNode
   /** Extra header content, e.g. the location chip (Phase 5). */
   headerSlot?: ReactNode
+  /** Header icons on the right, e.g. the notification bell. */
+  actions?: ReactNode
 }) {
   return (
     <>
@@ -42,8 +45,9 @@ export function CustomerShell({
         <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
           <HomeLink />
           {headerSlot && <div className="min-w-0 flex-1">{headerSlot}</div>}
-          <div className={cn(!headerSlot && 'ml-auto')}>
+          <div className={cn('flex items-center gap-1', !headerSlot && 'ml-auto')}>
             <TopNavLinks nav="customer" label="Main" />
+            {actions}
           </div>
         </div>
       </header>
@@ -81,7 +85,7 @@ function ConsoleSidebar({
 }
 
 /** Worker console: sidebar on desktop, bottom tabs on phones (workers are mostly on phones). */
-export function WorkerShell({ children }: { children: ReactNode }) {
+export function WorkerShell({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1">
       <SkipLink />
@@ -91,8 +95,17 @@ export function WorkerShell({ children }: { children: ReactNode }) {
         nav={<SidebarNav nav="worker" label="Professional" />}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center border-b border-border bg-surface px-4 md:hidden">
-          <HomeLink href="/worker/dashboard" />
+        <header
+          className={cn(
+            'sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-surface px-4',
+            // On desktop the sidebar has the logo; the bar stays only for header actions.
+            actions ? 'md:justify-end md:px-6' : 'md:hidden',
+          )}
+        >
+          <div className="md:hidden">
+            <HomeLink href="/worker/dashboard" />
+          </div>
+          {actions}
         </header>
         <main
           id={MAIN_ID}

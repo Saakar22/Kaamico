@@ -104,7 +104,7 @@ test('a new professional completes setup and submits their ID for review', async
   await expect(page.getByRole('button', { name: 'Upload document' })).toHaveCount(0)
 
   await page.goto('/worker/dashboard')
-  await expect(page.getByText('Requests and jobs will appear here.')).toBeVisible()
+  await expect(page.getByText('Your requests and jobs at a glance.')).toBeVisible()
   await expect(page.getByText('Under review')).toBeVisible()
 })
 

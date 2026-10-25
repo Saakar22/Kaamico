@@ -7,11 +7,19 @@ import postgres from 'postgres'
 
 type Pro = { workerId: string; phone: string; serviceId: string; name: string }
 
-/** Two seeded plumbers who travel to Kothrud (not Rakesh: other specs sign in as him). */
-async function plumbersNearKothrud(): Promise<Pro[]> {
+async function withDb<T>(fn: (sql: postgres.Sql) => Promise<T>): Promise<T> {
   const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} })
   try {
-    const rows = await sql<Pro[]>`
+    return await fn(sql)
+  } finally {
+    await sql.end()
+  }
+}
+
+/** Two seeded plumbers who travel to Kothrud (not Rakesh: other specs sign in as him). */
+function plumbersNearKothrud(): Promise<Pro[]> {
+  return withDb(
+    (sql) => sql<Pro[]>`
       select w.id as "workerId", u.phone, p.service_id as "serviceId", w.display_name as name
       from worker_profiles w
       join users u on u.id = w.user_id
@@ -22,11 +30,8 @@ async function plumbersNearKothrud(): Promise<Pro[]> {
         and u.phone not in ('+919000000101', '+919000000102')
         and exists (select 1 from worker_availability_rules r where r.worker_id = w.id)
       order by u.phone
-      limit 2`
-    return rows
-  } finally {
-    await sql.end()
-  }
+      limit 2`,
+  )
 }
 
 async function signIn(page: Page, mobile: string) {
@@ -64,7 +69,7 @@ async function expectAccessible(page: Page) {
   ).toEqual([])
 }
 
-test('a customer books, negotiates and gets a locked price', async ({
+test('a customer books and negotiates; the professional does the job; both track it', async ({
   browser,
   isMobile,
 }, info) => {
@@ -143,17 +148,75 @@ test('a customer books, negotiates and gets a locked price', async ({
 
   // Customer: accept the counter (the page polls; a reload is quicker in tests)
   await customer.reload()
-  await expect(customer.getByText(new RegExp(`${proFirst} offered ₹`))).toBeVisible()
+  await expect(customer.getByRole('button', { name: /^Notifications, \d+ unread$/ })).toBeVisible()
+  await expect(customer.getByText(new RegExp(`${proFirst} offered ₹`)).first()).toBeVisible()
   await customer.getByRole('button', { name: /^Accept ₹/ }).click()
+  await expect(customer).toHaveURL(/\/bookings\/[\w-]+\?confirmed=1$/)
   await expect(customer.getByText(/Confirmed · Price locked at ₹/)).toBeVisible()
   await expect(customer.getByText(/Price locked at ₹/)).toContainText(
     counter.toLocaleString('en-IN'),
   )
-  await expect(customer.getByLabel(/^Start code \d \d \d \d$/)).toBeVisible()
+  const codeLabel = await customer.getByLabel(/^Start code \d \d \d \d$/).getAttribute('aria-label')
+  const startCode = codeLabel!.replace(/\D/g, '')
+  await expectAccessible(customer)
 
-  // Professional: now sees the full address
+  // Professional: the request page now shows the address; the bell leads to the job
   await worker.reload()
-  await expect(worker.getByText(/A-12, Shanti Kunj, Paud Road/)).toBeVisible()
+  await expect(worker.getByText(/A-12, Shanti Kunj, Paud Road/).first()).toBeVisible()
+  await worker.getByRole('button', { name: /^Notifications/ }).click()
+  await worker
+    .getByRole('link', { name: new RegExp(`Meera confirmed the job.*${bookingCode}`) })
+    .click()
+  await expect(worker).toHaveURL(/\/worker\/bookings\/[\w-]+$/)
+  // The page navigated from stays mounted but hidden, so match visible text only.
+  await expect(
+    worker.getByText(/A-12, Shanti Kunj, Paud Road/).filter({ visible: true }),
+  ).toBeVisible()
+  await expectAccessible(worker)
+
+  // Tests cannot wait for a later day's slot: treat the job as on-demand so they can set off now.
+  await withDb((sql) => sql`update bookings set timing = 'ON_DEMAND' where code = ${bookingCode}`)
+  await worker.getByRole('button', { name: "I'm on my way" }).click()
+  await expect(worker.getByText(`On the way · ${bookingCode}`)).toBeVisible()
+  await customer.reload()
+  await expect(customer.getByText(`${proFirst} is on the way · ${bookingCode}`)).toBeVisible()
+
+  await worker.getByRole('button', { name: "I've arrived" }).click()
+  await worker.getByLabel('Start code from Meera').fill(startCode)
+  await worker.getByRole('button', { name: 'Start job' }).click()
+  await expect(worker.getByText(`Work in progress · ${bookingCode}`)).toBeVisible()
+
+  // Extra charge: proposed on site, approved by the customer, added to the total
+  await worker.getByRole('button', { name: 'Add extra charge' }).click()
+  await worker.getByLabel(/What is it for/).fill('New tap cartridge')
+  await worker.getByRole('textbox', { name: /^Amount/ }).fill('150')
+  await worker.getByRole('button', { name: 'Send for approval' }).click()
+  await expect(worker.getByText('Waiting for approval')).toBeVisible()
+  await expect(worker.getByRole('button', { name: 'Mark job complete' })).toBeDisabled()
+
+  await customer.reload()
+  const dialog = customer.getByRole('dialog', { name: `${proFirst} added an extra charge` })
+  await expect(dialog.getByText('New tap cartridge')).toBeVisible()
+  await expectAccessible(customer)
+  await dialog.getByRole('button', { name: /^Approve ₹150/ }).click()
+  await expect(dialog).toBeHidden()
+  const total = (counter + 150).toLocaleString('en-IN')
+  await expect(customer.getByRole('region', { name: 'Price' })).toContainText(`Total₹${total}`)
+
+  await worker.reload()
+  await worker.getByRole('button', { name: 'Mark job complete' }).click()
+  await expect(worker.getByText(`Completed · ${bookingCode}`)).toBeVisible()
+
+  // Both sides see it in their history
+  await customer.reload()
+  await expect(customer.getByText(`Completed · ${bookingCode}`)).toBeVisible()
+  await expect(customer.getByRole('link', { name: `Book ${proFirst} again` })).toBeVisible()
+  await customer.goto('/bookings?tab=past')
+  await expect(customer.getByRole('link', { name: new RegExp(bookingCode) })).toBeVisible()
+  await expectAccessible(customer)
+  await worker.goto('/worker/bookings?tab=completed')
+  await expect(worker.getByRole('link', { name: new RegExp(bookingCode) })).toBeVisible()
+
   await workerContext.close()
   await customer.context().close()
 })

@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { NotificationSlot } from '@/components/domain/notifications/notification-slot'
 import { LocationSlot, LocationSlotSkeleton } from '@/components/domain/location/location-slot'
 import { CustomerShell } from '@/components/layout/shells'
 
@@ -6,6 +7,11 @@ import { CustomerShell } from '@/components/layout/shells'
 export default function PublicLayout({ children }: LayoutProps<'/'>) {
   return (
     <CustomerShell
+      actions={
+        <Suspense fallback={null}>
+          <NotificationSlot />
+        </Suspense>
+      }
       headerSlot={
         <Suspense fallback={<LocationSlotSkeleton />}>
           <LocationSlot />

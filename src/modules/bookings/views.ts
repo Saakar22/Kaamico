@@ -105,6 +105,8 @@ type BaseRow = {
   start_code_attempts: number
   cancellation_reason: string | null
   completed_at: Date | string | null
+  job_lat: number
+  job_lng: number
 }
 
 const iso = (v: Date | string | null) => (v ? new Date(v).toISOString() : null)
@@ -120,7 +122,7 @@ async function loadBase(where: ReturnType<typeof sql>): Promise<BaseRow | undefi
            b.service_id, s.name as service_name, s.pricing_unit, b.description, b.locality_label,
            b.address_snapshot, b.listed_price_paise, b.agreed_price_paise, b.approved_charges_paise,
            b.final_amount_paise, p.min_charge_paise, p.is_negotiable, b.start_code_attempts,
-           b.cancellation_reason, b.completed_at
+           b.cancellation_reason, b.completed_at, b.job_lat, b.job_lng
     from bookings b
     join booking_invitations i on i.booking_id = b.id
     join worker_profiles w on w.id = i.worker_id
@@ -305,6 +307,32 @@ export type CustomerBookingView = Awaited<ReturnType<typeof getCustomerBooking>>
 
 const ADDRESS_VISIBLE_AFTER_COMPLETION_MS = 24 * 60 * 60_000
 
+/** What the invited (or assigned) professional may see of a booking. */
+async function workerProjection(row: BaseRow, actor: Actor, now: Date) {
+  const parts = await threadParts(row, { userId: actor.userId, party: 'WORKER' })
+  const assigned = row.worker_id === actor.workerId
+  const completedAt = row.completed_at ? new Date(row.completed_at).getTime() : null
+  const showAddress =
+    assigned &&
+    (ACTIVE_JOB.includes(row.status) ||
+      (row.status === 'COMPLETED' &&
+        completedAt !== null &&
+        now.getTime() - completedAt < ADDRESS_VISIBLE_AFTER_COMPLETION_MS))
+  return {
+    ...commonFields(row),
+    invitationId: row.invitation_id,
+    invitationStatus: row.invitation_status,
+    customerFirstName: (row.customer_name ?? 'Customer').trim().split(/\s+/)[0],
+    distanceKm: Math.round(Number(row.distance_km) * 10) / 10,
+    assigned,
+    address: showAddress ? row.address_snapshot : null,
+    /** For a map link; only alongside the address. */
+    location: showAddress ? { lat: row.job_lat, lng: row.job_lng } : null,
+    startCodeAttemptsLeft: Math.max(0, 5 - row.start_code_attempts),
+    ...parts,
+  }
+}
+
 /**
  * The invited professional's view. Before confirmation: locality, distance and the
  * customer's first name only. The full address appears once confirmed and disappears
@@ -332,27 +360,21 @@ export async function getWorkerRequest(actor: Actor, invitationId: string, now: 
   }
   const row = await loadBase(sql`i.id = ${invitationId} and i.worker_id = ${actor.workerId}`)
   if (!row) throw notFound('Request not found')
-  const parts = await threadParts(row, { userId: actor.userId, party: 'WORKER' })
-  const assigned = row.worker_id === actor.workerId
-  const completedAt = row.completed_at ? new Date(row.completed_at).getTime() : null
-  const showAddress =
-    assigned &&
-    (ACTIVE_JOB.includes(row.status) ||
-      (row.status === 'COMPLETED' &&
-        completedAt !== null &&
-        now.getTime() - completedAt < ADDRESS_VISIBLE_AFTER_COMPLETION_MS))
-  return {
-    ...commonFields(row),
-    invitationId: row.invitation_id,
-    invitationStatus: row.invitation_status,
-    customerFirstName: (row.customer_name ?? 'Customer').trim().split(/\s+/)[0],
-    distanceKm: Math.round(Number(row.distance_km) * 10) / 10,
-    assigned,
-    address: showAddress ? row.address_snapshot : null,
-    startCodeAttemptsLeft: Math.max(0, 5 - row.start_code_attempts),
-    ...parts,
-  }
+  return workerProjection(row, actor, now)
 }
+
+/** A job assigned to the professional, by booking id (`/worker/bookings/[id]`). Others get 404. */
+export async function getWorkerBooking(actor: Actor, bookingId: string, now: Date = new Date()) {
+  if (!actor.workerId || !z.uuid().safeParse(bookingId).success) throw notFound('Job not found')
+  await expireDue(now, bookingId)
+  const row = await loadBase(
+    sql`b.id = ${bookingId} and b.worker_id = ${actor.workerId} and i.worker_id = b.worker_id`,
+  )
+  if (!row) throw notFound('Job not found')
+  return workerProjection(row, actor, now)
+}
+
+export type WorkerBookingView = Awaited<ReturnType<typeof getWorkerBooking>>
 
 export type WorkerRequestView = Awaited<ReturnType<typeof getWorkerRequest>>
 
@@ -443,37 +465,5 @@ export async function listWorkerRequests(
           }
         : null,
     expiresAt: iso(r.expires_at),
-  }))
-}
-
-/** The customer's bookings, newest first (the full bookings page arrives in Phase 8). */
-export async function listCustomerBookings(actor: Actor) {
-  const rows = await getDb().execute<{
-    id: string
-    code: string
-    status: BookingStatus
-    service_name: string
-    worker_name: string
-    requested_start: Date | string
-    agreed_price_paise: number | null
-    listed_price_paise: number | null
-  }>(sql`
-    select b.id, b.code, b.status, s.name as service_name, w.display_name as worker_name,
-           b.requested_start, b.agreed_price_paise, b.listed_price_paise
-    from bookings b
-    join services s on s.id = b.service_id
-    join booking_invitations i on i.booking_id = b.id
-    join worker_profiles w on w.id = i.worker_id
-    where b.customer_id = ${actor.userId}
-    order by b.created_at desc
-    limit 50`)
-  return rows.map((r) => ({
-    id: r.id,
-    code: r.code,
-    status: r.status,
-    serviceName: r.service_name,
-    workerName: r.worker_name,
-    requestedStart: iso(r.requested_start)!,
-    pricePaise: r.agreed_price_paise ?? r.listed_price_paise,
   }))
 }

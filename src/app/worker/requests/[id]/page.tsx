@@ -6,6 +6,7 @@ import { statusLabel } from '@/components/domain/negotiation/booking-status'
 import { DeclineRequestButton } from '@/components/domain/negotiation/decline-request-button'
 import { NegotiationThread } from '@/components/domain/negotiation/negotiation-thread'
 import { PageHeader } from '@/components/patterns/page-header'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Money } from '@/components/ui/money'
 import { AppError } from '@/lib/errors'
@@ -47,21 +48,28 @@ export default async function WorkerRequestPage({ params }: PageProps<'/worker/r
         description={`${statusLabel(request.status, 'worker', request.customerFirstName)} · ${request.code}`}
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-        <NegotiationThread
-          viewer="worker"
-          counterpartName={request.customerFirstName}
-          data={{
-            bookingId: request.id,
-            status: request.status,
-            version: request.version,
-            listedPaise: request.price.listedPaise,
-            agreedPaise: request.price.agreedPaise,
-            offers: request.offers,
-            messages: request.messages,
-            negotiation: request.negotiation,
-            address: request.address,
-          }}
-        />
+        <div className="flex min-w-0 flex-col gap-4">
+          {request.assigned && (
+            <Button asChild size="lg" className="self-start">
+              <Link href={`/worker/bookings/${request.id}`}>Open job</Link>
+            </Button>
+          )}
+          <NegotiationThread
+            viewer="worker"
+            counterpartName={request.customerFirstName}
+            data={{
+              bookingId: request.id,
+              status: request.status,
+              version: request.version,
+              listedPaise: request.price.listedPaise,
+              agreedPaise: request.price.agreedPaise,
+              offers: request.offers,
+              messages: request.messages,
+              negotiation: request.negotiation,
+              address: request.address,
+            }}
+          />
+        </div>
         <aside className="flex flex-col gap-4" aria-label="Request details">
           <Card>
             <CardContent className="flex flex-col gap-3 text-sm">

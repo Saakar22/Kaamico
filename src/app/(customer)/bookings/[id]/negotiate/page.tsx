@@ -41,6 +41,8 @@ export default async function NegotiatePage({ params }: PageProps<'/bookings/[id
       ? 'As soon as possible'
       : formatIstDateTime(new Date(booking.slot?.start ?? booking.requestedStart))
   const afterSetOff = booking.status === 'EN_ROUTE' || booking.status === 'ARRIVED'
+  // Confirmed or later: the booking page tracks it; the thread stays for messages.
+  const booked = !['REQUESTED', 'NEGOTIATING', 'CANCELLED', 'EXPIRED'].includes(booking.status)
 
   return (
     <div className="flex flex-col gap-6">
@@ -65,6 +67,11 @@ export default async function NegotiatePage({ params }: PageProps<'/bookings/[id
               startCode: booking.startCode,
             }}
           />
+          {booked && (
+            <Button asChild size="lg" className="self-start">
+              <Link href={`/bookings/${booking.id}`}>Track your booking</Link>
+            </Button>
+          )}
           {['CANCELLED', 'EXPIRED'].includes(booking.status) && (
             <Card>
               <CardContent className="flex flex-col items-start gap-3">

@@ -29,3 +29,44 @@ export function statusLabel(
       return status
   }
 }
+
+export type StatusTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'info'
+
+/** Badge colour for a status: amber while waiting, brand while active, green when done. */
+export function statusTone(status: string): StatusTone {
+  switch (status) {
+    case 'REQUESTED':
+    case 'NEGOTIATING':
+      return 'warning'
+    case 'CONFIRMED':
+      return 'info'
+    case 'EN_ROUTE':
+    case 'ARRIVED':
+    case 'IN_PROGRESS':
+      return 'brand'
+    case 'COMPLETED':
+      return 'success'
+    case 'DISPUTED':
+      return 'danger'
+    default:
+      return 'neutral'
+  }
+}
+
+/** Short badge text (the long `statusLabel` reads as a sentence). */
+export function statusBadgeLabel(status: string): string {
+  switch (status) {
+    case 'REQUESTED':
+      return 'Requested'
+    case 'NEGOTIATING':
+      return 'Agreeing price'
+    case 'EN_ROUTE':
+      return 'On the way'
+    case 'IN_PROGRESS':
+      return 'In progress'
+    case 'DISPUTED':
+      return 'Under review'
+    default:
+      return status.charAt(0) + status.slice(1).toLowerCase()
+  }
+}

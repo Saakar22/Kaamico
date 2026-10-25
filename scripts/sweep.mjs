@@ -22,3 +22,7 @@ if (!res.ok) {
   process.exit(1)
 }
 console.log(`expired ${body.expired.offers} offers and ${body.expired.bookings} requests`)
+console.log(
+  `delivered ${body.dispatched.processed} events as ${body.dispatched.notifications} notifications` +
+    (body.dispatched.failed ? ` (${body.dispatched.failed} failed, will retry)` : ''),
+)

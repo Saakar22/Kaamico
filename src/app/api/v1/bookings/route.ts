@@ -1,16 +1,23 @@
+import { z } from 'zod'
 import { route } from '@/lib/http'
 import { idempotencyKeyFrom, idempotentResponse } from '@/lib/idempotency'
 import { readJson } from '@/lib/request'
 import { requireApiActor } from '@/modules/auth/actor'
 import { createBooking } from '@/modules/bookings/create'
-import { listCustomerBookings } from '@/modules/bookings/views'
+import { CUSTOMER_TABS, listCustomerBookings } from '@/modules/bookings/lists'
 
+const listQuery = z.object({
+  tab: z.enum(CUSTOMER_TABS).default('active'),
+  cursor: z.string().max(200).optional(),
+})
+
+/** The customer's bookings: `?tab=active|upcoming|past|cancelled&cursor=…`. */
 export const GET = route(async (request) => {
   const actor = await requireApiActor(request)
-  return Response.json(
-    { bookings: await listCustomerBookings(actor) },
-    { headers: { 'cache-control': 'no-store' } },
-  )
+  const query = listQuery.parse(Object.fromEntries(new URL(request.url).searchParams))
+  return Response.json(await listCustomerBookings(actor, query), {
+    headers: { 'cache-control': 'no-store' },
+  })
 })
 
 /**

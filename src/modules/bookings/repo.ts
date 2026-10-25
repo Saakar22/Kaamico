@@ -44,7 +44,7 @@ export async function appendHistory(
   })
 }
 
-/** Written in the same transaction as the change; delivered by the dispatcher (Phase 8). */
+/** Written in the same transaction as the change; delivered by `modules/notifications/dispatcher`. */
 export async function addOutbox(
   tx: Tx,
   topic: string,

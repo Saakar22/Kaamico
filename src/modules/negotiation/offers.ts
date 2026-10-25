@@ -338,6 +338,7 @@ export async function acceptOffer(
         await addOutbox(tx, 'booking.confirmed', {
           bookingId: booking.id,
           workerId: worker.workerId,
+          by: me.party,
         })
         return { bookingId: booking.id, status: 'CONFIRMED' as const }
       })

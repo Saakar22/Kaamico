@@ -2,7 +2,8 @@
 
 import { Check, Lock, MapPin, Send, Undo2, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useAutoRefresh } from '@/components/domain/booking/auto-refresh'
 import { useApiAction } from '@/components/domain/worker/use-api-action'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
@@ -61,13 +62,7 @@ export function NegotiationThread({
   const n = data.negotiation
   const myParty = viewer === 'customer' ? 'CUSTOMER' : 'WORKER'
 
-  useEffect(() => {
-    if (!open) return
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') router.refresh()
-    }, POLL_MS)
-    return () => clearInterval(timer)
-  }, [open, router])
+  useAutoRefresh(POLL_MS, open)
 
   const accept = (offer: OfferView) =>
     run(
@@ -77,8 +72,14 @@ export function NegotiationThread({
           idempotencyKey: acceptKey,
         })
         setAcceptKey(crypto.randomUUID())
+        // Confirmed: the booking page takes over from the thread.
+        router.push(
+          viewer === 'customer'
+            ? `/bookings/${data.bookingId}?confirmed=1`
+            : `/worker/bookings/${data.bookingId}`,
+        )
       },
-      { success: 'Booking confirmed' },
+      { success: 'Booking confirmed', refresh: false },
     )
   const reject = (offer: OfferView) =>
     run(() => apiFetch(`/api/v1/offers/${offer.id}/reject`, { body: {} }), {

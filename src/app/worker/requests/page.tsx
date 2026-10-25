@@ -1,12 +1,12 @@
 import { CalendarClock, Inbox, MapPin, Zap } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { LinkTabs } from '@/components/patterns/link-tabs'
 import { PageHeader } from '@/components/patterns/page-header'
 import { EmptyState } from '@/components/patterns/states'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Money } from '@/components/ui/money'
-import { cn } from '@/lib/cn'
 import { formatIstDateTime, formatIstTime } from '@/lib/time'
 import { listWorkerRequests, type RequestState } from '@/modules/bookings/views'
 import { requireWorkerPage } from '@/modules/workers/page-guard'
@@ -48,26 +48,11 @@ export default async function WorkerRequestsPage({ searchParams }: PageProps<'/w
           You&apos;re paused, so you won&apos;t get new requests.
         </p>
       )}
-      <nav aria-label="Request types" className="overflow-x-auto">
-        <ul className="flex gap-1 border-b border-border">
-          {TABS.map((t) => (
-            <li key={t.key}>
-              <Link
-                href={`/worker/requests?state=${t.key}`}
-                aria-current={t.key === state ? 'page' : undefined}
-                className={cn(
-                  '-mb-px inline-flex h-11 items-center border-b-2 px-3 text-sm font-medium',
-                  t.key === state
-                    ? 'border-brand-600 text-brand-700'
-                    : 'border-transparent text-ink-600 hover:text-ink-900',
-                )}
-              >
-                {t.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <LinkTabs
+        label="Request types"
+        current={state}
+        tabs={TABS.map((t) => ({ ...t, href: `/worker/requests?state=${t.key}` }))}
+      />
       {requests.length === 0 ? (
         <Card>
           <EmptyState icon={Inbox} title="Nothing here yet" description={EMPTY[state]} />
