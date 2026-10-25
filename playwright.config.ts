@@ -21,6 +21,9 @@ export default defineConfig({
   // Pre-compiles routes when testing against `next dev`.
   globalSetup: useBuild ? undefined : './e2e/global-setup.ts',
   fullyParallel: true,
+  // `next dev` renders unoptimised (with extra validation passes) in one process; ~10
+  // parallel browsers pushed page renders to 5–10 s and timed tests out. Builds stay parallel.
+  workers: useBuild ? undefined : 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',

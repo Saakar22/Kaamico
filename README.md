@@ -119,6 +119,7 @@ scripts/          Developer scripts
 - **Protected pages** call `requirePageActor(role)` themselves (layout gates do not re-run on client navigations between sibling pages), sit inside their area's `loading.tsx` boundary, and export `instant = false` because they depend on the session.
 - **Mutating API calls** that create things take an `Idempotency-Key` header (`withIdempotency()` in `src/lib/idempotency.ts`).
 
-## Known issue: OneDrive
+## Working on Windows
 
-This checkout lives in a OneDrive-synced folder. OneDrive locks files under `.next/` while syncing, which can make `next dev` fail with `EPERM` rename errors and slow first page loads. Prefer `npm run test:e2e:build` for browser tests, or move the repository outside OneDrive (for example `C:\dev\kaamico`).
+- Keep the repository **outside OneDrive** (e.g. `C:\dev\kaamico`). OneDrive locks files under `.next/` while syncing, which makes `next dev` fail with `EPERM` rename errors.
+- Browser tests against `next dev` run with 2 workers, because the dev server renders slowly under heavy parallel load. `npm run test:e2e:build` tests a production build with full parallelism (as CI does).
