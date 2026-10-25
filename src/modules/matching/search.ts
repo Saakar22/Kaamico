@@ -6,6 +6,7 @@ import { earliestStart, nextFreeStart } from '@/modules/availability/slots'
 import { getService, type ServiceDetail } from '@/modules/catalog/catalog'
 import type { PricingUnit } from '@/modules/catalog/units'
 import { latitude, longitude } from '@/modules/location/location'
+import { photoUrl } from '@/modules/uploads/serve'
 import { matchingConfig as config } from './config'
 import { findCandidates, loadSchedules, type CandidateRow, type Timing } from './repo'
 import {
@@ -128,8 +129,7 @@ function toResult(r: Enriched): ProfessionalResult {
   return {
     workerId: r.workerId,
     displayName: r.displayName,
-    // Profile photos arrive with worker uploads (Phase 6).
-    photoUrl: null,
+    photoUrl: photoUrl(r.workerId, r.photoKey),
     verified: true,
     rating: {
       avg: r.ratingCount > 0 ? Math.round((r.ratingSum / r.ratingCount) * 10) / 10 : null,

@@ -1,10 +1,10 @@
 import 'server-only'
 import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm'
-import { getEnv } from '@/config/env'
 import { getDb } from '@/db/client'
 import { otpChallenges, users } from '@/db/schema'
 import { AppError } from '@/lib/errors'
 import { enforceRateLimit } from '@/lib/rate-limit'
+import { authSecret } from '@/lib/secrets'
 import { getOtpSender } from './otp-sender'
 import { maskPhone, normalizeIndianMobile } from './phone'
 import { createSession } from './sessions'
@@ -12,10 +12,6 @@ import { generateOtp, hashOtp, safeEqualHex } from './tokens'
 
 export const OTP_TTL_SECONDS = 300
 export const OTP_MAX_ATTEMPTS = 5
-
-// Outside production a fixed key is fine: codes are short-lived and shown on screen anyway.
-const DEV_AUTH_SECRET = 'kaamico-development-only-auth-secret-not-for-production'
-const authSecret = () => getEnv().AUTH_SECRET ?? DEV_AUTH_SECRET
 
 function parsePhone(input: string): string {
   const phone = normalizeIndianMobile(input)

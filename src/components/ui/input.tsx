@@ -26,7 +26,7 @@ export function Checkbox({ className, ...props }: Omit<ComponentProps<'input'>, 
   return (
     <input
       type="checkbox"
-      className={cn('size-5 shrink-0 rounded-sm accent-brand-600', className)}
+      className={cn('size-6 shrink-0 rounded-sm accent-brand-600', className)}
       {...props}
     />
   )

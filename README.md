@@ -2,7 +2,7 @@
 
 **Local Skills. Fair Prices.** A hyperlocal marketplace for household services in India. Professionals set their own prices, and customers can agree a fair price with them through transparent offers.
 
-> **Status: Phase 5 (Discovery).** Anyone can pick a location, browse categories and services with real nearby price ranges, search (including Hinglish words like "nal"), compare ranked professionals and open their public profiles. Sign-in with phone OTP (simulated in development) and admin email/password work; booking arrives in Phase 7. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
+> **Status: Phase 6 (Worker supply).** Customers can pick a location, browse services with real nearby price ranges, search (including Hinglish words like "nal"), compare ranked professionals and open their profiles. Professionals can sign up, set their profile, photo, skills, work area, prices, hours and time off, go online or pause, and submit their ID for review. Admin review screens arrive in Phase 9 and booking in Phase 7. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
 
 ## Tech stack
 
@@ -65,6 +65,15 @@ Customers and workers sign in at `/login` with the mobile number; in development
 - **APIs:** `/api/v1/categories[/:slug]`, `/services/:id`, `/search?q=`, `/search/professionals`, `/localities`, `/professionals/:id[/reviews|/availability]`.
 - **Caching:** the catalog and localities use `'use cache'` (minutes and hours), so `npm run build` prerenders catalog pages and needs `DATABASE_URL` to be reachable; runtime-only production rules (secrets, no simulation) are checked when the app starts, not during the build. After reseeding, restart `npm run dev` so cached pages pick up the new IDs.
 
+## Worker supply and files
+
+- **Setup checklist** (`/worker/onboarding` and the dashboard): profile, skills, work area, prices, hours, ID verification. Each step links to its page under `/worker/*`, and setup resumes at the first unfinished step.
+- **Uploads** (`POST /api/v1/uploads`) are judged by their bytes, not their name or claimed type: JPEG, PNG and WebP up to 5 MB, and PDF up to 8 MB (ID documents only). EXIF, XMP and text metadata (including GPS) are stripped from photos, and uploads are limited to 20 an hour. Files go to `STORAGE_LOCAL_DIR` (default `./storage`, git-ignored, never under `public/`); identity documents live under their own `kyc/` prefix.
+- **Identity documents** are never returned by any API: workers see metadata only, and only the last 4 characters of an ID number are stored. The only way to open a file is a 5-minute HMAC-signed link from `GET /api/v1/admin/verification-documents/:id/url` (admins only), and every link issued writes a `DOCUMENT_VIEWED` audit row.
+- **Verification:** up to 6 documents; submission needs a profile, a skill, a work area, an ID document and a selfie. It is idempotent and sets the worker to PENDING with an outbox event. After a rejection, a worker can reapply after 7 days.
+- **Online status:** only verified professionals can go online. While the dashboard is open it sends a heartbeat, so "available now" lapses about 15 minutes after the app closes. Pausing (today, 3 days or a week) hides a professional from new requests.
+- **Not yet:** an S3/R2 storage driver (Phase 13), and purging files 90 days after a decision (the date is set when admins decide, in Phase 9).
+
 ## Authentication
 
 - **Customers and professionals** sign in with a phone OTP. Codes expire after 5 minutes, allow 5 attempts, and only the latest code for a number works. Only an HMAC of each code is stored. A first sign-in creates the account; the user then gives a name and chooses "book services" or "offer my services".
@@ -107,10 +116,12 @@ src/
     layout/       Customer, worker and admin shells and navigation
     brand/        Logo
   config/         Brand, navigation, feature flags and validated environment (env.ts)
-  modules/        Domain logic: auth, catalog, location, matching, availability, professionals
+  modules/        Domain logic: auth, catalog, location, matching, availability, professionals,
+                  workers, uploads, verification
   db/             Drizzle client, schema/, migrations/, seed/ and integrity tests
   test/           Test helpers and database fixtures
-  lib/            Shared helpers: cn, errors, HTTP wrapper, logger, money (paise), IST time
+  lib/            Shared helpers: cn, errors, HTTP wrapper, logger, money (paise), IST time,
+                  private storage, signed file links, file-type sniffing and metadata stripping
   styles/         Design tokens (colours, radii, animations)
 e2e/              Playwright tests
 scripts/          Developer scripts

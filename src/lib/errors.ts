@@ -56,3 +56,15 @@ export const conflict = (
 /** A domain rule was violated, e.g. `OFFER_BELOW_FLOOR`. Responds 422. */
 export const businessRule = (code: string, message: string, details?: Record<string, unknown>) =>
   new AppError(code, message, { status: 422, details })
+
+/**
+ * The Postgres SQLSTATE behind a failed query (e.g. '23P01' exclusion violation),
+ * whether the driver error is thrown directly or wrapped by Drizzle.
+ */
+export function pgErrorCode(error: unknown): string | undefined {
+  for (let e = error; e && typeof e === 'object'; e = (e as { cause?: unknown }).cause) {
+    const code = (e as { code?: unknown }).code
+    if (typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code)) return code
+  }
+  return undefined
+}

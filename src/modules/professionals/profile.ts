@@ -8,6 +8,7 @@ import { earliestStart, freeStarts } from '@/modules/availability/slots'
 import type { PricingUnit } from '@/modules/catalog/units'
 import { matchingConfig as config } from '@/modules/matching/config'
 import { loadSchedules } from '@/modules/matching/repo'
+import { photoUrl } from '@/modules/uploads/serve'
 import { isNewWorker } from '@/modules/matching/scoring'
 
 /**
@@ -83,6 +84,7 @@ export async function getPublicProfile(workerId: string): Promise<PublicProfile>
   const [w] = await db.execute<{
     id: string
     display_name: string
+    photo_key: string | null
     bio: string | null
     years_experience: number
     languages: string[] | string
@@ -93,7 +95,7 @@ export async function getPublicProfile(workerId: string): Promise<PublicProfile>
     city: string | null
     verified_on: Date | string | null
   }>(sql`
-    select w.id, w.display_name, w.bio, w.years_experience, w.languages, w.rating_sum,
+    select w.id, w.display_name, w.photo_key, w.bio, w.years_experience, w.languages, w.rating_sum,
            w.rating_count, w.completed_jobs, w.created_at, l.city,
            (select max(a.reviewed_at) from verification_applications a
              where a.worker_id = w.id and a.status = 'APPROVED') as verified_on
@@ -132,7 +134,7 @@ export async function getPublicProfile(workerId: string): Promise<PublicProfile>
   return {
     workerId: w.id,
     displayName: w.display_name,
-    photoUrl: null,
+    photoUrl: photoUrl(w.id, w.photo_key),
     bio: w.bio,
     yearsExperience: w.years_experience,
     languages: parseArray(w.languages),
