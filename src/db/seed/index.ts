@@ -331,12 +331,32 @@ const LANGUAGES: Record<City, string[][]> = {
 
 const workers: Worker[] = []
 const usedNames = new Set<string>()
-for (let i = 0; i < 40; i++) {
-  const city: City = i < 20 ? 'Pune' : 'Bengaluru'
+// The first 40 workers hold the documented demo accounts and every verification state.
+// The rest add verified supply (5 per category per city) so customers can compare.
+const CORE_WORKERS = 40
+const EXTRA_PER_CITY = 5 * CATEGORIES.length
+for (let i = 0; i < CORE_WORKERS + 2 * EXTRA_PER_CITY; i++) {
+  const extra = i >= CORE_WORKERS
+  const k = i - CORE_WORKERS
+  const city: City = extra
+    ? k < EXTRA_PER_CITY
+      ? 'Pune'
+      : 'Bengaluru'
+    : i < 20
+      ? 'Pune'
+      : 'Bengaluru'
   const j = i % 20
-  const status: Worker['status'] =
-    j === 4 || j === 5 ? 'PENDING' : j === 6 ? 'REJECTED' : j === 7 ? 'UNVERIFIED' : 'VERIFIED'
-  const isNew = status === 'VERIFIED' && j >= 17
+  const status: Worker['status'] = extra
+    ? 'VERIFIED'
+    : j === 4 || j === 5
+      ? 'PENDING'
+      : j === 6
+        ? 'REJECTED'
+        : j === 7
+          ? 'UNVERIFIED'
+          : 'VERIFIED'
+  const isNew =
+    status === 'VERIFIED' && (extra ? k % EXTRA_PER_CITY >= EXTRA_PER_CITY - 4 : j >= 17)
   const isDemo = i === 0
 
   let name = 'Rakesh Patil'
@@ -346,7 +366,7 @@ for (let i = 0; i < 40; i++) {
   }
   usedNames.add(name)
 
-  const primary = isDemo ? 'plumbing' : CATEGORIES[j % CATEGORIES.length].slug
+  const primary = isDemo ? 'plumbing' : CATEGORIES[(extra ? k : j) % CATEGORIES.length].slug
   const categories = isDemo
     ? ['plumbing', 'electrical']
     : rnd.chance(0.4)
@@ -387,7 +407,7 @@ for (let i = 0; i < 40; i++) {
     baseLat: status === 'UNVERIFIED' ? null : lat,
     baseLng: status === 'UNVERIFIED' ? null : lng,
     baseLocalityId: status === 'UNVERIFIED' ? null : locId,
-    serviceRadiusKm: isDemo ? 8 : rnd.pick([3, 5, 6, 8, 10]),
+    serviceRadiusKm: isDemo ? 8 : rnd.pick(extra ? [8, 10, 12, 15] : [3, 5, 6, 8, 10]),
     lastActiveAt: online ? at(NOW, -rnd.int(0, 8) * MINUTE) : at(NOW, -rnd.int(3, 72) * HOUR),
     createdAt: created,
   })

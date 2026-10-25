@@ -4,6 +4,9 @@ import type { FullConfig } from '@playwright/test'
 // before parallel tests start avoids cold-start timeouts. Production builds skip this.
 const ROUTES = [
   '/',
+  '/services',
+  '/services/plumbing',
+  '/search?q=plumber',
   '/login',
   '/admin/login',
   '/dashboard',

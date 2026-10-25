@@ -16,6 +16,8 @@ export default defineConfig({
     alias: {
       // `server-only` throws outside the react-server condition; it is a no-op under test.
       'server-only': fileURLToPath(new URL('./src/test/server-only-stub.ts', import.meta.url)),
+      // Cache directives need the Next.js runtime; under test, cached functions run uncached.
+      'next/cache': fileURLToPath(new URL('./src/test/next-cache-stub.ts', import.meta.url)),
     },
   },
   test: {

@@ -5,6 +5,8 @@ const postgresUrl = z
   .string()
   .regex(/^postgres(ql)?:\/\//, 'must be a postgres:// connection string')
 
+const BUILD_PHASE = 'phase-production-build'
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -25,9 +27,13 @@ const envSchema = z
     AUTH_SECRET: z.string().min(32).optional(),
     /** Scales every rate limit (e.g. 20 in development/CI so repeated test logins are not blocked). */
     RATE_LIMIT_MULTIPLIER: z.coerce.number().int().min(1).max(1000).default(1),
+    /** Set by Next.js; `phase-production-build` while running `next build`. */
+    NEXT_PHASE: z.string().optional(),
   })
   .superRefine((env, ctx) => {
-    if (env.NODE_ENV !== 'production') return
+    // `next build` prerenders catalog pages from the database but never serves requests,
+    // so the runtime-only rules apply when the app starts, not while building.
+    if (env.NODE_ENV !== 'production' || env.NEXT_PHASE === BUILD_PHASE) return
     for (const key of ['CRON_SECRET', 'AUTH_SECRET'] as const) {
       if (!env[key])
         ctx.addIssue({ code: 'custom', path: [key], message: 'required in production' })
@@ -67,7 +73,10 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
 
 let cached: Env | undefined
 
-/** Validated server environment. Read lazily so `next build` does not require runtime secrets. */
+/**
+ * Validated server environment. Read lazily, and production rules are skipped while
+ * building, so `next build` needs only DATABASE_URL (for prerendered catalog pages).
+ */
 export function getEnv(): Env {
   cached ??= parseEnv(process.env)
   return cached

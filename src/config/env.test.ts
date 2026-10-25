@@ -68,4 +68,13 @@ describe('parseEnv', () => {
       }),
     ).toThrow(/RATE_LIMIT_MULTIPLIER: must be 1 in production/)
   })
+
+  it('needs only the database while `next build` prerenders pages', () => {
+    const build = { ...base, NODE_ENV: 'production', NEXT_PHASE: 'phase-production-build' }
+    expect(() => parseEnv(build)).not.toThrow()
+    // The same settings are still refused when the built app starts.
+    expect(() => parseEnv({ ...build, NEXT_PHASE: 'phase-production-server' })).toThrow(
+      /CRON_SECRET: required in production/,
+    )
+  })
 })

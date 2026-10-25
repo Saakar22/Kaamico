@@ -2,7 +2,7 @@
 
 **Local Skills. Fair Prices.** A hyperlocal marketplace for household services in India. Professionals set their own prices, and customers can agree a fair price with them through transparent offers.
 
-> **Status: Phase 4 (Sign-in and roles).** Customers and professionals sign in with a phone OTP (simulated in development), admins with email and password, and each area is protected by role on the server. The dashboards are placeholders; booking arrives in later phases. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
+> **Status: Phase 5 (Discovery).** Anyone can pick a location, browse categories and services with real nearby price ranges, search (including Hinglish words like "nal"), compare ranked professionals and open their public profiles. Sign-in with phone OTP (simulated in development) and admin email/password work; booking arrives in Phase 7. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
 
 ## Tech stack
 
@@ -44,7 +44,7 @@ Check the database connection at <http://localhost:3000/api/health>. It returns 
 
 ### Demo data
 
-`npm run db:seed` (or `db:reset`) replaces all data in `DATABASE_URL` with a deterministic demo set: 2 cities (Pune, Bengaluru), 32 localities, 10 categories, 38 services, 40 workers, 6 customers and about 115 bookings in every status, with offers, payments, ledger entries and reviews. Booking dates are relative to when you seed.
+`npm run db:seed` (or `db:reset`) replaces all data in `DATABASE_URL` with a deterministic demo set: 2 cities (Pune, Bengaluru), 32 localities, 10 categories, 38 services, 140 workers (3 to 7 comparable professionals for every service near Kothrud, Pune and Indiranagar, Bengaluru), 6 customers and about 480 bookings in every status, with offers, payments, ledger entries and reviews. Booking dates are relative to when you seed.
 
 | Account                 | Login                 | Notes                                                       |
 | ----------------------- | --------------------- | ----------------------------------------------------------- |
@@ -55,6 +55,15 @@ Check the database connection at <http://localhost:3000/api/health>. It returns 
 | Admin                   | `admin@kaamico.local` | Password: `SEED_ADMIN_PASSWORD` (sign in at `/admin/login`) |
 
 Customers and workers sign in at `/login` with the mobile number; in development the 6-digit code is shown on screen (no SMS is sent). Any other Indian mobile number creates a new account. Verification documents in the seed are metadata only; no files exist.
+
+## Discovery
+
+- **Location** is a cookie (`kmc_loc`) holding a seeded locality or the device location. The header chip opens a sheet to change it; points more than 15 km from every serviceable locality are "not yet in your area".
+- **Matching** (`src/modules/matching`) follows IMPLEMENTATION_PLAN.md §11.1: one SQL query filters verified, active, unpaused professionals with the skill and an active price, inside a bounding box and then a straight-line (haversine) distance within both the search radius and the professional's own travel radius. The radius widens 3 → 5 → 8 → 12 km until 5 are found. Ranking blends distance, Bayesian rating, reliability, price fit and a boost for new professionals, with a daily-rotating tie-break; the first page always includes a new professional when one qualifies, but never above someone closer, cheaper and better rated. Weights live in `config.ts`.
+- **Availability:** "Available now" needs the professional online, active in the last 15 minutes and free for the whole job plus a 30-minute buffer. Otherwise cards show the next free start from weekly hours minus bookings and time off. Arrival times are distance-based estimates and say so.
+- **Privacy:** public profiles and search results never include phone numbers, base locations or documents; unverified or suspended professionals return 404. Nearby price ranges are hidden until at least 3 professionals have set a price.
+- **APIs:** `/api/v1/categories[/:slug]`, `/services/:id`, `/search?q=`, `/search/professionals`, `/localities`, `/professionals/:id[/reviews|/availability]`.
+- **Caching:** the catalog and localities use `'use cache'` (minutes and hours), so `npm run build` prerenders catalog pages and needs `DATABASE_URL` to be reachable; runtime-only production rules (secrets, no simulation) are checked when the app starts, not during the build. After reseeding, restart `npm run dev` so cached pages pick up the new IDs.
 
 ## Authentication
 
@@ -94,10 +103,11 @@ src/
   components/
     ui/           Design-system primitives (Button, FormField, MoneyInput, Dialog/Sheet, …)
     patterns/     Page patterns (EmptyState, ErrorState, PageHeader, Stepper, StatTile)
-    domain/       Kaamico concepts (VerificationBadge, SimulationBadge, PriceLockedBadge)
+    domain/       Kaamico concepts (badges, location chip, category/service/professional cards)
     layout/       Customer, worker and admin shells and navigation
     brand/        Logo
   config/         Brand, navigation, feature flags and validated environment (env.ts)
+  modules/        Domain logic: auth, catalog, location, matching, availability, professionals
   db/             Drizzle client, schema/, migrations/, seed/ and integrity tests
   test/           Test helpers and database fixtures
   lib/            Shared helpers: cn, errors, HTTP wrapper, logger, money (paise), IST time

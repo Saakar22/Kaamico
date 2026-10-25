@@ -49,3 +49,45 @@ const displayFormatter = new Intl.DateTimeFormat('en-IN', {
 export function formatIstDateTime(date: Date): string {
   return displayFormatter.format(date)
 }
+
+const MINUTE_MS = 60_000
+/** IST is UTC+05:30 all year (no daylight saving). */
+const IST_OFFSET_MINUTES = 330
+
+/** The instant for a wall-clock time in IST, e.g. fromIst(2026, 10, 27, 600) = 27 Oct 10:00 IST. */
+export function fromIst(year: number, month: number, day: number, minuteOfDay = 0): Date {
+  return new Date(Date.UTC(year, month - 1, day) + (minuteOfDay - IST_OFFSET_MINUTES) * MINUTE_MS)
+}
+
+/** IST calendar date as YYYY-MM-DD. */
+export function istDateKey(date: Date): string {
+  const { year, month, day } = toIstParts(date)
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+const timeFormatter = new Intl.DateTimeFormat('en-IN', {
+  timeZone: IST_TIME_ZONE,
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+})
+
+const dayFormatter = new Intl.DateTimeFormat('en-IN', {
+  timeZone: IST_TIME_ZONE,
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+})
+
+/** e.g. "10:30 am" */
+export function formatIstTime(date: Date): string {
+  return timeFormatter.format(date)
+}
+
+/** "Today", "Tomorrow" or e.g. "Thu, 29 Oct" relative to `now`. */
+export function formatIstDay(date: Date, now: Date = new Date()): string {
+  const key = istDateKey(date)
+  if (key === istDateKey(now)) return 'Today'
+  if (key === istDateKey(new Date(now.getTime() + 24 * 60 * MINUTE_MS))) return 'Tomorrow'
+  return dayFormatter.format(date)
+}

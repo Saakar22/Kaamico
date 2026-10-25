@@ -36,3 +36,10 @@ export async function readJson(request: Request): Promise<unknown> {
     throw new AppError('VALIDATION_FAILED', 'The request body must be valid JSON')
   }
 }
+
+/** The URL's query string as a plain object (first value wins), ready for a Zod schema. */
+export function queryParams(request: Request): Record<string, string> {
+  const params: Record<string, string> = {}
+  for (const [key, value] of new URL(request.url).searchParams) params[key] ??= value
+  return params
+}
