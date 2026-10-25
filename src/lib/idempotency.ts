@@ -73,3 +73,23 @@ export async function withIdempotency(
     throw error
   }
 }
+
+/**
+ * A complete idempotent endpoint response: reads the required Idempotency-Key header,
+ * runs `handler` once per key and replays the stored result on retries.
+ */
+export async function idempotentResponse(
+  request: Request,
+  opts: { userId: string; route: string; body: unknown },
+  handler: () => Promise<StoredResponse>,
+): Promise<Response> {
+  const key = idempotencyKeyFrom(request)
+  const result = await withIdempotency({ ...opts, key }, handler)
+  return Response.json(result.body, {
+    status: result.status,
+    headers: {
+      'cache-control': 'no-store',
+      ...(result.replayed ? { 'idempotent-replayed': 'true' } : {}),
+    },
+  })
+}

@@ -62,7 +62,10 @@ test.describe('discovery', () => {
     await expect(page.getByText('ID verified').first()).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Services and prices' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Reviews' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Request booking' })).toBeDisabled()
+    await expect(page.getByRole('link', { name: 'Request booking' })).toHaveAttribute(
+      'href',
+      /^\/book\/[\w-]+\?worker=/,
+    )
     await expect(page.getByRole('heading', { name: 'Upcoming free times' })).toBeVisible()
     await expectNoSeriousA11yViolations(page)
   })

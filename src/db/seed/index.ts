@@ -4,7 +4,9 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { sql as dsql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
+import { DEV_AUTH_SECRET } from '../../config/dev-secret.ts'
 import { hashPassword } from '../../modules/auth/password.ts'
+import { deriveStartCode, hashStartCode } from '../../modules/bookings/start-code.ts'
 import * as s from '../schema/index.ts'
 import {
   CATEGORIES,
@@ -37,6 +39,8 @@ type Insert<T extends { $inferInsert: unknown }> = T['$inferInsert']
 type City = keyof typeof CITIES
 
 const rnd = createRandom(20261025)
+// Must match the running app (lib/secrets.ts) so start codes shown to customers verify.
+const START_CODE_SECRET = process.env.AUTH_SECRET || DEV_AUTH_SECRET
 const COMMISSION_BPS = Number(process.env.COMMISSION_BPS ?? 1000)
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -757,6 +761,8 @@ function createBooking(plan: BookingPlan): string {
     acceptedOfferId: lastOfferId,
     slot: range(start, slotEnd),
     confirmedAt,
+    // The same derivation the app uses, so demo customers see a working start code.
+    startCodeHash: hashStartCode(id, deriveStartCode(id, START_CODE_SECRET)),
     expiresAt: null,
   }
   bookingFinal.set(id, final)

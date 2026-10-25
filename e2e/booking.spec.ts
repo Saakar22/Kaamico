@@ -1,0 +1,196 @@
+import AxeBuilder from '@axe-core/playwright'
+import { expect, test, type Browser, type Page } from '@playwright/test'
+import postgres from 'postgres'
+
+// A new customer books a seeded professional, makes an offer, the professional
+// counters in a second browser, and the customer accepts: price locked, start code shown.
+
+type Pro = { workerId: string; phone: string; serviceId: string; name: string }
+
+/** Two seeded plumbers who travel to Kothrud (not Rakesh: other specs sign in as him). */
+async function plumbersNearKothrud(): Promise<Pro[]> {
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} })
+  try {
+    const rows = await sql<Pro[]>`
+      select w.id as "workerId", u.phone, p.service_id as "serviceId", w.display_name as name
+      from worker_profiles w
+      join users u on u.id = w.user_id
+      join worker_service_pricing p on p.worker_id = w.id and p.is_active
+      join services s on s.id = p.service_id and s.slug = 'tap-repair'
+      where w.verification_status = 'VERIFIED' and u.status = 'ACTIVE' and p.is_negotiable
+        and kaamico_haversine_km(18.5074, 73.8077, w.base_lat, w.base_lng) <= w.service_radius_km
+        and u.phone not in ('+919000000101', '+919000000102')
+        and exists (select 1 from worker_availability_rules r where r.worker_id = w.id)
+      order by u.phone
+      limit 2`
+    return rows
+  } finally {
+    await sql.end()
+  }
+}
+
+async function signIn(page: Page, mobile: string) {
+  await page.goto('/login')
+  await page.getByLabel('Mobile number').fill(mobile)
+  await page.getByRole('button', { name: 'Send code' }).click()
+  const code = await page.getByTestId('simulated-otp').textContent()
+  await page.getByLabel('6-digit code').fill(code!.trim())
+  await page.getByRole('button', { name: 'Verify and continue' }).click()
+}
+
+async function newCustomer(browser: Browser, isMobile: boolean) {
+  const context = await browser.newContext(
+    isMobile ? { viewport: { width: 412, height: 915 }, isMobile: true, hasTouch: true } : {},
+  )
+  const page = await context.newPage()
+  await signIn(page, `9${String(Math.floor(Math.random() * 1e9)).padStart(9, '0')}`)
+  await page.getByLabel(/Your name/).fill('Meera Joshi')
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await expect(page).toHaveURL(/\/dashboard$/)
+  return page
+}
+
+const rupees = (text: string) => Number(text.replace(/[^\d]/g, ''))
+
+async function expectAccessible(page: Page) {
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+    .analyze()
+  const serious = results.violations.filter(
+    (v) => v.impact === 'serious' || v.impact === 'critical',
+  )
+  expect(
+    serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
+  ).toEqual([])
+}
+
+test('a customer books, negotiates and gets a locked price', async ({
+  browser,
+  isMobile,
+}, info) => {
+  test.slow()
+  const pros = await plumbersNearKothrud()
+  const pro = pros[info.project.name === 'mobile' ? 1 : 0]
+  test.skip(!pro, 'Needs the seeded demo data (npm run db:seed)')
+  const proFirst = pro.name.split(' ')[0]
+
+  // Customer: profile → wizard
+  const customer = await newCustomer(browser, isMobile)
+  await customer.goto(`/professionals/${pro.workerId}?service=${pro.serviceId}`)
+  await customer.getByRole('link', { name: 'Request booking' }).click()
+  await expect(customer.getByRole('heading', { name: 'Where is the job?' })).toBeVisible()
+
+  await customer.getByLabel(/Flat, house and street/).fill('A-12, Shanti Kunj, Paud Road')
+  await customer.getByLabel(/^Area/).selectOption({ label: 'Kothrud' })
+  await customer.getByRole('button', { name: 'Save address' }).click()
+  await customer.getByRole('button', { name: 'Continue' }).click()
+
+  await customer.getByText('Choose a time').click()
+  const day = customer.getByLabel('Day')
+  const options = await day.locator('option').all()
+  // Skip today; use the first later day with free times.
+  for (const option of options.slice(1)) {
+    await day.selectOption(await option.getAttribute('value'))
+    const firstSlot = customer
+      .getByRole('group', { name: 'Start time (IST)' })
+      .getByRole('button')
+      .first()
+    const none = customer.getByText('No free times that day.')
+    await expect(firstSlot.or(none)).toBeVisible()
+    if (await firstSlot.isVisible()) {
+      await firstSlot.click()
+      break
+    }
+  }
+  await customer.getByRole('button', { name: 'Continue' }).click()
+  await customer.getByLabel(/What needs doing/).fill('Kitchen tap drips all night.')
+  await customer.getByRole('button', { name: 'Continue' }).click()
+
+  await customer.getByText('Suggest a different price').click()
+  const hint = await customer.getByText(/^Between ₹/).textContent()
+  const floor = rupees(hint!.split('and')[0])
+  const listed = rupees(hint!.split('and')[1])
+  await customer.getByLabel('Your offer').fill(String(floor))
+  await expectAccessible(customer)
+  await customer.getByRole('button', { name: 'Continue' }).click()
+  await customer.getByRole('button', { name: new RegExp(`Send request to ${proFirst}`) }).click()
+
+  await expect(customer).toHaveURL(/\/bookings\/[\w-]+\/negotiate$/)
+  await expect(customer.getByText(`Waiting for ${proFirst} to respond`).first()).toBeVisible()
+  const bookingCode = (await customer
+    .getByText(/KMC-[A-Z0-9]{6}/)
+    .first()
+    .textContent())!.match(/KMC-[A-Z0-9]{6}/)![0]
+  await expectAccessible(customer)
+
+  // Professional: inbox → counter-offer
+  const workerContext = await browser.newContext()
+  const worker = await workerContext.newPage()
+  await signIn(worker, pro.phone.slice(3))
+  await expect(worker).toHaveURL(/\/worker\/dashboard$/)
+  await worker.goto('/worker/requests')
+  // Earlier runs may have left other requests from "Meera": pick this one by its reference.
+  await worker.getByRole('link', { name: new RegExp(bookingCode) }).click()
+  await expect(worker.getByText(/Meera offered ₹/)).toBeVisible()
+  await expect(
+    worker.getByText('The full address appears once the booking is confirmed.'),
+  ).toBeVisible()
+  const counter = Math.min(listed, floor + 100)
+  await worker.getByRole('textbox', { name: 'Your price' }).fill(String(counter))
+  await worker.getByRole('button', { name: 'Send offer' }).click()
+  await expect(worker.getByText(/Waiting for Meera to respond/)).toBeVisible()
+  await expectAccessible(worker)
+
+  // Customer: accept the counter (the page polls; a reload is quicker in tests)
+  await customer.reload()
+  await expect(customer.getByText(new RegExp(`${proFirst} offered ₹`))).toBeVisible()
+  await customer.getByRole('button', { name: /^Accept ₹/ }).click()
+  await expect(customer.getByText(/Confirmed · Price locked at ₹/)).toBeVisible()
+  await expect(customer.getByText(/Price locked at ₹/)).toContainText(
+    counter.toLocaleString('en-IN'),
+  )
+  await expect(customer.getByLabel(/^Start code \d \d \d \d$/)).toBeVisible()
+
+  // Professional: now sees the full address
+  await worker.reload()
+  await expect(worker.getByText(/A-12, Shanti Kunj, Paud Road/)).toBeVisible()
+  await workerContext.close()
+  await customer.context().close()
+})
+
+test('a customer can cancel a request for free', async ({ browser, isMobile }, info) => {
+  const pros = await plumbersNearKothrud()
+  const pro = pros[info.project.name === 'mobile' ? 0 : 1]
+  test.skip(!pro, 'Needs the seeded demo data (npm run db:seed)')
+  const customer = await newCustomer(browser, isMobile)
+  await customer.goto(`/book/${pro.serviceId}?worker=${pro.workerId}`)
+  await customer.getByLabel(/Flat, house and street/).fill('B-4, Lane 7')
+  await customer.getByLabel(/^Area/).selectOption({ label: 'Kothrud' })
+  await customer.getByRole('button', { name: 'Save address' }).click()
+  await customer.getByRole('button', { name: 'Continue' }).click()
+  await customer.getByText('Choose a time').click()
+  const day = customer.getByLabel('Day')
+  for (const option of (await day.locator('option').all()).slice(2)) {
+    await day.selectOption(await option.getAttribute('value'))
+    const firstSlot = customer
+      .getByRole('group', { name: 'Start time (IST)' })
+      .getByRole('button')
+      .first()
+    await expect(firstSlot.or(customer.getByText('No free times that day.'))).toBeVisible()
+    if (await firstSlot.isVisible()) {
+      await firstSlot.click()
+      break
+    }
+  }
+  for (let i = 0; i < 3; i++) await customer.getByRole('button', { name: 'Continue' }).click()
+  await customer.getByRole('button', { name: /^Send request to/ }).click()
+  await expect(customer).toHaveURL(/\/negotiate$/)
+
+  await customer.getByRole('button', { name: 'Cancel request' }).click()
+  const dialog = customer.getByRole('dialog', { name: 'Cancel request?' })
+  await expect(dialog.getByText('Cancelling now is free.')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Cancel request' }).click()
+  await expect(customer.getByText(/^Cancelled ·/)).toBeVisible()
+  await expect(customer.getByRole('link', { name: 'Find another professional' })).toBeVisible()
+  await customer.context().close()
+})

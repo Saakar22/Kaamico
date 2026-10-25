@@ -292,7 +292,7 @@ function ReviewList({ reviews, total }: { reviews: ReviewPage; total: number }) 
   )
 }
 
-/** Booking arrives with the booking wizard; until then the CTA says so plainly. */
+/** Sticky on phones, a side card on desktop: starts the booking wizard for the chosen service. */
 function BookPanel({ profile, serviceId }: { profile: PublicProfile; serviceId?: string }) {
   const service = profile.services.find((s) => s.serviceId === serviceId) ?? profile.services[0]
   return (
@@ -307,14 +307,16 @@ function BookPanel({ profile, serviceId }: { profile: PublicProfile; serviceId?:
             </span>
           </p>
         )}
-        <div className="flex flex-col items-end gap-1 md:items-stretch">
-          <Button disabled aria-describedby="booking-soon">
-            Request booking
-          </Button>
-          <span id="booking-soon" className="text-xs text-ink-600">
-            Online booking is coming soon
-          </span>
-        </div>
+        {service && (
+          <div className="flex flex-col items-end gap-1 md:items-stretch">
+            <Button asChild>
+              <Link href={`/book/${service.serviceId}?worker=${profile.workerId}`}>
+                Request booking
+              </Link>
+            </Button>
+            <span className="text-xs text-ink-600">No payment now. You can suggest a price.</span>
+          </div>
+        )}
       </div>
     </div>
   )

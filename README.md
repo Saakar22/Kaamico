@@ -2,7 +2,7 @@
 
 **Local Skills. Fair Prices.** A hyperlocal marketplace for household services in India. Professionals set their own prices, and customers can agree a fair price with them through transparent offers.
 
-> **Status: Phase 6 (Worker supply).** Customers can pick a location, browse services with real nearby price ranges, search (including Hinglish words like "nal"), compare ranked professionals and open their profiles. Professionals can sign up, set their profile, photo, skills, work area, prices, hours and time off, go online or pause, and submit their ID for review. Admin review screens arrive in Phase 9 and booking in Phase 7. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
+> **Status: Phase 7 (Booking and negotiation).** Customers can find a professional, request a booking (now or at a free time), accept the listed price or make an offer, and agree a final price through offers and counter-offers; the professional replies from their request inbox. Confirmed bookings lock the price and give the customer a start code. Professionals set up their profile, prices, hours and ID verification. The booking detail, tracking and jobs pages arrive in Phase 8, admin review in Phase 9, and payments in Phase 10. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
 
 ## Tech stack
 
@@ -74,6 +74,17 @@ Customers and workers sign in at `/login` with the mobile number; in development
 - **Online status:** only verified professionals can go online. While the dashboard is open it sends a heartbeat, so "available now" lapses about 15 minutes after the app closes. Pausing (today, 3 days or a week) hides a professional from new requests.
 - **Not yet:** an S3/R2 storage driver (Phase 13), and purging files 90 days after a decision (the date is set when admins decide, in Phase 9).
 
+## Bookings and negotiation
+
+- **Request** (`POST /api/v1/bookings`, idempotent): the customer picks a professional, an address, now or a free time, and either the listed price or an offer. Even "accept the listed price" is an offer the professional must accept. In one transaction the worker row is locked and eligibility, travel distance, the slot (weekly hours, bookings, time off) and the limits (3 open requests per customer, 1 per professional) are re-checked; the price, address and commission are snapshotted. A busy slot returns `409 SLOT_TAKEN` with alternative times.
+- **Negotiation** (IMPLEMENTATION_PLAN.md §11.2, rules in `src/modules/negotiation`): turn-taking, at most 3 offers per side (the last is labelled "Final offer"), customers never go down and professionals never go up, a floor of max(minimum charge, 40% of the listed price), fixed prices for non-negotiable services, and a required note for quotes over 150% of the listed price. Messages mask phone numbers, UPI IDs and emails.
+- **Accepting** locks the booking, then the offer, then the worker, re-checks eligibility and time off, and confirms with the agreed price, slot and start code. The database's no-overlap constraint is the final guard: with 50 parallel confirmations for one slot exactly one wins and the rest get `409 SLOT_TAKEN` (`src/modules/bookings/concurrency.int.test.ts`).
+- **Expiry:** on-demand offers last 10 minutes and requests 30; scheduled offers last up to 6 hours. Lapsed offers and requests expire lazily on every read and write, and `POST /api/internal/sweep` (bearer `CRON_SECRET`; `npm run sweep`) expires the rest for notifications.
+- **Lifecycle** (`src/modules/bookings/state-machine.ts`, one table used by the API and the tests): the assigned professional moves a job EN_ROUTE (scheduled jobs: at most 90 minutes early), ARRIVED, IN_PROGRESS (with the customer's 4-digit start code; 5 wrong tries lock it) and COMPLETED (not while an extra charge awaits the customer). Extra charges count only once the customer approves them.
+- **Start codes** are derived from the booking ID and `AUTH_SECRET`, so the customer can always see theirs; only a hash is stored. Changing `AUTH_SECRET` changes the codes of active bookings.
+- **Cancelling:** customers cancel free until the professional sets off, then a visit fee of min(₹99, minimum charge) is recorded (collected with payments in Phase 10); no cancelling once work has started. Professionals cancel a confirmed job with a reason (it counts against reliability), or a no-show 20 minutes after arriving. Declining a request cancels it so the customer can choose someone else.
+- **Privacy:** before confirmation the professional sees the customer's first name, area and distance only; the full address appears once confirmed and disappears 24 hours after completion.
+
 ## Authentication
 
 - **Customers and professionals** sign in with a phone OTP. Codes expire after 5 minutes, allow 5 attempts, and only the latest code for a number works. Only an HMAC of each code is stored. A first sign-in creates the account; the user then gives a name and chooses "book services" or "offer my services".
@@ -102,6 +113,7 @@ Why not an auth library? The plan's spike found that Better Auth's phone-number 
 | `npm run db:seed`                 | Replace all dev data with the demo set                                 |
 | `npm run db:reset`                | Drop everything, migrate and seed (dev database)                       |
 | `npm run db:studio`               | Browse the database in Drizzle Studio                                  |
+| `npm run sweep`                   | Expire lapsed offers and requests once (needs `CRON_SECRET`)           |
 | `npm run check`                   | Lint, typecheck, format check and tests                                |
 
 ## Project structure
@@ -117,7 +129,7 @@ src/
     brand/        Logo
   config/         Brand, navigation, feature flags and validated environment (env.ts)
   modules/        Domain logic: auth, catalog, location, matching, availability, professionals,
-                  workers, uploads, verification
+                  workers, uploads, verification, addresses, bookings, negotiation
   db/             Drizzle client, schema/, migrations/, seed/ and integrity tests
   test/           Test helpers and database fixtures
   lib/            Shared helpers: cn, errors, HTTP wrapper, logger, money (paise), IST time,

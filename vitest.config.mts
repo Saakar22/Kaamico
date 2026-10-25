@@ -31,6 +31,7 @@ export default defineConfig({
       // Rate limits are part of what the tests verify, so keep production values.
       RATE_LIMIT_MULTIPLIER: '1',
       OTP_MODE: 'simulated',
+      CRON_SECRET: 'test-cron-secret-0123456789-abcdefghijklmnop',
       // Application code under test talks to the test database, never the dev one.
       ...(testDatabaseUrl ? { DATABASE_URL: testDatabaseUrl } : {}),
     },
