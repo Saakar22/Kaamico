@@ -25,7 +25,7 @@ const actionClasses =
 export default async function CustomerDashboardPage() {
   const actor = await requirePageActor()
   const dash = await getCustomerDashboard(actor)
-  const actions = dash.pendingOffers.length + dash.pendingCharges.length
+  const actions = dash.pendingOffers.length + dash.pendingCharges.length + dash.unpaid.length
   const nothing = actions === 0 && !dash.activeBooking && dash.waiting.length === 0
 
   return (
@@ -48,6 +48,21 @@ export default async function CustomerDashboardPage() {
             Needs your answer
           </h2>
           <ul className="flex flex-col gap-3">
+            {dash.unpaid.map((u) => (
+              <li key={u.bookingId}>
+                <Link href={`/bookings/${u.bookingId}`} className={actionClasses}>
+                  <span className="flex flex-col">
+                    <span className="font-semibold">
+                      Pay {u.workerName.split(' ')[0]} for {u.serviceName.toLowerCase()}
+                    </span>
+                    <span className="text-sm text-ink-600">Job completed · {u.code}</span>
+                  </span>
+                  <span className="font-semibold">
+                    <Money paise={u.totalPaise} />
+                  </span>
+                </Link>
+              </li>
+            ))}
             {dash.pendingCharges.map((c) => (
               <li key={c.chargeId}>
                 <Link href={`/bookings/${c.bookingId}`} className={actionClasses}>

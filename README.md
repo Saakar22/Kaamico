@@ -2,7 +2,7 @@
 
 **Local Skills. Fair Prices.** A hyperlocal marketplace for household services in India. Professionals set their own prices, and customers can agree a fair price with them through transparent offers.
 
-> **Status: Phase 9 (Admin console).** Customers can find a professional, request a booking (now or at a free time), agree a price through offers and counter-offers, track the job step by step and approve or decline extra charges. Professionals reply from their request inbox and run each job from its page. Both get in-app notifications. Admins review ID verification (every document view audited), oversee and cancel bookings, suspend accounts, edit categories and services, and read the audit log. Payments arrive in Phase 10. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
+> **Status: Phase 10 (Payments, earnings and reviews).** Customers find a professional, agree a price, track the job, approve extras, then pay in cash or through a clearly labelled simulated online checkout, get a numbered receipt and leave a review. Professionals run each job, confirm cash, and see every earning, fee and payout in their ledger. Admins review ID verification, oversee bookings and payments, suspend accounts, edit the catalog and read the audit log. No real money moves: online payments and payouts are simulated. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
 
 ## Tech stack
 
@@ -91,6 +91,14 @@ Customers and workers sign in at `/login` with the mobile number; in development
 - **Customer:** `/dashboard` puts what needs an answer first (offers, extra charges), then the job happening now, open requests and "book again". `/bookings` has Active, Upcoming, Past and Cancelled tabs (`GET /api/v1/bookings?tab=&cursor=`). `/bookings/[id]` shows the start code, a status timeline (status-based: no live location), the price with every extra charge, and a dialog to approve or decline a new charge; it refreshes every 10 seconds while the job is live and pauses when the tab is hidden.
 - **Professional:** `/worker/dashboard` shows requests awaiting a reply, today's jobs and this week's completed jobs and job value. `/worker/bookings` has Today, Upcoming, Completed and Cancelled tabs; `/worker/bookings/[id]` has the address with a map link, one button for the next step, start-code entry, extra charges and the cancel / no-show options.
 - **Notifications:** every booking change writes an outbox event in the same transaction. The dispatcher (`src/modules/notifications`) turns each event into in-app notifications for the other side, exactly once (failures back off 1, 2, 4… minutes and are parked after 5 tries). It runs from `POST /api/internal/sweep` and also lazily whenever someone reads their notifications, so nothing depends on a scheduler. The header bell polls `GET /api/v1/notifications/unread-count` every 30 seconds.
+
+## Payments, earnings and reviews
+
+- **Paying** (`POST /api/v1/bookings/:id/payments`, idempotent): once a job is completed the customer pays in cash or online. The amount is always the booking's total (agreed price + approved extras), never a number from the browser. Online payments are **simulated** in this release (`PAYMENTS_MODE=simulated`): the checkout lets you choose success or failure, and every simulated payment shows a "Simulated" badge. Cash waits for the professional to tap "I received ₹X". Choosing again replaces an unfinished attempt; a booking can only be paid once (database-enforced).
+- **Ledger** (`src/modules/ledger`, append-only): capturing a payment posts, in the same transaction, `+gross` JOB_EARNING and `−fee` COMMISSION (10% by default, snapshotted per booking, rounded half up to the paisa), plus `−gross` CASH_COLLECTED for cash jobs, so a cash job leaves the professional owing the fee. The earnings page (`/worker/earnings`) is computed straight from the entries; payouts are simulated.
+- **Receipts** are issued once at capture, numbered per Indian financial year (`KMC/2026-27/000123`), immutable, and printable at `/bookings/:id/receipt` for the customer, the professional and admins. The professional and admins also see Kaamico's fee. They are booking receipts, not GST tax invoices.
+- **Reviews** (`/bookings/:id/review`): one per completed job, by its customer, within 14 days, with 1–5 stars, optional compliments and a comment. The professional's rating updates in the same transaction.
+- **Not yet:** Razorpay test mode, refunds, disputes and payout requests (P1), and collecting the visit fee when a customer cancels after the professional sets off (it is recorded on the booking history only).
 
 ## Admin console
 

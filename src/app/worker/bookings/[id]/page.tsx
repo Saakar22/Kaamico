@@ -7,6 +7,7 @@ import { BookingTimeline } from '@/components/domain/booking/booking-timeline'
 import { ChargeProposalForm } from '@/components/domain/booking/charge-proposal-form'
 import { PriceBreakdown } from '@/components/domain/booking/price-breakdown'
 import { StatusActionBar } from '@/components/domain/booking/status-action-bar'
+import { WorkerPaymentPanel } from '@/components/domain/payments/worker-payment-panel'
 import { statusLabel } from '@/components/domain/negotiation/booking-status'
 import { CancelBookingButton } from '@/components/domain/negotiation/cancel-booking-button'
 import { PageHeader } from '@/components/patterns/page-header'
@@ -16,6 +17,8 @@ import { formatIstDateTime } from '@/lib/time'
 import type { Actor } from '@/modules/auth/types'
 import { TERMINAL } from '@/modules/bookings/state-machine'
 import { getWorkerBooking } from '@/modules/bookings/views'
+import { commissionOf } from '@/modules/ledger/postings'
+import { bookingPayment } from '@/modules/payments/payments'
 import { negotiationConfig } from '@/modules/negotiation/config'
 import { requireWorkerPage } from '@/modules/workers/page-guard'
 
@@ -38,6 +41,7 @@ async function load(actor: Actor, id: string) {
 export default async function WorkerJobPage({ params }: PageProps<'/worker/bookings/[id]'>) {
   const actor = await requireWorkerPage()
   const job = await load(actor, (await params).id)
+  const payment = job.status === 'COMPLETED' ? await bookingPayment(job.id) : null
   const name = job.customerFirstName
   const when =
     job.timing === 'ON_DEMAND' && !job.slot
@@ -60,7 +64,10 @@ export default async function WorkerJobPage({ params }: PageProps<'/worker/booki
 
   return (
     <div className="flex flex-col gap-6">
-      <AutoRefresh intervalMs={POLL_MS} enabled={!TERMINAL.includes(job.status)} />
+      <AutoRefresh
+        intervalMs={POLL_MS}
+        enabled={!TERMINAL.includes(job.status) || (payment !== null && payment.state !== 'PAID')}
+      />
       <Link
         href="/worker/bookings"
         className="inline-flex h-11 w-fit items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
@@ -96,6 +103,15 @@ export default async function WorkerJobPage({ params }: PageProps<'/worker/booki
             </Card>
           )}
 
+          {payment && job.price.totalPaise !== null && (
+            <WorkerPaymentPanel
+              bookingId={job.id}
+              customerName={name}
+              totalPaise={job.price.totalPaise}
+              feePaise={commissionOf(job.price.totalPaise, job.commissionBps)}
+              state={payment}
+            />
+          )}
           <StatusActionBar
             bookingId={job.id}
             status={job.status}

@@ -195,10 +195,56 @@ test('a customer books and negotiates; the professional does the job; both track
   await worker.getByRole('button', { name: 'Mark job complete' }).click()
   await expect(worker.getByText(`Completed · ${bookingCode}`)).toBeVisible()
 
-  // Both sides see it in their history
+  // Payment: online (simulated) on desktop, after one simulated failure; cash on mobile
   await customer.reload()
   await expect(customer.getByText(`Completed · ${bookingCode}`)).toBeVisible()
-  await expect(customer.getByRole('link', { name: `Book ${proFirst} again` })).toBeVisible()
+  const pay = customer.getByRole('region', { name: /^Pay ₹/ })
+  await expect(pay).toContainText(`₹${total}`)
+  await expectAccessible(customer)
+  const job = worker.url()
+  if (info.project.name === 'desktop') {
+    await pay.getByRole('button', { name: 'Pay online' }).click()
+    await expect(pay.getByText('Simulation: no money moves')).toBeVisible()
+    await pay.getByRole('button', { name: 'Simulate a failed payment' }).click()
+    await expect(pay.getByRole('alert')).toContainText('Simulated failure')
+    await pay.getByRole('button', { name: 'Pay online' }).click()
+    await pay.getByRole('button', { name: /^Pay ₹.*\(simulated\)$/ }).click()
+  } else {
+    await pay.getByRole('button', { name: 'Pay in cash' }).click()
+    await expect(customer.getByText(new RegExp(`Hand ₹${total} to ${proFirst}`))).toBeVisible()
+    await worker.goto(job)
+    await worker.getByRole('button', { name: new RegExp(`^I received ₹${total}`) }).click()
+    await expect(worker.getByText(new RegExp(`Meera paid ₹${total} in cash`))).toBeVisible()
+    await customer.reload()
+  }
+  const paid = customer.getByRole('region', { name: /^Paid ₹/ })
+  await expect(paid).toContainText(`₹${total}`)
+  await paid.getByRole('link', { name: /^Receipt KMC\// }).click()
+  await expect(customer.getByRole('heading', { name: 'Receipt' })).toBeVisible()
+  await expect(customer.getByRole('cell', { name: 'Extra: New tap cartridge' })).toBeVisible()
+  await expect(customer.getByText(/Kaamico fee/)).toHaveCount(0)
+  await expectAccessible(customer)
+
+  // Review
+  await customer.goBack()
+  await customer.getByRole('link', { name: `Rate ${proFirst}` }).click()
+  await customer.getByRole('radio', { name: /^5 stars/ }).click()
+  await customer.getByRole('button', { name: 'On time' }).click()
+  await customer.getByLabel(/Anything else/).fill('Fixed the drip in ten minutes.')
+  await expectAccessible(customer)
+  await customer.getByRole('button', { name: 'Post review' }).click()
+  await expect(customer.getByRole('heading', { name: 'Your review' })).toBeVisible()
+  await expect(customer.getByRole('img', { name: '5 out of 5 stars' })).toBeVisible()
+
+  // The professional's earnings include the job, with the fee taken
+  await worker.goto('/worker/earnings')
+  await expect(worker.getByText('Payouts are simulated: no money is transferred')).toBeVisible()
+  await expect(
+    worker.getByRole('link', { name: new RegExp(`Tap repair.*· ${bookingCode}`) }),
+  ).toBeVisible()
+  await expectAccessible(worker)
+
+  // Both sides see it in their history
   await customer.goto('/bookings?tab=past')
   await expect(customer.getByRole('link', { name: new RegExp(bookingCode) })).toBeVisible()
   await expectAccessible(customer)

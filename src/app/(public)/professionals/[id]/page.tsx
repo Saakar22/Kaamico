@@ -24,6 +24,7 @@ import { cn } from '@/lib/cn'
 import { formatIstDay, formatIstTime, istDateKey } from '@/lib/time'
 import { formatDuration, unitSpoken, unitSuffix } from '@/modules/catalog/units'
 import { languageNames } from '@/modules/professionals/languages'
+import { reviewTagLabel } from '@/modules/reviews/tags'
 import {
   getAvailability,
   getPublicProfile,
@@ -38,15 +39,6 @@ export const metadata: Metadata = { title: 'Professional profile' }
 
 const PREVIEW_DAYS = 3
 const PREVIEW_TIMES = 4
-
-const TAG_LABELS: Record<string, string> = {
-  on_time: 'On time',
-  polite: 'Polite',
-  fair_price: 'Fair price',
-  clean_work: 'Clean work',
-  skilled: 'Skilled',
-  explained_well: 'Explained well',
-}
 
 const monthYear = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' })
 const fullDate = new Intl.DateTimeFormat('en-IN', {
@@ -271,7 +263,7 @@ function ReviewList({ reviews, total }: { reviews: ReviewPage; total: number }) 
                     <ul className="flex flex-wrap gap-1.5" aria-label="Tags">
                       {r.tags.map((t) => (
                         <li key={t}>
-                          <Badge>{TAG_LABELS[t] ?? t}</Badge>
+                          <Badge>{reviewTagLabel(t)}</Badge>
                         </li>
                       ))}
                     </ul>

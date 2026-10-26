@@ -199,6 +199,14 @@ export type CustomerDashboard = {
     description: string
     amountPaise: number
   }[]
+  /** Completed jobs not yet paid (last 30 days). */
+  unpaid: {
+    bookingId: string
+    code: string
+    serviceName: string
+    workerName: string
+    totalPaise: number
+  }[]
   /** The job happening now, else the next confirmed one. */
   activeBooking: CustomerBookingItem | null
   /** Requests still waiting for the professional. */
@@ -214,7 +222,7 @@ export async function getCustomerDashboard(
 ): Promise<CustomerDashboard> {
   await expireDue(now)
   const db = getDb()
-  const [offers, charges, active, waiting, rebook] = await Promise.all([
+  const [offers, charges, active, waiting, rebook, unpaid] = await Promise.all([
     db.execute<{
       booking_id: string
       code: string
@@ -281,6 +289,23 @@ export async function getCustomerDashboard(
       ) t
       order by completed_at desc
       limit 4`),
+    db.execute<{
+      booking_id: string
+      code: string
+      service_name: string
+      worker_name: string
+      total_paise: number
+    }>(sql`
+      select b.id as booking_id, b.code, s.name as service_name, w.display_name as worker_name,
+             b.final_amount_paise as total_paise
+      from bookings b
+      join services s on s.id = b.service_id
+      join worker_profiles w on w.id = b.worker_id
+      where b.customer_id = ${actor.userId} and b.status = 'COMPLETED'
+        and b.completed_at > now() - interval '30 days'
+        and not exists (select 1 from payments p where p.booking_id = b.id and p.status = 'CAPTURED')
+      order by b.completed_at desc
+      limit 5`),
   ])
 
   return {
@@ -300,6 +325,13 @@ export async function getCustomerDashboard(
       workerName: c.worker_name,
       description: c.description,
       amountPaise: c.amount_paise,
+    })),
+    unpaid: unpaid.map((u) => ({
+      bookingId: u.booking_id,
+      code: u.code,
+      serviceName: u.service_name,
+      workerName: u.worker_name,
+      totalPaise: u.total_paise,
     })),
     activeBooking: active[0] ? toCustomerItem(active[0]) : null,
     waiting: waiting.map(toCustomerItem),

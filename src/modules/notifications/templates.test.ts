@@ -77,14 +77,36 @@ describe('draftNotifications', () => {
     expect(draftNotifications('booking.completed', {}, ctx)[0].body).toBe('Total ₹650 · KMC-ABC234')
   })
 
+  it('routes payments and reviews to the right person', () => {
+    const cash = { provider: 'CASH', amountPaise: 65_000 }
+    expect(draftNotifications('payment.cash_pending', cash, ctx)[0]).toMatchObject({
+      userId: 'work',
+      title: 'Priya will pay ₹650 in cash',
+      link: '/worker/bookings/b1',
+    })
+    expect(recipients('payment.captured', cash)).toEqual(['cust'])
+    expect(
+      draftNotifications(
+        'payment.captured',
+        { provider: 'SIMULATED', amountPaise: 65_000 },
+        ctx,
+      )[0],
+    ).toMatchObject({ userId: 'work', title: 'Priya paid ₹650 online', link: '/worker/earnings' })
+    expect(draftNotifications('review.created', { rating: 4 }, ctx)[0].title).toBe(
+      'Priya rated you 4★',
+    )
+    expect(draftNotifications('payment.captured', {}, ctx)).toEqual([])
+  })
+
   it('drafts something for every booking topic it claims, and nothing for others', () => {
     const full = {
       ...ctx,
       offer: { offeredBy: 'WORKER' as const, amountPaise: 1 },
       charge: { description: 'x', amountPaise: 1 },
     }
+    const payload = { amountPaise: 65_000, provider: 'SIMULATED', rating: 5 }
     for (const topic of BOOKING_TOPICS) {
-      expect(draftNotifications(topic, {}, full).length, topic).toBeGreaterThan(0)
+      expect(draftNotifications(topic, payload, full).length, topic).toBeGreaterThan(0)
     }
     expect(draftNotifications('verification.submitted', {}, full)).toEqual([])
   })

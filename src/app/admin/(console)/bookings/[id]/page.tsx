@@ -6,6 +6,7 @@ import { ReasonActionDialog } from '@/components/domain/admin/reason-action-dial
 import { BookingTimeline } from '@/components/domain/booking/booking-timeline'
 import { PriceBreakdown } from '@/components/domain/booking/price-breakdown'
 import { statusBadgeLabel, statusTone } from '@/components/domain/negotiation/booking-status'
+import { SimulationBadge } from '@/components/domain/trust-badges'
 import { PageHeader } from '@/components/patterns/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -129,6 +130,58 @@ export default async function AdminBookingPage({ params }: PageProps<'/admin/boo
                   ))}
                 </tbody>
               </Table>
+            )}
+          </section>
+
+          <section aria-labelledby="payments-title" className="flex flex-col gap-3">
+            <h2 id="payments-title" className="font-semibold">
+              Payments
+            </h2>
+            {b.payments.length === 0 ? (
+              <p className="text-sm text-ink-600">No payments.</p>
+            ) : (
+              <Table label="Payments">
+                <THead>
+                  <tr>
+                    <TH>Method</TH>
+                    <TH>Status</TH>
+                    <TH className="text-right">Amount</TH>
+                    <TH>Started</TH>
+                    <TH>Captured</TH>
+                  </tr>
+                </THead>
+                <tbody>
+                  {b.payments.map((p) => (
+                    <TR key={p.id}>
+                      <TD>
+                        {p.provider.toLowerCase()}
+                        {p.provider === 'SIMULATED' && <SimulationBadge className="ml-2" />}
+                      </TD>
+                      <TD>
+                        {p.status.toLowerCase()}
+                        {p.failureReason && (
+                          <div className="text-xs text-ink-600">{p.failureReason}</div>
+                        )}
+                      </TD>
+                      <TD className="text-right">
+                        <Money paise={p.amountPaise} />
+                      </TD>
+                      <TD className="whitespace-nowrap">{fmt(p.createdAt)}</TD>
+                      <TD className="whitespace-nowrap">
+                        {p.capturedAt ? fmt(p.capturedAt) : '–'}
+                      </TD>
+                    </TR>
+                  ))}
+                </tbody>
+              </Table>
+            )}
+            {b.receiptNumber && (
+              <Link
+                href={`/bookings/${b.id}/receipt`}
+                className="text-sm font-medium text-brand-700 hover:underline"
+              >
+                Receipt {b.receiptNumber}
+              </Link>
             )}
           </section>
 

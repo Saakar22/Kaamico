@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Money } from '@/components/ui/money'
 import { getWorkerJobSummary } from '@/modules/bookings/lists'
+import { earningsSummary } from '@/modules/ledger/earnings'
 import { getVerification } from '@/modules/verification/verification'
 import { getOnboardingState } from '@/modules/workers/onboarding'
 import { requireWorkerPage } from '@/modules/workers/page-guard'
@@ -39,11 +40,12 @@ const SETTINGS: { href: string; label: string; icon: LucideIcon }[] = [
 
 export default async function WorkerDashboardPage() {
   const actor = await requireWorkerPage()
-  const [onboarding, status, verification, jobs] = await Promise.all([
+  const [onboarding, status, verification, jobs, earnings] = await Promise.all([
     getOnboardingState(actor.workerId),
     getStatus(actor.workerId),
     getVerification(actor.workerId),
     getWorkerJobSummary(actor),
+    earningsSummary(actor.workerId, 'week'),
   ])
   const setupDone = onboarding.next === null
   const verified = status.verificationStatus === 'VERIFIED'
@@ -81,11 +83,13 @@ export default async function WorkerDashboardPage() {
             </Link>
             <StatTile label="Jobs today" value={jobs.today.length} />
             <StatTile label="Done this week" value={jobs.week.completedJobs} />
-            <StatTile
-              label="Job value this week"
-              value={<Money paise={jobs.week.jobValuePaise} />}
-              hint="Before Kaamico's commission"
-            />
+            <Link href="/worker/earnings" className="rounded-lg hover:ring-2 hover:ring-brand-600">
+              <StatTile
+                label="Earned this week"
+                value={<Money paise={earnings.netPaise} />}
+                hint="After Kaamico's fee"
+              />
+            </Link>
           </div>
 
           <section aria-labelledby="today-title" className="flex flex-col gap-3">

@@ -182,7 +182,7 @@ export async function getAdminBooking(bookingId: string, now: Date = new Date())
     where b.id = ${bookingId}`)
   if (!b) throw notFound('Booking not found')
 
-  const [offers, messages, charges, history] = await Promise.all([
+  const [offers, messages, charges, history, paymentRows] = await Promise.all([
     db
       .select()
       .from(priceOffers)
@@ -207,6 +207,19 @@ export async function getAdminBooking(bookingId: string, now: Date = new Date())
       .from(bookingStatusHistory)
       .where(eq(bookingStatusHistory.bookingId, b.id))
       .orderBy(asc(bookingStatusHistory.createdAt), asc(bookingStatusHistory.id)),
+    db.execute<{
+      id: string
+      provider: string
+      status: string
+      amount_paise: number
+      failure_reason: string | null
+      created_at: Date | string
+      captured_at: Date | string | null
+      receipt: string | null
+    }>(sql`
+      select p.id, p.provider, p.status, p.amount_paise, p.failure_reason, p.created_at,
+             p.captured_at, (select number from invoices where booking_id = p.booking_id) as receipt
+      from payments p where p.booking_id = ${bookingId} order by p.created_at`),
   ])
 
   return {
@@ -242,6 +255,16 @@ export async function getAdminBooking(bookingId: string, now: Date = new Date())
       assigned: b.assigned,
     },
     cancellable: canTransition(b.status, 'CANCELLED', 'ADMIN'),
+    payments: paymentRows.map((p) => ({
+      id: p.id,
+      provider: p.provider,
+      status: p.status,
+      amountPaise: p.amount_paise,
+      failureReason: p.failure_reason,
+      createdAt: iso(p.created_at)!,
+      capturedAt: iso(p.captured_at),
+    })),
+    receiptNumber: paymentRows.find((p) => p.receipt)?.receipt ?? null,
     offers: offers.map((o) => ({
       id: o.id,
       round: o.round,

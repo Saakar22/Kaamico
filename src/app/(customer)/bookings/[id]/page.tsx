@@ -6,6 +6,8 @@ import { AutoRefresh } from '@/components/domain/booking/auto-refresh'
 import { BookingTimeline } from '@/components/domain/booking/booking-timeline'
 import { ChargeApprovalDialog } from '@/components/domain/booking/charge-approval-dialog'
 import { PriceBreakdown } from '@/components/domain/booking/price-breakdown'
+import { PaymentPanel } from '@/components/domain/payments/payment-panel'
+import { RatingStars } from '@/components/domain/professionals/rating'
 import { statusLabel } from '@/components/domain/negotiation/booking-status'
 import { CancelBookingButton } from '@/components/domain/negotiation/cancel-booking-button'
 import { VerificationBadge } from '@/components/domain/trust-badges'
@@ -20,6 +22,8 @@ import { requirePageActor } from '@/modules/auth/page-guards'
 import type { Actor } from '@/modules/auth/types'
 import { OPEN_REQUEST, TERMINAL } from '@/modules/bookings/state-machine'
 import { getCustomerBooking } from '@/modules/bookings/views'
+import { bookingPayment } from '@/modules/payments/payments'
+import { reviewState } from '@/modules/reviews/reviews'
 
 export const instant = false
 
@@ -44,6 +48,10 @@ export default async function BookingPage({ params, searchParams }: PageProps<'/
   const booking = await load(actor, id)
   // Still agreeing a price: the thread is the page for that.
   if (OPEN_REQUEST.includes(booking.status)) redirect(`/bookings/${booking.id}/negotiate`)
+  const completed = booking.status === 'COMPLETED'
+  const [payment, review] = completed
+    ? await Promise.all([bookingPayment(booking.id), reviewState(actor, booking.id)])
+    : [null, null]
 
   const firstName = booking.worker.displayName.split(' ')[0]
   const when =
@@ -51,7 +59,8 @@ export default async function BookingPage({ params, searchParams }: PageProps<'/
       ? 'As soon as possible'
       : formatIstDateTime(new Date(booking.slot?.start ?? booking.requestedStart))
   const proposed = booking.charges.find((c) => c.status === 'PROPOSED')
-  const live = !TERMINAL.includes(booking.status)
+  // Keep refreshing a completed job until it is paid (the professional confirms cash).
+  const live = !TERMINAL.includes(booking.status) || payment?.state === 'AWAITING_CASH'
   const justConfirmed = query.confirmed === '1' && booking.status === 'CONFIRMED'
 
   return (
@@ -63,6 +72,35 @@ export default async function BookingPage({ params, searchParams }: PageProps<'/
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
+          {payment && booking.price.totalPaise !== null && (
+            <PaymentPanel
+              bookingId={booking.id}
+              totalPaise={booking.price.totalPaise}
+              workerName={firstName}
+              state={payment}
+            />
+          )}
+
+          {review?.review && (
+            <Card>
+              <CardContent className="flex flex-col gap-1">
+                <h2 className="font-semibold">Your review</h2>
+                <RatingStars rating={review.review.rating} />
+                {review.review.comment && <p className="text-ink-600">“{review.review.comment}”</p>}
+              </CardContent>
+            </Card>
+          )}
+          {review?.canReview && (
+            <Card>
+              <CardContent className="flex flex-col items-start gap-3">
+                <p>How did {firstName} do? Your rating helps neighbours choose.</p>
+                <Button asChild>
+                  <Link href={`/bookings/${booking.id}/review`}>Rate {firstName}</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {justConfirmed && booking.price.agreedPaise !== null && (
             <div
               role="status"

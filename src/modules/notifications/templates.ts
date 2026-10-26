@@ -161,6 +161,41 @@ export function draftNotifications(
         toWorker('A request expired', ref, work.request),
       ]
 
+    case 'payment.cash_pending':
+      if (!Number.isInteger(payload.amountPaise)) return []
+      return [
+        toWorker(
+          `${c.customerFirstName} will pay ${formatINR(Number(payload.amountPaise))} in cash`,
+          'Confirm in the app when you have received it.',
+          work.job,
+        ),
+      ]
+    case 'payment.captured': {
+      if (!Number.isInteger(payload.amountPaise)) return []
+      const amount = formatINR(Number(payload.amountPaise))
+      return payload.provider === 'CASH'
+        ? [
+            toCustomer(
+              'Cash payment confirmed',
+              `${amount} to ${c.workerFirstName} · ${c.code}`,
+              cust.booking,
+            ),
+          ]
+        : [
+            toWorker(
+              `${c.customerFirstName} paid ${amount} online`,
+              payload.provider === 'SIMULATED'
+                ? 'Simulated payment: no money moved. Added to your earnings.'
+                : 'Added to your earnings.',
+              '/worker/earnings',
+            ),
+          ]
+    }
+    case 'review.created':
+      return [
+        toWorker(`${c.customerFirstName} rated you ${Number(payload.rating)}★`, ref, work.job),
+      ]
+
     default:
       return []
   }
@@ -182,6 +217,9 @@ export const BOOKING_TOPICS = new Set([
   'booking.cancelled',
   'request.declined',
   'booking.expired',
+  'payment.cash_pending',
+  'payment.captured',
+  'review.created',
 ])
 
 /** The professional hears about the review of their ID verification. */
