@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { getEnv } from '@/config/env'
 import { forbidden } from '@/lib/errors'
 import { route } from '@/lib/http'
+import { purgeDueDocuments } from '@/modules/admin/verifications'
 import { expireDue } from '@/modules/bookings/repo'
 import { dispatchOutbox } from '@/modules/notifications/dispatcher'
 
@@ -15,9 +16,10 @@ function authorised(request: Request): boolean {
 }
 
 /**
- * Expires lapsed offers and requests, then delivers queued notifications (run every
- * minute by a scheduler, or `npm run sweep`). Correctness never depends on it: reads
- * and writes expire lazily, and reading notifications delivers pending ones.
+ * Expires lapsed offers and requests, delivers queued notifications and deletes identity
+ * files past their retention date (run every minute by a scheduler, or `npm run sweep`).
+ * Correctness never depends on it: reads and writes expire lazily, and reading
+ * notifications delivers pending ones.
  */
 export const POST = route(
   async (request) => {
@@ -25,7 +27,11 @@ export const POST = route(
     const now = new Date()
     const expired = await expireDue(now)
     const dispatched = await dispatchOutbox({ now, limit: 200 })
-    return Response.json({ expired, dispatched }, { headers: { 'cache-control': 'no-store' } })
+    const documents = await purgeDueDocuments(now)
+    return Response.json(
+      { expired, dispatched, documents },
+      { headers: { 'cache-control': 'no-store' } },
+    )
   },
   // Called server-to-server with a bearer secret, not from a browser.
   { csrf: false },

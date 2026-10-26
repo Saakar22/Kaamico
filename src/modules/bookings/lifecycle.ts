@@ -147,7 +147,8 @@ export const cancelInput = z.object({
   expectedVersion: z.number().int().positive(),
 })
 
-async function closeRequestThread(tx: Tx, bookingId: string, now: Date) {
+/** Withdraws pending offers and closes open invitations when a request ends early. */
+export async function closeRequestThread(tx: Tx, bookingId: string, now: Date) {
   await tx
     .update(priceOffers)
     .set({ status: 'WITHDRAWN', respondedAt: now })

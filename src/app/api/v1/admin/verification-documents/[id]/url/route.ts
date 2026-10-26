@@ -1,6 +1,6 @@
 import { connection } from 'next/server'
 import { route } from '@/lib/http'
-import { clientIp, userAgent } from '@/lib/request'
+import { auditContext } from '@/modules/audit/audit'
 import { requireApiActor } from '@/modules/auth/actor'
 import { documentLinkForAdmin } from '@/modules/verification/documents-admin'
 
@@ -9,11 +9,11 @@ export const GET = route<RouteContext<'/api/v1/admin/verification-documents/[id]
   async (request, ctx, { requestId }) => {
     await connection()
     const admin = await requireApiActor(request, { role: 'ADMIN' })
-    const link = await documentLinkForAdmin(admin, (await ctx.params).id, {
-      ip: clientIp(request),
-      userAgent: userAgent(request),
-      requestId,
-    })
+    const link = await documentLinkForAdmin(
+      admin,
+      (await ctx.params).id,
+      auditContext(request, requestId),
+    )
     return Response.json(link, { headers: { 'cache-control': 'no-store' } })
   },
 )

@@ -22,8 +22,10 @@ export default defineConfig({
   globalSetup: useBuild ? undefined : './e2e/global-setup.ts',
   fullyParallel: true,
   // `next dev` renders unoptimised (with extra validation passes) in one process; ~10
-  // parallel browsers pushed page renders to 5–10 s and timed tests out. Builds stay parallel.
-  workers: useBuild ? undefined : 2,
+  // parallel browsers pushed page renders to 5–10 s and timed tests out. A production build
+  // copes, but one browser per core (12 on a 24-core laptop) starves the machine itself and
+  // tests time out at random; 4 is faster overall. CI runners are small, so keep the default.
+  workers: useBuild ? (process.env.CI ? undefined : 4) : 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',

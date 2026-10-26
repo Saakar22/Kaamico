@@ -1,6 +1,6 @@
-import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { jpegWithExif, tinyPdf } from '../src/test/files'
+import { expectAccessible } from './helpers'
 
 // A brand-new professional sets up their profile and sends their ID for review.
 
@@ -18,18 +18,6 @@ async function signUpAsProfessional(page: Page, name: string) {
   await expect(page).toHaveURL(/\/worker\/dashboard$/)
 }
 
-async function expectNoSeriousA11yViolations(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-    .analyze()
-  const serious = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  )
-  expect(
-    serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
-  ).toEqual([])
-}
-
 const file = (name: string, mimeType: string, bytes: Uint8Array) => ({
   name,
   mimeType,
@@ -41,7 +29,7 @@ test('a new professional completes setup and submits their ID for review', async
   await signUpAsProfessional(page, 'Sunil Gaikwad')
   await expect(page.getByText('0 of 6 setup steps done.')).toBeVisible()
   await expect(page.getByRole('switch', { name: 'Online' })).toBeDisabled()
-  await expectNoSeriousA11yViolations(page)
+  await expectAccessible(page)
 
   // 1–2. Profile and skills
   await page.getByRole('link', { name: /Continue: Your profile/ }).click()
@@ -55,7 +43,7 @@ test('a new professional completes setup and submits their ID for review', async
   await page.getByText('Plumbing', { exact: true }).click()
   await page.getByRole('button', { name: 'Save skills' }).click()
   await expect(page.getByText('Skills saved')).toBeVisible()
-  await expectNoSeriousA11yViolations(page)
+  await expectAccessible(page)
 
   // 3 and 5. Work area and hours
   await page.goto('/worker/availability')
@@ -66,7 +54,7 @@ test('a new professional completes setup and submits their ID for review', async
   await page.getByRole('button', { name: 'Copy Monday to Tue–Sat' }).click()
   await page.getByRole('button', { name: 'Save working hours' }).click()
   await expect(page.getByText('Working hours saved')).toBeVisible()
-  await expectNoSeriousA11yViolations(page)
+  await expectAccessible(page)
 
   // 4. Prices
   await page.goto('/worker/pricing')
@@ -76,7 +64,7 @@ test('a new professional completes setup and submits their ID for review', async
   await tap.getByRole('switch').click()
   await page.getByRole('button', { name: 'Save prices' }).click()
   await expect(page.getByText('Prices saved')).toBeVisible()
-  await expectNoSeriousA11yViolations(page)
+  await expectAccessible(page)
 
   // 6. ID verification
   await page.goto('/worker/verification')
@@ -97,7 +85,7 @@ test('a new professional completes setup and submits their ID for review', async
     has: page.getByRole('heading', { name: 'Your documents' }),
   })
   await expect(documents.getByText('Selfie', { exact: true })).toBeVisible()
-  await expectNoSeriousA11yViolations(page)
+  await expectAccessible(page)
 
   await page.getByRole('button', { name: 'Submit for review' }).click()
   await expect(page.getByText('Under review')).toBeVisible()

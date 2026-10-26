@@ -1,5 +1,5 @@
-import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { expectAccessible } from './helpers'
 
 // Uses the seeded catalog and professionals (npm run db:seed). No sign-in is needed to browse.
 
@@ -14,17 +14,6 @@ async function chooseLocality(page: Page, city: string, area: string) {
 }
 
 /** Pages behind a location are scanned here; e2e/a11y.spec.ts covers the rest. */
-async function expectNoSeriousA11yViolations(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-    .analyze()
-  const serious = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  )
-  expect(
-    serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
-  ).toEqual([])
-}
 
 const rupees = (text: string | null) => Number((text ?? '').replace(/[^\d.]/g, '').split('.')[0])
 
@@ -54,7 +43,7 @@ test.describe('discovery', () => {
     const prices = (await page.getByTestId('pro-price').allTextContents()).map(rupees)
     expect(prices.length).toBeGreaterThanOrEqual(2)
     expect(prices).toEqual([...prices].sort((a, b) => a - b))
-    await expectNoSeriousA11yViolations(page)
+    await expectAccessible(page)
 
     const name = await results.first().getByRole('heading', { level: 2 }).textContent()
     await results.first().getByRole('link').first().click()
@@ -67,7 +56,7 @@ test.describe('discovery', () => {
       /^\/book\/[\w-]+\?worker=/,
     )
     await expect(page.getByRole('heading', { name: 'Upcoming free times' })).toBeVisible()
-    await expectNoSeriousA11yViolations(page)
+    await expectAccessible(page)
   })
 
   test('a customer in Bengaluru sees real nearby price ranges and professionals', async ({

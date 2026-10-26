@@ -5,7 +5,12 @@ import { getDb } from '@/db/client'
 import { bookingCharges, notifications, outboxEvents, priceOffers } from '@/db/schema'
 import { logger } from '@/lib/logger'
 import type { Tx } from '@/modules/bookings/repo'
-import { BOOKING_TOPICS, draftNotifications, type BookingContext } from './templates'
+import {
+  BOOKING_TOPICS,
+  draftNotifications,
+  draftVerificationNotification,
+  type BookingContext,
+} from './templates'
 
 /** After this many failures an event is parked (processed, with `last_error` kept for support). */
 export const MAX_ATTEMPTS = 5
@@ -80,7 +85,22 @@ async function bookingContext(
   }
 }
 
+async function verificationDraft(tx: Tx, payload: Record<string, unknown>) {
+  if (!isUuid(payload.applicationId)) return null
+  const [row] = await tx.execute<{ user_id: string; decision_reason: string | null }>(sql`
+    select w.user_id, a.decision_reason from verification_applications a
+    join worker_profiles w on w.id = a.worker_id where a.id = ${payload.applicationId}`)
+  return row
+    ? draftVerificationNotification(payload.decision, row.user_id, row.decision_reason)
+    : null
+}
+
 async function deliver(tx: Tx, topic: string, payload: Record<string, unknown>): Promise<number> {
+  if (topic === 'verification.decided') {
+    const draft = await verificationDraft(tx, payload)
+    if (draft) await tx.insert(notifications).values(draft)
+    return draft ? 1 : 0
+  }
   if (!BOOKING_TOPICS.has(topic)) return 0
   const context = await bookingContext(tx, payload)
   if (!context) return 0

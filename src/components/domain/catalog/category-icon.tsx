@@ -26,6 +26,9 @@ const ICONS: Record<string, LucideIcon> = {
   drill: Drill,
 }
 
+/** Keys an admin can choose for a category. */
+export const CATEGORY_ICON_KEYS = Object.keys(ICONS)
+
 /** Category icon in a tinted circle. Unknown keys fall back to a wrench. */
 export function CategoryIcon({ iconKey, className }: { iconKey: string; className?: string }) {
   const Icon = ICONS[iconKey] ?? Wrench

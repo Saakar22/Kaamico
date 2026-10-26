@@ -183,3 +183,27 @@ export const BOOKING_TOPICS = new Set([
   'request.declined',
   'booking.expired',
 ])
+
+/** The professional hears about the review of their ID verification. */
+export function draftVerificationNotification(
+  decision: unknown,
+  workerUserId: string,
+  reason: string | null,
+): NotificationDraft | null {
+  const base = { userId: workerUserId, type: 'verification.decided', link: '/worker/verification' }
+  switch (decision) {
+    case 'APPROVE':
+      return {
+        ...base,
+        title: "You're verified",
+        body: 'Customers near you can now find and book you. Go online to get requests.',
+        link: '/worker/dashboard',
+      }
+    case 'REJECT':
+      return { ...base, title: 'Your ID verification was not approved', body: reason }
+    case 'REQUEST_RESUBMISSION':
+      return { ...base, title: 'Please upload your documents again', body: reason }
+    default:
+      return null
+  }
+}

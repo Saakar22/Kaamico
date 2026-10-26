@@ -26,3 +26,4 @@ console.log(
   `delivered ${body.dispatched.processed} events as ${body.dispatched.notifications} notifications` +
     (body.dispatched.failed ? ` (${body.dispatched.failed} failed, will retry)` : ''),
 )
+if (body.documents.purged) console.log(`purged ${body.documents.purged} identity documents`)

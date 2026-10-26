@@ -1,6 +1,6 @@
-import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import postgres from 'postgres'
+import { expectAccessible } from './helpers'
 
 // A new customer books a seeded professional, makes an offer, the professional
 // counters in a second browser, and the customer accepts: price locked, start code shown.
@@ -56,18 +56,6 @@ async function newCustomer(browser: Browser, isMobile: boolean) {
 }
 
 const rupees = (text: string) => Number(text.replace(/[^\d]/g, ''))
-
-async function expectAccessible(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-    .analyze()
-  const serious = results.violations.filter(
-    (v) => v.impact === 'serious' || v.impact === 'critical',
-  )
-  expect(
-    serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
-  ).toEqual([])
-}
 
 test('a customer books and negotiates; the professional does the job; both track it', async ({
   browser,

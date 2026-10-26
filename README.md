@@ -2,7 +2,7 @@
 
 **Local Skills. Fair Prices.** A hyperlocal marketplace for household services in India. Professionals set their own prices, and customers can agree a fair price with them through transparent offers.
 
-> **Status: Phase 8 (Dashboards and tracking).** Customers can find a professional, request a booking (now or at a free time), agree a price through offers and counter-offers, then track the job step by step, approve or decline extra charges and see their bookings by tab. Professionals reply from their request inbox, run each job from its page (on the way, arrived, start code, extra charges, complete) and see today's jobs and the week's numbers on their dashboard. Both get in-app notifications. Admin review arrives in Phase 9 and payments in Phase 10. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
+> **Status: Phase 9 (Admin console).** Customers can find a professional, request a booking (now or at a free time), agree a price through offers and counter-offers, track the job step by step and approve or decline extra charges. Professionals reply from their request inbox and run each job from its page. Both get in-app notifications. Admins review ID verification (every document view audited), oversee and cancel bookings, suspend accounts, edit categories and services, and read the audit log. Payments arrive in Phase 10. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
 
 ## Tech stack
 
@@ -72,7 +72,8 @@ Customers and workers sign in at `/login` with the mobile number; in development
 - **Identity documents** are never returned by any API: workers see metadata only, and only the last 4 characters of an ID number are stored. The only way to open a file is a 5-minute HMAC-signed link from `GET /api/v1/admin/verification-documents/:id/url` (admins only), and every link issued writes a `DOCUMENT_VIEWED` audit row.
 - **Verification:** up to 6 documents; submission needs a profile, a skill, a work area, an ID document and a selfie. It is idempotent and sets the worker to PENDING with an outbox event. After a rejection, a worker can reapply after 7 days.
 - **Online status:** only verified professionals can go online. While the dashboard is open it sends a heartbeat, so "available now" lapses about 15 minutes after the app closes. Pausing (today, 3 days or a week) hides a professional from new requests.
-- **Not yet:** an S3/R2 storage driver (Phase 13), and purging files 90 days after a decision (the date is set when admins decide, in Phase 9).
+- **Retention:** approving or rejecting an application sets `purge_after` to 90 days later; the sweeper then deletes the files and keeps the metadata and decision. Asking for new documents keeps the files.
+- **Not yet:** an S3/R2 storage driver (Phase 13).
 
 ## Bookings and negotiation
 
@@ -91,6 +92,17 @@ Customers and workers sign in at `/login` with the mobile number; in development
 - **Professional:** `/worker/dashboard` shows requests awaiting a reply, today's jobs and this week's completed jobs and job value. `/worker/bookings` has Today, Upcoming, Completed and Cancelled tabs; `/worker/bookings/[id]` has the address with a map link, one button for the next step, start-code entry, extra charges and the cancel / no-show options.
 - **Notifications:** every booking change writes an outbox event in the same transaction. The dispatcher (`src/modules/notifications`) turns each event into in-app notifications for the other side, exactly once (failures back off 1, 2, 4… minutes and are parked after 5 tries). It runs from `POST /api/internal/sweep` and also lazily whenever someone reads their notifications, so nothing depends on a scheduler. The header bell polls `GET /api/v1/notifications/unread-count` every 30 seconds.
 
+## Admin console
+
+Sign in at `/admin/login`. Every admin mutation writes an `admin_audit_logs` row in the same transaction as the change; the table is append-only and the API has no way to edit it.
+
+- **Overview** (`/admin`): verifications waiting (and for how long), open requests, active jobs, today's bookings, 7-day cancellations, median first reply, suspended accounts.
+- **Verifications** (`/admin/verifications`): oldest first. The review page shows the professional, their earlier attempts and an audit trail; documents open only on request through 5-minute signed links (each view audited), with the profile photo beside the selfie. Approve, ask for new documents or reject (a reason of 10+ characters, shown to the professional). A version check stops two admins deciding at once, and the professional gets a notification.
+- **Bookings** (`/admin/bookings`): filter by status, city, dates or a code, name or phone; the detail shows both parties, every offer and message, charges and history. Admins can cancel any unfinished booking with a reason both sides see.
+- **Users** (`/admin/users`): search and suspend or reactivate with a reason. Suspending signs the person out everywhere, takes a professional offline and cancels their open requests; confirmed jobs are left for an admin to handle. Admin accounts cannot be changed here.
+- **Categories and services** (`/admin/categories`): create, edit, hide and show (never delete). Changes expire the cached public catalog straight away.
+- **Audit log** (`/admin/audit-logs`): filter by action, entity type or ID.
+
 ## Authentication
 
 - **Customers and professionals** sign in with a phone OTP. Codes expire after 5 minutes, allow 5 attempts, and only the latest code for a number works. Only an HMAC of each code is stored. A first sign-in creates the account; the user then gives a name and chooses "book services" or "offer my services".
@@ -103,24 +115,24 @@ Why not an auth library? The plan's spike found that Better Auth's phone-number 
 
 ## Scripts
 
-| Command                           | What it does                                                           |
-| --------------------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`                     | Development server                                                     |
-| `npm run build` / `npm start`     | Production build / serve it                                            |
-| `npm run lint`                    | ESLint                                                                 |
-| `npm run typecheck`               | Generate route types, then `tsc --noEmit`                              |
-| `npm run format` / `format:check` | Prettier write / check                                                 |
-| `npm test`                        | Unit and integration tests (Vitest)                                    |
-| `npm run test:e2e`                | Browser tests (Playwright; run `npx playwright install chromium` once) |
-| `npm run test:e2e:build`          | Browser tests against a production build (what CI runs)                |
-| `npm run db:create`               | Create the app role, databases and extensions (idempotent)             |
-| `npm run db:generate`             | Generate a migration from schema changes                               |
-| `npm run db:migrate`              | Apply pending migrations (`-- --test` for the test database)           |
-| `npm run db:seed`                 | Replace all dev data with the demo set                                 |
-| `npm run db:reset`                | Drop everything, migrate and seed (dev database)                       |
-| `npm run db:studio`               | Browse the database in Drizzle Studio                                  |
-| `npm run sweep`                   | Expire lapsed requests and deliver notifications (needs `CRON_SECRET`) |
-| `npm run check`                   | Lint, typecheck, format check and tests                                |
+| Command                           | What it does                                                                     |
+| --------------------------------- | -------------------------------------------------------------------------------- |
+| `npm run dev`                     | Development server                                                               |
+| `npm run build` / `npm start`     | Production build / serve it                                                      |
+| `npm run lint`                    | ESLint                                                                           |
+| `npm run typecheck`               | Generate route types, then `tsc --noEmit`                                        |
+| `npm run format` / `format:check` | Prettier write / check                                                           |
+| `npm test`                        | Unit and integration tests (Vitest)                                              |
+| `npm run test:e2e`                | Browser tests (Playwright; run `npx playwright install chromium` once)           |
+| `npm run test:e2e:build`          | Browser tests against a production build (what CI runs)                          |
+| `npm run db:create`               | Create the app role, databases and extensions (idempotent)                       |
+| `npm run db:generate`             | Generate a migration from schema changes                                         |
+| `npm run db:migrate`              | Apply pending migrations (`-- --test` for the test database)                     |
+| `npm run db:seed`                 | Replace all dev data with the demo set                                           |
+| `npm run db:reset`                | Drop everything, migrate and seed (dev database)                                 |
+| `npm run db:studio`               | Browse the database in Drizzle Studio                                            |
+| `npm run sweep`                   | Expire requests, deliver notifications, purge old ID files (needs `CRON_SECRET`) |
+| `npm run check`                   | Lint, typecheck, format check and tests                                          |
 
 ## Project structure
 
