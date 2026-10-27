@@ -53,6 +53,15 @@ export default async function ProfilePage() {
           ))}
         </ul>
       </nav>
+      <p className="text-sm text-ink-600">
+        <Link href="/terms" className="font-medium text-brand-700 underline">
+          Terms of use
+        </Link>
+        {' · '}
+        <Link href="/privacy" className="font-medium text-brand-700 underline">
+          Privacy policy
+        </Link>
+      </p>
       <SignOutButton className="self-start" />
     </div>
   )

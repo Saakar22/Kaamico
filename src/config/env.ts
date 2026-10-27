@@ -33,6 +33,14 @@ const envSchema = z
     REALTIME_MODE: z.enum(['sse', 'poll']).default('sse'),
     STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
     STORAGE_LOCAL_DIR: z.string().min(1).default('./storage'),
+    /** STORAGE_DRIVER=s3: a private bucket on AWS S3 (ap-south-1), Cloudflare R2 or MinIO. */
+    S3_ENDPOINT: z.url().optional(),
+    S3_BUCKET: z.string().min(3).max(63).optional(),
+    /** "auto" for R2; e.g. ap-south-1 for AWS. */
+    S3_REGION: z.string().min(1).default('auto'),
+    S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+    S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    S3_FORCE_PATH_STYLE: z.stringbool().default(true),
     COMMISSION_BPS: z.coerce.number().int().min(0).max(5000).default(1000),
     CRON_SECRET: z.string().min(32).optional(),
     /** Keys OTP hashes. A fixed development value is used outside production. */
@@ -43,6 +51,18 @@ const envSchema = z
     NEXT_PHASE: z.string().optional(),
   })
   .superRefine((env, ctx) => {
+    if (env.STORAGE_DRIVER === 's3') {
+      for (const key of [
+        'S3_ENDPOINT',
+        'S3_BUCKET',
+        'S3_ACCESS_KEY_ID',
+        'S3_SECRET_ACCESS_KEY',
+      ] as const) {
+        if (!env[key]) {
+          ctx.addIssue({ code: 'custom', path: [key], message: 'required when STORAGE_DRIVER=s3' })
+        }
+      }
+    }
     if (env.PAYMENTS_MODE === 'razorpay') {
       for (const key of [
         'RAZORPAY_KEY_ID',

@@ -7,9 +7,14 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+  // Browsers ignore this over plain HTTP, so it is safe locally.
+  { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
 ]
 
 const nextConfig: NextConfig = {
+  // The container image (Dockerfile) ships the self-contained server; local and CI runs
+  // keep using `next start`.
+  output: process.env.BUILD_STANDALONE === '1' ? 'standalone' : undefined,
   poweredByHeader: false,
   cacheComponents: true,
   partialPrefetching: true,

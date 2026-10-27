@@ -72,6 +72,14 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      # The production image builds against the seeded database and boots healthy.
+      - name: Build the container image
+        run: docker build --network host --secret id=database_url,env=DATABASE_URL -t kaamico:ci .
+      - name: Start the image and check its health
+        run: |
+          docker run -d --name kaamico-ci --network host -e PORT=3300             -e DATABASE_URL -e AUTH_SECRET -e CRON_SECRET -e ALLOW_SIMULATION_IN_PRODUCTION kaamico:ci
+          for i in $(seq 1 30); do curl -sf http://localhost:3300/api/health && exit 0; sleep 2; done
+          docker logs kaamico-ci; exit 1
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

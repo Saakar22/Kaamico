@@ -44,7 +44,15 @@ export default function LoginPage(props: PageProps<'/login'>) {
           <LoginGate searchParams={props.searchParams} />
         </Suspense>
         <p className="text-sm text-ink-600">
-          By continuing you agree to Kaamico&apos;s terms and privacy policy.
+          By continuing you agree to Kaamico&apos;s{' '}
+          <Link href="/terms" className="font-medium text-brand-700 underline">
+            terms
+          </Link>{' '}
+          and{' '}
+          <Link href="/privacy" className="font-medium text-brand-700 underline">
+            privacy policy
+          </Link>
+          .
         </p>
       </div>
     </main>

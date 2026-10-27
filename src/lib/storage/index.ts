@@ -2,6 +2,7 @@ import 'server-only'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { getEnv } from '@/config/env'
+import { S3Storage } from './s3'
 
 /**
  * Private file storage. Nothing here is ever served from `public/`: files leave only
@@ -60,8 +61,16 @@ export function getStorage(): StorageDriver {
   if (driver) return driver
   const env = getEnv()
   if (env.STORAGE_DRIVER === 's3') {
-    // The S3/R2 driver is part of deployment (Phase 13).
-    throw new Error('STORAGE_DRIVER=s3 is not implemented yet; use STORAGE_DRIVER=local')
+    // Validated at boot: every S3 setting is present when the driver is s3.
+    driver = new S3Storage({
+      endpoint: env.S3_ENDPOINT!,
+      bucket: env.S3_BUCKET!,
+      region: env.S3_REGION,
+      accessKeyId: env.S3_ACCESS_KEY_ID!,
+      secretAccessKey: env.S3_SECRET_ACCESS_KEY!,
+      pathStyle: env.S3_FORCE_PATH_STYLE,
+    })
+    return driver
   }
   driver = new LocalStorage(path.resolve(env.STORAGE_LOCAL_DIR))
   return driver

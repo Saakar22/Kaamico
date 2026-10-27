@@ -1,0 +1,11 @@
+{
+  "identities": [
+    {
+      "name": "kaamico-staging",
+      "credentials": [
+        { "accessKey": "kaamico-staging", "secretKey": "staging-only-not-a-real-secret" }
+      ],
+      "actions": ["Admin", "Read", "Write", "List"]
+    }
+  ]
+}

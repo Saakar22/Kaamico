@@ -54,7 +54,7 @@ export function PaymentPanel({
         aria-labelledby="payment-title"
         className="flex flex-col gap-2 rounded-lg border border-success-700/30 bg-success-700/10 p-4"
       >
-        <h2 id="payment-title" className="flex items-center gap-2 font-semibold">
+        <h2 id="payment-title" className="flex flex-wrap items-center gap-2 font-semibold">
           <CircleCheck aria-hidden="true" className="size-5 text-success-800" />
           Paid <Money paise={state.payment.amountPaise} />{' '}
           {state.payment.provider === 'CASH' ? 'in cash' : 'online'}

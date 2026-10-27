@@ -9,6 +9,8 @@ const pages = [
   '/services/plumbing',
   '/search',
   '/search?q=plumber',
+  '/terms',
+  '/privacy',
   '/dev/ui',
   '/dev/shells/customer',
   '/dev/shells/worker',

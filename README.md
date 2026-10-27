@@ -2,7 +2,7 @@
 
 **Local Skills. Fair Prices.** A hyperlocal marketplace for household services in India. Professionals set their own prices, and customers can agree a fair price with them through transparent offers.
 
-> **Status: Phase 12 complete (P1 core).** P0 is complete; Phase 12 adds review replies, reports and moderation, saved professionals, the account page, reported problems with admin resolution and refunds, help requests, Razorpay test mode, quick match, live updates and optional error reporting. Not done from the Phase 12 list: the map pin picker (needs map provider keys) and a pg-boss worker (the sweeper route and lazy delivery still do that job). Customers find a professional, agree a price, track the job, approve extras, then pay in cash or through a clearly labelled simulated online checkout, get a numbered receipt and leave a review. Professionals run each job, confirm cash, and see every earning, fee and payout in their ledger. Admins review ID verification, oversee bookings and payments, suspend accounts, edit the catalog and read the audit log. No real money moves: OTP, online payments and payouts are simulated. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap, and the [demo guide](#demo-guide) for a 10-minute walkthrough.
+> **Status: Phase 13 (deployment readiness).** P0 and the P1 core are complete. Customers find a professional (or send a quick match), agree a price, track the job live, approve extras, pay in cash or online, get a numbered receipt, review, and can report a problem or ask for help. Professionals run each job and see every earning, fee and refund in their ledger. Admins handle ID verification, bookings, reported problems, refunds, reviews, support, users and the catalog, all audited. The app ships as a container image with private S3/R2 storage, tested backups and a runbook ([docs/runbook.md](docs/runbook.md)). OTP, online payments (unless Razorpay test mode is on) and payouts are simulated. Not built yet: a map pin picker (needs map keys) and payout requests. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the plan and the [demo guide](#demo-guide) for a 10-minute walkthrough.
 
 ## Tech stack
 
@@ -87,7 +87,6 @@ What is simulated, and says so on screen: phone OTP, online payments, payouts an
 - **Verification:** up to 6 documents; submission needs a profile, a skill, a work area, an ID document and a selfie. It is idempotent and sets the worker to PENDING with an outbox event. After a rejection, a worker can reapply after 7 days.
 - **Online status:** only verified professionals can go online. While the dashboard is open it sends a heartbeat, so "available now" lapses about 15 minutes after the app closes. Pausing (today, 3 days or a week) hides a professional from new requests.
 - **Retention:** approving or rejecting an application sets `purge_after` to 90 days later; the sweeper then deletes the files and keeps the metadata and decision. Asking for new documents keeps the files.
-- **Not yet:** an S3/R2 storage driver (Phase 13).
 
 ## Bookings and negotiation
 
@@ -178,6 +177,15 @@ Why not an auth library? The plan's spike found that Better Auth's phone-number 
 - **Indexes** cover the matching query, booking lists, offers, the outbox, notifications and the verification queue. Public profiles look up each professional's approval through `verification_applications (worker_id, status)`.
 - **CI** also runs gitleaks over the full git history, so a committed key or password fails the build.
 
+## Deployment
+
+See **[docs/runbook.md](docs/runbook.md)** for environments, the first deploy, releases and rollback, the sweeper, backups and incidents. In short:
+
+- **Image:** `Dockerfile` builds a small, non-root image of the self-contained server. The build prerenders catalog pages from the database, so it takes `DATABASE_URL` as a BuildKit secret (never stored in the image). CI builds the image and checks it boots healthy; the manual **Release** workflow migrates an environment's database and pushes the image to GitHub Container Registry.
+- **Storage:** `STORAGE_DRIVER=s3` keeps files in a private S3-compatible bucket (Cloudflare R2, AWS S3 in Mumbai, or SeaweedFS/MinIO locally) with dependency-free SigV4 signing (checked against AWS's published example, and against a real S3 server when `S3_TEST_ENDPOINT` is set).
+- **Staging:** `docker-compose.staging.yml` runs the image with PostgreSQL 18, S3-compatible storage and the sweeper on one machine; `E2E_BASE_URL=… npm run test:smoke` checks any deployment.
+- **Demo deployments** (`ALLOW_SIMULATION_IN_PRODUCTION=true`) show a "Demo" banner on every page. `/terms` and `/privacy` are drafts awaiting legal review.
+
 ## Scripts
 
 | Command                           | What it does                                                                     |
@@ -190,12 +198,15 @@ Why not an auth library? The plan's spike found that Better Auth's phone-number 
 | `npm test`                        | Unit and integration tests (Vitest)                                              |
 | `npm run test:e2e`                | Browser tests (Playwright; run `npx playwright install chromium` once)           |
 | `npm run test:e2e:build`          | Browser tests against a production build (what CI runs)                          |
+| `npm run test:smoke`              | Smoke checks; with `E2E_BASE_URL` they run against a deployment                  |
 | `npm run db:create`               | Create the app role, databases and extensions (idempotent)                       |
 | `npm run db:generate`             | Generate a migration from schema changes                                         |
 | `npm run db:migrate`              | Apply pending migrations (`-- --test` for the test database)                     |
 | `npm run db:seed`                 | Replace all dev data with the demo set                                           |
 | `npm run db:reset`                | Drop everything, migrate and seed (dev database)                                 |
 | `npm run db:studio`               | Browse the database in Drizzle Studio                                            |
+| `npm run db:backup`               | Logical backup to `backups/` (`PG_TOOLS_DOCKER=1` uses pg_dump from Docker)      |
+| `npm run db:restore-drill`        | Restore the newest backup into a scratch database and verify it                  |
 | `npm run sweep`                   | Expire requests, deliver notifications, purge old ID files (needs `CRON_SECRET`) |
 | `npm run check`                   | Lint, typecheck, format check and tests                                          |
 

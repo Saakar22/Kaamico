@@ -1,0 +1,86 @@
+# A production-like stack on one machine: the app image, PostgreSQL 18, S3-compatible
+# private storage (SeaweedFS) and the once-a-minute sweeper. Everything here is for a
+# local or throwaway staging environment; real secrets never go in this file.
+# Steps are in docs/runbook.md ("Staging on one machine").
+
+name: kaamico-staging
+
+x-app-env: &app-env
+  NODE_ENV: production
+  APP_URL: http://localhost:3200
+  DATABASE_URL: postgres://kaamico:staging-app-password@db:5432/kaamico_staging
+  AUTH_SECRET: staging-only-auth-secret-0123456789abcdef
+  CRON_SECRET: staging-only-cron-secret-0123456789abcdef
+  # A public demo: simulated OTP and payments, announced by the site-wide banner.
+  ALLOW_SIMULATION_IN_PRODUCTION: 'true'
+  OTP_MODE: simulated
+  PAYMENTS_MODE: simulated
+  STORAGE_DRIVER: s3
+  S3_ENDPOINT: http://s3:8333
+  S3_BUCKET: kaamico-staging
+  S3_REGION: us-east-1
+  S3_ACCESS_KEY_ID: kaamico-staging
+  S3_SECRET_ACCESS_KEY: staging-only-not-a-real-secret
+  S3_FORCE_PATH_STYLE: 'true'
+  REALTIME_MODE: sse
+  LOG_LEVEL: info
+
+services:
+  db:
+    image: postgres:18.0
+    environment:
+      POSTGRES_PASSWORD: staging-admin-password
+    ports: ['5434:5432']
+    volumes: ['db:/var/lib/postgresql']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      retries: 20
+
+  s3:
+    image: chrislusf/seaweedfs:3.80
+    command: server -s3 -s3.config=/etc/seaweed/s3.json -dir=/data
+    ports: ['8334:8333']
+    volumes:
+      - ./deploy/staging/s3.json:/etc/seaweed/s3.json:ro
+      - s3:/data
+
+  # One-off jobs with the full sources: create, migrate, seed. `docker compose run --rm tools …`
+  tools:
+    build: { context: ., target: tools }
+    image: kaamico:tools
+    profiles: [tools]
+    environment:
+      <<: *app-env
+      DATABASE_ADMIN_URL: postgres://postgres:staging-admin-password@db:5432/postgres
+      SEED_ADMIN_PASSWORD: staging-admin-login
+    depends_on: { db: { condition: service_healthy } }
+
+  app:
+    image: kaamico:staging
+    environment: *app-env
+    ports: ['3200:3000']
+    depends_on:
+      db: { condition: service_healthy }
+      s3: { condition: service_started }
+    restart: unless-stopped
+
+  # Expires lapsed offers, delivers queued notifications and purges old ID files.
+  sweeper:
+    image: kaamico:staging
+    environment: *app-env
+    entrypoint:
+      - node
+      - -e
+      - >-
+        const run = () => fetch('http://app:3000/api/internal/sweep', { method: 'POST',
+        headers: { authorization: 'Bearer ' + process.env.CRON_SECRET } })
+        .then((r) => console.log(new Date().toISOString(), 'sweep', r.status))
+        .catch((e) => console.error('sweep failed', e.message));
+        setInterval(run, 60000); run()
+    depends_on: [app]
+    restart: unless-stopped
+
+volumes:
+  db:
+  s3:

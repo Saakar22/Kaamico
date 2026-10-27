@@ -40,6 +40,8 @@ test('a professional replies to a review and reports another', async ({ page }, 
   await page.getByRole('button', { name: 'Post reply' }).click()
   await expect(page.getByText('Your reply: Thank you for booking with me!').first()).toBeVisible()
 
+  // Let the "Reply posted" toast go: under the dialog's dimmed overlay it reads as low contrast.
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 10_000 })
   await page.getByRole('button', { name: 'Report this review' }).first().click()
   const dialog = page.getByRole('dialog', { name: 'Report this review?' })
   await dialog.getByLabel(/What is wrong with it/).fill('This review is about a different job.')

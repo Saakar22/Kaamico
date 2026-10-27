@@ -8,18 +8,22 @@ try {
 }
 
 const PORT = Number(process.env.PORT ?? 3000)
-const baseURL = `http://localhost:${PORT}`
+// A deployed environment (staging smoke checks): no local server is started.
+const external = process.env.E2E_BASE_URL
+const baseURL = external ?? `http://localhost:${PORT}`
 // `npm run test:e2e:build` (and CI) test the production build: closest to real use, and
 // it writes nothing to .next while serving (OneDrive-synced folders can lock those files).
 const useBuild =
   !!process.env.CI ||
   process.env.E2E_SERVER === 'start' ||
   process.env.npm_lifecycle_event === 'test:e2e:build'
+// Tells specs (in worker processes) when they run against `next dev`, not a production server.
+if (!useBuild && !external) process.env.E2E_DEV_SERVER = '1'
 
 export default defineConfig({
   testDir: './e2e',
   // Pre-compiles routes when testing against `next dev`.
-  globalSetup: useBuild ? undefined : './e2e/global-setup.ts',
+  globalSetup: useBuild || external ? undefined : './e2e/global-setup.ts',
   fullyParallel: true,
   // `next dev` renders unoptimised (with extra validation passes) in one process; ~10
   // parallel browsers pushed page renders to 5–10 s and timed tests out. A production build
@@ -39,20 +43,22 @@ export default defineConfig({
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
   ],
-  webServer: {
-    command: useBuild ? `npm run start -- --port ${PORT}` : `npm run dev -- --port ${PORT}`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-    // A local production server still runs simulated OTP/payments, which `next start`
-    // (NODE_ENV=production) only allows for explicit demos.
-    env:
-      useBuild && !process.env.CI
-        ? {
-            ALLOW_SIMULATION_IN_PRODUCTION: 'true',
-            ENABLE_UI_GALLERY: 'true',
-            CRON_SECRET: process.env.CRON_SECRET || 'local-e2e-cron-secret-0123456789abcdef',
-          }
-        : undefined,
-  },
+  webServer: external
+    ? undefined
+    : {
+        command: useBuild ? `npm run start -- --port ${PORT}` : `npm run dev -- --port ${PORT}`,
+        url: baseURL,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+        // A local production server still runs simulated OTP/payments, which `next start`
+        // (NODE_ENV=production) only allows for explicit demos.
+        env:
+          useBuild && !process.env.CI
+            ? {
+                ALLOW_SIMULATION_IN_PRODUCTION: 'true',
+                ENABLE_UI_GALLERY: 'true',
+                CRON_SECRET: process.env.CRON_SECRET || 'local-e2e-cron-secret-0123456789abcdef',
+              }
+            : undefined,
+      },
 })
