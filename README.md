@@ -2,7 +2,7 @@
 
 **Local Skills. Fair Prices.** A hyperlocal marketplace for household services in India. Professionals set their own prices, and customers can agree a fair price with them through transparent offers.
 
-> **Status: Phase 11 (P0 complete: hardening and polish).** Customers find a professional, agree a price, track the job, approve extras, then pay in cash or through a clearly labelled simulated online checkout, get a numbered receipt and leave a review. Professionals run each job, confirm cash, and see every earning, fee and payout in their ledger. Admins review ID verification, oversee bookings and payments, suspend accounts, edit the catalog and read the audit log. No real money moves: OTP, online payments and payouts are simulated. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap, and the [demo guide](#demo-guide) for a 10-minute walkthrough.
+> **Status: Phase 12 in progress (P1).** P0 is complete; Phase 12a adds review replies, reports and moderation, saved professionals and the account page. Customers find a professional, agree a price, track the job, approve extras, then pay in cash or through a clearly labelled simulated online checkout, get a numbered receipt and leave a review. Professionals run each job, confirm cash, and see every earning, fee and payout in their ledger. Admins review ID verification, oversee bookings and payments, suspend accounts, edit the catalog and read the audit log. No real money moves: OTP, online payments and payouts are simulated. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap, and the [demo guide](#demo-guide) for a 10-minute walkthrough.
 
 ## Tech stack
 
@@ -112,7 +112,10 @@ What is simulated, and says so on screen: phone OTP, online payments, payouts an
 - **Ledger** (`src/modules/ledger`, append-only): capturing a payment posts, in the same transaction, `+gross` JOB_EARNING and `−fee` COMMISSION (10% by default, snapshotted per booking, rounded half up to the paisa), plus `−gross` CASH_COLLECTED for cash jobs, so a cash job leaves the professional owing the fee. The earnings page (`/worker/earnings`) is computed straight from the entries; payouts are simulated.
 - **Receipts** are issued once at capture, numbered per Indian financial year (`KMC/2026-27/000123`), immutable, and printable at `/bookings/:id/receipt` for the customer, the professional and admins. The professional and admins also see Kaamico's fee. They are booking receipts, not GST tax invoices.
 - **Reviews** (`/bookings/:id/review`): one per completed job, by its customer, within 14 days, with 1–5 stars, optional compliments and a comment. The professional's rating updates in the same transaction.
-- **Not yet:** Razorpay test mode, refunds, disputes and payout requests (P1), and collecting the visit fee when a customer cancels after the professional sets off (it is recorded on the booking history only).
+- **Replies and reports** (`/worker/reviews`): a professional can reply once to each review, publicly, and report a review that is unfair or about another job (the customer can report too, through the API). A reported review stays public until an admin decides.
+- **Moderation** (`/admin/reviews`): reported reviews are listed oldest first. Hiding one takes it off the profile and out of the rating in the same transaction; restoring brings it back and keeping it dismisses the report. Both need a reason and are audited.
+- **Saved professionals** (`/favorites`): customers save a professional from their profile and book them again from the list. Professionals who are later suspended or lose verification drop out of the list. `/profile` holds the customer's name and an optional email (the phone number is the sign-in).
+- **Not yet:** Razorpay test mode, refunds, disputes and payout requests (rest of Phase 12), and collecting the visit fee when a customer cancels after the professional sets off (it is recorded on the booking history only).
 
 ## Admin console
 

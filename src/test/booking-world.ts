@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import type postgres from 'postgres'
-import type { Actor } from '@/modules/auth/types'
+import { authSecret } from '@/lib/secrets'
 import { fromIst, toIstParts } from '@/lib/time'
+import type { Actor } from '@/modules/auth/types'
+import { createBooking } from '@/modules/bookings/create'
+import { transition } from '@/modules/bookings/lifecycle'
+import { deriveStartCode } from '@/modules/bookings/start-code'
+import { acceptOffer } from '@/modules/negotiation/offers'
 import { userWithSession } from './api'
 
 /** A bookable world for booking tests: one service, a ready professional and customers with addresses. */
@@ -86,6 +91,38 @@ export async function bookingWorld(sql: postgres.Sql) {
     }
   }
 
+  const version = async (id: string) =>
+    (await sql`select version from bookings where id = ${id}`)[0].version as number
+
+  type W = Awaited<ReturnType<typeof worker>>
+  type C = Awaited<ReturnType<typeof customer>>
+  let jobs = 0
+
+  /** A completed job at the listed ₹500, plus an approved extra charge when asked. */
+  async function completed(w?: W, c?: C, extraPaise = 0) {
+    w ??= await worker()
+    c ??= await customer()
+    const { bookingId } = await createBooking(c.actor, request(c, w), randomUUID())
+    const [offer] = await sql`select id from price_offers where booking_id = ${bookingId}`
+    await acceptOffer(w.actor, offer.id, { expectedBookingVersion: await version(bookingId) })
+    // Each job gets its own past slot, so one professional's jobs never overlap.
+    const hoursAgo = 3 * ++jobs
+    await sql`update bookings set slot = tstzrange(now() - make_interval(hours => ${hoursAgo}), now() - make_interval(hours => ${hoursAgo - 2})) where id = ${bookingId}`
+    for (const to of ['EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED']) {
+      if (to === 'COMPLETED' && extraPaise) {
+        await sql`insert into booking_charges (booking_id, proposed_by_worker_id, kind, description, amount_paise, status, decided_at)
+          values (${bookingId}, ${w.workerId}, 'MATERIALS', 'New washer', ${extraPaise}, 'APPROVED', now())`
+        await sql`update bookings set approved_charges_paise = ${extraPaise} where id = ${bookingId}`
+      }
+      await transition(w.actor, bookingId, {
+        to,
+        expectedVersion: await version(bookingId),
+        startCode: deriveStartCode(bookingId, authSecret()),
+      })
+    }
+    return { w, c, bookingId }
+  }
+
   return {
     serviceId: s.id as string,
     categoryId: c.id as string,
@@ -94,6 +131,8 @@ export async function bookingWorld(sql: postgres.Sql) {
     customer,
     request,
     tomorrow,
+    completed,
+    version,
     key: () => randomUUID(),
   }
 }

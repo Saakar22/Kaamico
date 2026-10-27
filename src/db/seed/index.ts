@@ -1042,6 +1042,22 @@ createBooking({
 
 rows.favorites.push({ customerId: priya.userId, workerId: rakesh.id })
 
+// Rakesh has replied to his best review and reported his worst, which waits in the admin queue.
+{
+  const his = rows.reviews.filter((r) => r.workerId === rakesh.id)
+  const best = his.find((r) => r.rating === 5 && r.comment)
+  const worst = [...his].sort((a, b) => a.rating - b.rating)[0]
+  if (best) Object.assign(best, { workerReply: 'Thank you! Happy to help any time.', replyAt: NOW })
+  if (worst && worst !== best && worst.rating < 5) {
+    Object.assign(worst, {
+      status: 'FLAGGED',
+      flagReason: 'This customer was not home when I arrived, so I could not finish the job.',
+      flaggedAt: at(NOW, -3 * HOUR),
+      flaggedByUserId: rakesh.userId,
+    })
+  }
+}
+
 const pendingWorker = workers[4]
 rows.notifications.push(
   {

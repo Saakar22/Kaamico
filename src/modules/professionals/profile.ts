@@ -67,10 +67,10 @@ const parseArray = (value: string[] | string): string[] =>
   Array.isArray(value) ? value : value.replace(/[{}]/g, '').split(',').filter(Boolean)
 
 /** A worker is public only while VERIFIED with an active account. Anything else is a 404. */
-const PUBLIC_WORKER = sql`
+export const PUBLIC_WORKER = sql`
   w.verification_status = 'VERIFIED' and u.status = 'ACTIVE' and u.deleted_at is null`
 
-async function assertPublic(workerId: string): Promise<void> {
+export async function assertPublic(workerId: string): Promise<void> {
   if (!isUuid(workerId)) throw notFound('Professional not found')
   const rows = await getDb().execute(sql`
     select 1 from worker_profiles w join users u on u.id = w.user_id
@@ -175,7 +175,7 @@ function authorName(name: string | null): string {
   return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1][0]}.`
 }
 
-/** Published reviews, newest first, with a star histogram. */
+/** Visible reviews (published, or reported and awaiting a check), newest first, with a star histogram. */
 export async function getPublicReviews(
   workerId: string,
   query: z.input<typeof reviewsQuerySchema> = {},
@@ -187,7 +187,7 @@ export async function getPublicReviews(
   const [counts, rows] = await Promise.all([
     db.execute<{ rating: number; n: number }>(sql`
       select rating, count(*)::int as n from reviews
-      where worker_id = ${workerId} and status = 'PUBLISHED' group by rating`),
+      where worker_id = ${workerId} and status <> 'HIDDEN' group by rating`),
     db.execute<{
       id: string
       rating: number
@@ -204,7 +204,7 @@ export async function getPublicReviews(
       join users u on u.id = r.customer_id
       join bookings b on b.id = r.booking_id
       join services s on s.id = b.service_id
-      where r.worker_id = ${workerId} and r.status = 'PUBLISHED'
+      where r.worker_id = ${workerId} and r.status <> 'HIDDEN'
       order by r.created_at desc, r.id desc
       limit ${limit + 1} offset ${offset}`),
   ])

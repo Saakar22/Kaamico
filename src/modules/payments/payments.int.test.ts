@@ -6,12 +6,9 @@ import { POST as confirmCashRoute } from '@/app/api/v1/payments/[id]/confirm-cas
 import { POST as simulateRoute } from '@/app/api/v1/payments/[id]/simulate/route'
 import { GET as summaryRoute } from '@/app/api/v1/worker/earnings/summary/route'
 import { GET as ledgerRoute } from '@/app/api/v1/worker/ledger/route'
-import { authSecret } from '@/lib/secrets'
 import { createBooking } from '@/modules/bookings/create'
-import { transition } from '@/modules/bookings/lifecycle'
 import { commissionOf } from '@/modules/ledger/postings'
 import { earningsSummary, listLedger } from '@/modules/ledger/earnings'
-import { acceptOffer } from '@/modules/negotiation/offers'
 import { dispatchOutbox } from '@/modules/notifications/dispatcher'
 import { createReview, reviewState } from '@/modules/reviews/reviews'
 import { call, json, req, userWithSession, withId } from '@/test/api'
@@ -19,7 +16,6 @@ import { bookingWorld } from '@/test/booking-world'
 import { connectTestDb, hasTestDatabase, truncateAll } from '@/test/db'
 import { bookingPayment, startPayment } from './payments'
 import { financialYear } from './receipts'
-import { deriveStartCode } from '@/modules/bookings/start-code'
 
 const DAY = 86_400_000
 
@@ -28,7 +24,6 @@ describe.skipIf(!hasTestDatabase)('payments, ledger, receipts and reviews', () =
   let world: Awaited<ReturnType<typeof bookingWorld>>
 
   beforeEach(async () => {
-    jobs = 0
     await truncateAll(sql)
     world = await bookingWorld(sql)
   })
@@ -36,37 +31,11 @@ describe.skipIf(!hasTestDatabase)('payments, ledger, receipts and reviews', () =
     await sql.end()
   })
 
-  const version = async (id: string) =>
-    (await sql`select version from bookings where id = ${id}`)[0].version as number
-
   type W = Awaited<ReturnType<typeof world.worker>>
   type C = Awaited<ReturnType<typeof world.customer>>
 
-  let jobs = 0
   /** A completed job at the listed ₹500, plus an approved ₹150 extra when asked. */
-  async function completed(w?: W, c?: C, extraPaise = 0) {
-    w ??= await world.worker()
-    c ??= await world.customer()
-    const { bookingId } = await createBooking(c.actor, world.request(c, w), world.key())
-    const [offer] = await sql`select id from price_offers where booking_id = ${bookingId}`
-    await acceptOffer(w.actor, offer.id, { expectedBookingVersion: await version(bookingId) })
-    // Each job gets its own past slot, so one professional's jobs never overlap.
-    const hoursAgo = 3 * ++jobs
-    await sql`update bookings set slot = tstzrange(now() - make_interval(hours => ${hoursAgo}), now() - make_interval(hours => ${hoursAgo - 2})) where id = ${bookingId}`
-    for (const to of ['EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED']) {
-      if (to === 'COMPLETED' && extraPaise) {
-        await sql`insert into booking_charges (booking_id, proposed_by_worker_id, kind, description, amount_paise, status, decided_at)
-          values (${bookingId}, ${w.workerId}, 'MATERIALS', 'New washer', ${extraPaise}, 'APPROVED', now())`
-        await sql`update bookings set approved_charges_paise = ${extraPaise} where id = ${bookingId}`
-      }
-      await transition(w.actor, bookingId, {
-        to,
-        expectedVersion: await version(bookingId),
-        startCode: deriveStartCode(bookingId, authSecret()),
-      })
-    }
-    return { w, c, bookingId }
-  }
+  const completed = (w?: W, c?: C, extraPaise = 0) => world.completed(w, c, extraPaise)
 
   const pay = (cookie: string, bookingId: string, body: unknown, key = world.key()) =>
     call(

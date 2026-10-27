@@ -193,8 +193,14 @@ export function draftNotifications(
     }
     case 'review.created':
       return [
-        toWorker(`${c.customerFirstName} rated you ${Number(payload.rating)}★`, ref, work.job),
+        toWorker(
+          `${c.customerFirstName} rated you ${Number(payload.rating)}★`,
+          ref,
+          '/worker/reviews',
+        ),
       ]
+    case 'review.replied':
+      return [toCustomer(`${c.workerFirstName} replied to your review`, ref, cust.booking)]
 
     default:
       return []
@@ -220,6 +226,7 @@ export const BOOKING_TOPICS = new Set([
   'payment.cash_pending',
   'payment.captured',
   'review.created',
+  'review.replied',
 ])
 
 /** The professional hears about the review of their ID verification. */

@@ -13,6 +13,8 @@ type Target = { role: Role; path: string }
 const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} })
 const tokens: Partial<Record<Role, string>> = {}
 let targets: Target[] = []
+// Projects run in parallel workers, so each deletes only the sessions it made.
+const minted: string[] = []
 
 async function one<T extends Record<string, unknown>>(query: Promise<T[]>): Promise<T | undefined> {
   return (await query)[0]
@@ -21,6 +23,7 @@ async function one<T extends Record<string, unknown>>(query: Promise<T[]>): Prom
 async function mintSession(userId: string, scope: 'USER' | 'ADMIN') {
   const token = randomBytes(32).toString('base64url')
   const hash = createHash('sha256').update(token).digest('hex')
+  minted.push(hash)
   await sql`insert into auth_sessions (token_hash, user_id, scope, expires_at, user_agent)
     values (${hash}, ${userId}, ${scope}, now() + interval '1 hour', 'e2e routes spec')`
   return token
@@ -83,6 +86,8 @@ async function discover(): Promise<Target[]> {
     { role: 'customer', path: '/dashboard' },
     { role: 'customer', path: '/bookings' },
     { role: 'customer', path: '/bookings?tab=past' },
+    { role: 'customer', path: '/profile' },
+    { role: 'customer', path: '/favorites' },
     ...optional('customer', confirmed && `/bookings/${confirmed.id}`),
     ...optional('customer', requested && `/bookings/${requested.id}/negotiate`),
     ...optional('customer', paid && `/bookings/${paid.id}/receipt`),
@@ -101,12 +106,15 @@ async function discover(): Promise<Target[]> {
     { role: 'worker', path: '/worker/availability' },
     { role: 'worker', path: '/worker/profile' },
     { role: 'worker', path: '/worker/verification' },
+    { role: 'worker', path: '/worker/reviews' },
     { role: 'admin', path: '/admin' },
     { role: 'admin', path: '/admin/verifications' },
     ...optional('admin', application && `/admin/verifications/${application.id}`),
     { role: 'admin', path: '/admin/bookings' },
     ...optional('admin', anyBooking && `/admin/bookings/${anyBooking.id}`),
     { role: 'admin', path: '/admin/users' },
+    { role: 'admin', path: '/admin/reviews' },
+    { role: 'admin', path: '/admin/reviews?status=ALL' },
     { role: 'admin', path: '/admin/categories' },
     { role: 'admin', path: '/admin/audit-logs' },
   ]
@@ -127,7 +135,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  await sql`delete from auth_sessions where user_agent = 'e2e routes spec'`
+  await sql`delete from auth_sessions where token_hash in ${sql(minted)}`
   await sql.end()
 })
 

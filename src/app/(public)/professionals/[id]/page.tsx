@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
+import { FavoriteSlot } from '@/components/domain/professionals/favorite-slot'
 import { RatingStars, RatingSummary } from '@/components/domain/professionals/rating'
 import { VerificationBadge } from '@/components/domain/trust-badges'
 import { Avatar } from '@/components/ui/avatar'
@@ -100,6 +101,9 @@ function ProfileHeader({ profile }: { profile: PublicProfile }) {
             </li>
           )}
         </ul>
+        <Suspense fallback={null}>
+          <FavoriteSlot workerId={profile.workerId} />
+        </Suspense>
       </div>
     </header>
   )

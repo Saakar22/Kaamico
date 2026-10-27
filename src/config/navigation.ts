@@ -6,6 +6,7 @@ import {
   House,
   Inbox,
   LayoutDashboard,
+  MessageSquareWarning,
   ScrollText,
   Search,
   ShieldCheck,
@@ -44,6 +45,7 @@ export const adminNav: NavItem[] = [
   { href: '/admin/verifications', label: 'Verifications', icon: ShieldCheck },
   { href: '/admin/bookings', label: 'Bookings', icon: ClipboardList },
   { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/reviews', label: 'Reviews', icon: MessageSquareWarning },
   { href: '/admin/categories', label: 'Categories', icon: FolderTree },
   { href: '/admin/audit-logs', label: 'Audit log', icon: ScrollText },
 ]

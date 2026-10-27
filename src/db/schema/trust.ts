@@ -53,6 +53,10 @@ export const reviews = pgTable(
     workerReply: varchar({ length: 500 }),
     replyAt: timestamptz(),
     hiddenReason: varchar({ length: 300 }),
+    /** Set when the professional or the customer reports the review (it stays visible). */
+    flagReason: varchar({ length: 300 }),
+    flaggedAt: timestamptz(),
+    flaggedByUserId: uuid().references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

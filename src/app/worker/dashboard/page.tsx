@@ -3,6 +3,7 @@ import {
   IndianRupee,
   MapPin,
   ShieldCheck,
+  Star,
   UserRound,
   type LucideIcon,
 } from 'lucide-react'
@@ -36,6 +37,7 @@ const SETTINGS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/worker/pricing', label: 'Your prices', icon: IndianRupee },
   { href: '/worker/availability', label: 'Hours and work area', icon: CalendarClock },
   { href: '/worker/verification', label: 'ID verification', icon: ShieldCheck },
+  { href: '/worker/reviews', label: 'Reviews and replies', icon: Star },
 ]
 
 export default async function WorkerDashboardPage() {
