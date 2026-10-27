@@ -26,6 +26,11 @@ const envSchema = z
       .optional(),
     RAZORPAY_KEY_SECRET: z.string().min(8).optional(),
     RAZORPAY_WEBHOOK_SECRET: z.string().min(8).optional(),
+    /** Server error reporting (Sentry). Off when unset; reports are scrubbed of personal data. */
+    SENTRY_DSN: z.url().optional(),
+    SENTRY_ENVIRONMENT: z.string().max(40).optional(),
+    /** Live updates over server-sent events, or polling only (e.g. hosts without long requests). */
+    REALTIME_MODE: z.enum(['sse', 'poll']).default('sse'),
     STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
     STORAGE_LOCAL_DIR: z.string().min(1).default('./storage'),
     COMMISSION_BPS: z.coerce.number().int().min(0).max(5000).default(1000),

@@ -4,8 +4,9 @@ import type { Instrumentation } from 'next'
 
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return
-  const { checkEnvironment } = await import('./instrumentation-node')
+  const { checkEnvironment, startErrorReporting } = await import('./instrumentation-node')
   checkEnvironment()
+  await startErrorReporting()
 }
 
 export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {

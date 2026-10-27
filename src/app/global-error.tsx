@@ -1,7 +1,11 @@
 'use client'
 
+import { useEffect } from 'react'
+import { reportClientError } from '@/lib/report-client-error'
+
 // Replaces the root layout when it fails, so it cannot rely on global CSS or fonts.
 export default function GlobalError({ error, retry }: { error: unknown; retry: () => void }) {
+  useEffect(() => reportClientError(error), [error])
   const digest = error instanceof Error ? (error as Error & { digest?: string }).digest : undefined
 
   return (

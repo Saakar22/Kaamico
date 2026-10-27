@@ -1,3 +1,4 @@
+import { getEnv } from '@/config/env'
 import { getActor } from '@/modules/auth/actor'
 import { countUnread } from '@/modules/notifications/notifications'
 import { NotificationBell } from './notification-bell'
@@ -6,5 +7,10 @@ import { NotificationBell } from './notification-bell'
 export async function NotificationSlot() {
   const actor = await getActor()
   if (!actor || actor.scope !== 'USER' || actor.needsOnboarding) return null
-  return <NotificationBell initialUnread={await countUnread(actor.userId)} />
+  return (
+    <NotificationBell
+      initialUnread={await countUnread(actor.userId)}
+      live={getEnv().REALTIME_MODE === 'sse'}
+    />
+  )
 }
