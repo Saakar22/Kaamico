@@ -5,7 +5,9 @@ import { cn } from '@/lib/cn'
 export function Table({ className, label, ...props }: ComponentProps<'table'> & { label: string }) {
   return (
     <div
-      className="overflow-x-auto rounded-lg border border-border bg-surface"
+      // `relative` makes this the containing block for sr-only text in cells; otherwise
+      // that absolutely positioned text escapes the scroll area and widens the page.
+      className="relative overflow-x-auto rounded-lg border border-border bg-surface"
       role="region"
       aria-label={label}
       tabIndex={0}

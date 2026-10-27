@@ -25,6 +25,18 @@ env:
   SEED_ADMIN_PASSWORD: ci-admin-password
 
 jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # Fails the build if a key, token or password is committed anywhere in history.
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 20

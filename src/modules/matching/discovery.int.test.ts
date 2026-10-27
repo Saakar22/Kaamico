@@ -280,6 +280,20 @@ describe.skipIf(!hasTestDatabase)('discovery: catalog, matching and profiles', (
       expect(res.status).toBe(400)
     })
 
+    it('caps public searches per IP address', async () => {
+      const fromIp = (ip: string) =>
+        new Request(`${ORIGIN}/api/v1/search?q=x`, {
+          headers: { origin: ORIGIN, 'x-forwarded-for': ip },
+        })
+      for (let i = 0; i < 120; i++) {
+        expect((await searchRoute(fromIp('198.51.100.4'), {})).status).toBe(400)
+      }
+      const limited = await searchRoute(fromIp('198.51.100.4'), {})
+      expect(limited.status).toBe(429)
+      expect((await json(limited)).error.code).toBe('RATE_LIMITED')
+      expect((await searchRoute(fromIp('198.51.100.5'), {})).status).toBe(400)
+    })
+
     it('shows nearby price ranges only when at least three professionals price a service', async () => {
       const path = `/api/v1/categories/plumbing?lat=${HOME.lat}&lng=${HOME.lng}`
       await worker({ pricePaise: 30000 })

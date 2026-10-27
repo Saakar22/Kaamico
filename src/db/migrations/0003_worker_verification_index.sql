@@ -1,0 +1,1 @@
+CREATE INDEX "verification_applications_worker_idx" ON "verification_applications" USING btree ("worker_id","status");

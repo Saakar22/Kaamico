@@ -2,7 +2,7 @@
 
 **Local Skills. Fair Prices.** A hyperlocal marketplace for household services in India. Professionals set their own prices, and customers can agree a fair price with them through transparent offers.
 
-> **Status: Phase 10 (Payments, earnings and reviews).** Customers find a professional, agree a price, track the job, approve extras, then pay in cash or through a clearly labelled simulated online checkout, get a numbered receipt and leave a review. Professionals run each job, confirm cash, and see every earning, fee and payout in their ledger. Admins review ID verification, oversee bookings and payments, suspend accounts, edit the catalog and read the audit log. No real money moves: online payments and payouts are simulated. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap.
+> **Status: Phase 11 (P0 complete: hardening and polish).** Customers find a professional, agree a price, track the job, approve extras, then pay in cash or through a clearly labelled simulated online checkout, get a numbered receipt and leave a review. Professionals run each job, confirm cash, and see every earning, fee and payout in their ledger. Admins review ID verification, oversee bookings and payments, suspend accounts, edit the catalog and read the audit log. No real money moves: OTP, online payments and payouts are simulated. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap, and the [demo guide](#demo-guide) for a 10-minute walkthrough.
 
 ## Tech stack
 
@@ -55,6 +55,20 @@ Check the database connection at <http://localhost:3000/api/health>. It returns 
 | Admin                   | `admin@kaamico.local` | Password: `SEED_ADMIN_PASSWORD` (sign in at `/admin/login`) |
 
 Customers and workers sign in at `/login` with the mobile number; in development the 6-digit code is shown on screen (no SMS is sent). Any other Indian mobile number creates a new account. Verification documents in the seed are metadata only; no files exist.
+
+## Demo guide
+
+A walkthrough of the three journeys on freshly seeded data (`npm run db:reset`, then restart `npm run dev`). Use two browser windows, one of them private, so the customer and the professional can be signed in at once. Every code is shown on screen; nothing is sent.
+
+**1. Customer: find and book (≈ 4 min).** Sign in at `/login` as Priya (`90000 00001`). The dashboard already shows an upcoming confirmed booking and a request waiting for Rakesh. Search "plumber" from the home page: cards show the distance, an arrival _estimate_, the price and the rating. Sort by price, open a profile, choose **Request booking**, add an address in Kothrud, pick a time, and choose **Suggest a different price** below the listed one.
+
+**2. Professional: answer and do the job (≈ 3 min).** In the other window sign in as Rakesh (`90000 00101`). The dashboard lists Priya's tap-repair request and Aditya's fan installation, where Aditya owes a reply. Open a request and counter it; back as the customer, accept the counter on `/bookings/:id/negotiate`. The booking shows **Price locked** and a 4-digit start code. As Rakesh, open the job under **Bookings** and tap **I'm on my way**, then **I've arrived**, enter the start code, optionally add an extra charge (the customer must approve it), then **Mark job complete**.
+
+**3. Pay and review (≈ 1 min).** As the customer, pay with the simulated checkout (marked "Simulated"), open the receipt, and leave a review. As Rakesh, `/worker/earnings` shows the job's gross, Kaamico's 10% fee and the net.
+
+**4. Admin (≈ 2 min).** Sign in at `/admin/login` as `admin@kaamico.local` with `SEED_ADMIN_PASSWORD`. Open the pending application under **Verifications**: documents open through a short-lived link and each view lands in the audit log. Ask for new documents or approve; the professional gets a notification. Inspect any booking's full history under **Bookings**, suspend a user under **Users**, and see every action under **Audit log**.
+
+What is simulated, and says so on screen: phone OTP, online payments, payouts and arrival times (straight-line distance, labelled "estimate"). Receipts are not GST tax invoices.
 
 ## Discovery
 
@@ -116,10 +130,20 @@ Sign in at `/admin/login`. Every admin mutation writes an `admin_audit_logs` row
 - **Customers and professionals** sign in with a phone OTP. Codes expire after 5 minutes, allow 5 attempts, and only the latest code for a number works. Only an HMAC of each code is stored. A first sign-in creates the account; the user then gives a name and chooses "book services" or "offer my services".
 - **Admins** sign in at `/admin/login` with email and password (scrypt hashes). Admin powers require both the ADMIN role and a session from the admin sign-in, so a phone session never grants admin access. Admin sessions last 8 hours; other sessions last 30 days from last use.
 - **Sessions** are opaque random tokens in an `HttpOnly`, `SameSite=Lax` cookie (`__Host-` prefixed over HTTPS). Only a SHA-256 of the token is stored.
-- **Protection:** every mutating API checks the `Origin` header (CSRF). Rate limits are stored in Postgres: OTP requests (3 per number per 10 minutes, 10 per IP per hour), code checks, and admin sign-in (10 failures per email per 15 minutes).
+- **Protection:** every mutating API checks the `Origin` header (CSRF). Rate limits are stored in Postgres: OTP requests (3 per number per 10 minutes, 10 per IP per hour), code checks, admin sign-in (10 failures per email per 15 minutes), offers, uploads, worker heartbeats and public search (120 per IP per minute).
 - **Authorisation** is enforced on the server. `src/proxy.ts` only redirects visitors without a session cookie; layouts render a friendly "no access" screen; API handlers call `requireApiActor()`.
 
 Why not an auth library? The plan's spike found that Better Auth's phone-number plugin needs a placeholder email and name for phone-only users. That would put fake data into `users`, so Kaamico uses a small amount of its own session code instead (the plan's documented fallback).
+
+## Quality and hardening
+
+- **Startup check:** `src/instrumentation.ts` validates the environment when the server starts. A production server with simulated OTP or payments (without `ALLOW_SIMULATION_IN_PRODUCTION=true`), a missing `AUTH_SECRET`/`CRON_SECRET` or `RATE_LIMIT_MULTIPLIER` above 1 prints the problems and exits with code 1. Unhandled server errors are logged as one JSON line with the digest users see on the error page.
+- **Response headers:** every response sends `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` and a `Permissions-Policy` that allows only geolocation (for the location chip). There is no `X-Powered-By` header.
+- **Page states:** the customer, public, worker and admin areas each have their own loading, error and not-found screens, so the header and navigation stay on screen when something fails.
+- **Accessibility and layout:** `e2e/routes.spec.ts` opens every signed-in P0 page as a seeded customer, professional and admin. It checks each page for serious or critical axe (WCAG 2.2 AA) violations and for sideways scrolling, at 360 px on phones and 1280 px on desktop. `e2e/keyboard.spec.ts` books a job and accepts a counteroffer using only the keyboard. Public pages are covered by `e2e/a11y.spec.ts`.
+- **Performance** (Lighthouse 13, mobile, production build, warm server): home 89, search 88, service page 85, sign-in 93, customer dashboard 86–89, booking detail 86, worker dashboard 86. Accessibility scored 100 and best practices 100 on every page measured. On the signed-in pages the largest paint is the greeting heading, which streams in after the session check.
+- **Indexes** cover the matching query, booking lists, offers, the outbox, notifications and the verification queue. Public profiles look up each professional's approval through `verification_applications (worker_id, status)`.
+- **CI** also runs gitleaks over the full git history, so a committed key or password fails the build.
 
 ## Scripts
 
@@ -157,6 +181,7 @@ src/
   modules/        Domain logic: auth, catalog, location, matching, availability, professionals,
                   workers, uploads, verification, addresses, bookings, negotiation
   db/             Drizzle client, schema/, migrations/, seed/ and integrity tests
+  instrumentation.ts  Startup environment check and server error logging
   test/           Test helpers and database fixtures
   lib/            Shared helpers: cn, errors, HTTP wrapper, logger, money (paise), IST time,
                   private storage, signed file links, file-type sniffing and metadata stripping

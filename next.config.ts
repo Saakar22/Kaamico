@@ -1,7 +1,16 @@
 import type { NextConfig } from 'next'
 
+// Baseline browser hardening for every response. Device location powers the location
+// chip; nothing uses the camera or microphone directly (ID photos come through file inputs).
+const securityHeaders = [
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+]
+
 const nextConfig: NextConfig = {
-  /* config options here */
+  poweredByHeader: false,
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
@@ -13,6 +22,9 @@ const nextConfig: NextConfig = {
         as: '*.css',
       },
     },
+  },
+  async headers() {
+    return [{ source: '/:path*', headers: securityHeaders }]
   },
 }
 

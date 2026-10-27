@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm'
 import { getEnv } from '@/config/env'
 import { getDb } from '@/db/client'
 import { AppError } from './errors'
+import { clientIp } from './request'
 
 export type RateLimitRule = { limit: number; windowSeconds: number }
 
@@ -56,4 +57,18 @@ export async function enforceRateLimit(bucket: string, rule: RateLimitRule, mess
 export async function assertBelowLimit(bucket: string, rule: RateLimitRule, message: string) {
   const counter = await peekRateLimit(bucket, rule)
   if (counter.count >= effectiveLimit(rule)) throw tooMany(message, counter.retryAfterSeconds)
+}
+
+/**
+ * Public search runs the heaviest queries and needs no sign-in, so it is capped per IP
+ * (generous for typing and paging; it stops scraping and floods). No IP, no limit.
+ */
+export async function limitSearches(request: Request) {
+  const ip = clientIp(request)
+  if (!ip) return
+  await enforceRateLimit(
+    `search:ip:${ip}`,
+    { limit: 120, windowSeconds: 60 },
+    'Too many searches. Please wait a minute.',
+  )
 }

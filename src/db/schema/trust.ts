@@ -84,6 +84,8 @@ export const verificationApplications = pgTable(
       .on(t.workerId)
       .where(sql`${t.status} in ('DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'RESUBMISSION_REQUESTED')`),
     index('verification_applications_queue_idx').on(t.status, t.submittedAt),
+    // Public profiles read each worker's approval date; admins read their earlier attempts.
+    index('verification_applications_worker_idx').on(t.workerId, t.status),
     check(
       'verification_applications_reason_required',
       sql`${t.status} not in ('REJECTED', 'RESUBMISSION_REQUESTED') or length(coalesce(${t.decisionReason}, '')) >= 10`,

@@ -1351,38 +1351,38 @@ Road routing and travel time; real-time GPS sharing; masked calling; Hindi and r
 ## 18. Final acceptance checklist
 
 ### Product (P0)
-- [ ] Customer can sign in (simulated OTP), set a location, find a service, compare at least 3 professionals, and open a profile.
-- [ ] Customer can create a scheduled and an on-demand booking, accepting the listed price or making an offer.
-- [ ] Worker and customer can counteroffer within the rules; expired offers cannot be accepted.
-- [ ] Accepting an offer confirms the booking and **locks the price**; the UI shows "Price locked".
-- [ ] Extra charges change the total only after customer approval.
-- [ ] Worker can move the job through En route → Arrived → (start code) In progress → Completed.
-- [ ] Customer can pay (cash or simulated) and receive a receipt; the worker ledger shows gross, commission and net correctly.
-- [ ] Customer can review only eligible completed bookings; the profile rating updates.
-- [ ] Worker can onboard, submit verification, set pricing, hours and service area, and toggle online.
-- [ ] Admin can approve, reject or request resubmission of verification (with audited document viewing), inspect bookings with full history, suspend users, and manage categories.
-- [ ] In-app notifications are sent for new request, new offer, confirmation, status changes and verification decision.
+- [x] Customer can sign in (simulated OTP), set a location, find a service, compare at least 3 professionals, and open a profile.
+- [x] Customer can create a scheduled and an on-demand booking, accepting the listed price or making an offer.
+- [x] Worker and customer can counteroffer within the rules; expired offers cannot be accepted.
+- [x] Accepting an offer confirms the booking and **locks the price**; the UI shows "Price locked".
+- [x] Extra charges change the total only after customer approval.
+- [x] Worker can move the job through En route → Arrived → (start code) In progress → Completed.
+- [x] Customer can pay (cash or simulated) and receive a receipt; the worker ledger shows gross, commission and net correctly.
+- [x] Customer can review only eligible completed bookings; the profile rating updates.
+- [x] Worker can onboard, submit verification, set pricing, hours and service area, and toggle online.
+- [x] Admin can approve, reject or request resubmission of verification (with audited document viewing), inspect bookings with full history, suspend users, and manage categories.
+- [x] In-app notifications are sent for new request, new offer, confirmation, status changes and verification decision.
 
 ### Integrity and security
-- [ ] Authorization matrix (§10.16) tests pass; no admin data reachable by non-admins.
-- [ ] Double-accept and double-booking concurrency tests pass.
-- [ ] Idempotent booking and payment creation verified.
-- [ ] Identity documents unreachable without an admin signed URL; every view audited.
-- [ ] No full Aadhaar numbers stored; EXIF stripped from uploads.
-- [ ] No secrets committed; `.env.example` complete; boot guard blocks simulation flags in production.
+- [x] Authorization matrix (§10.16) tests pass; no admin data reachable by non-admins.
+- [x] Double-accept and double-booking concurrency tests pass.
+- [x] Idempotent booking and payment creation verified.
+- [x] Identity documents unreachable without an admin signed URL; every view audited.
+- [x] No full Aadhaar numbers stored; EXIF stripped from uploads.
+- [x] No secrets committed; `.env.example` complete; boot guard blocks simulation flags in production.
 
 ### UX quality
-- [ ] All P0 routes have loading, empty, error and success states.
-- [ ] Mobile (360 px) and desktop (1280 px) layouts verified for key pages.
-- [ ] axe: zero serious/critical violations; keyboard-only flow works for booking and negotiation.
-- [ ] Every simulated capability shows a badge; arrival is always labelled "estimate".
-- [ ] Brand tokens centralised; no hard-coded colours in components.
+- [x] All P0 routes have loading, empty, error and success states.
+- [x] Mobile (360 px) and desktop (1280 px) layouts verified for key pages.
+- [x] axe: zero serious/critical violations; keyboard-only flow works for booking and negotiation.
+- [x] Every simulated capability shows a badge; arrival is always labelled "estimate".
+- [x] Brand tokens centralised; no hard-coded colours in components.
 
 ### Engineering
-- [ ] Clean clone → `npm ci` → `db:reset` → `dev` works with the README instructions alone.
-- [ ] CI: lint, typecheck, unit/integration, E2E (or nightly), build all green.
-- [ ] Migrations reproducible; seed deterministic.
-- [ ] Structured logs with request IDs; `/api/health` reports DB status.
+- [ ] Clean clone → `npm ci` → `db:reset` → `dev` works with the README instructions alone. *(Not re-checked on a fresh machine in Phase 11.)*
+- [ ] CI: lint, typecheck, unit/integration, E2E (or nightly), build all green. *(All green locally; GitHub Actions results not yet confirmed.)*
+- [x] Migrations reproducible; seed deterministic.
+- [x] Structured logs with request IDs; `/api/health` reports DB status.
 
 ### P1 (when undertaken)
 - [ ] Broadcast quick match with first-accept-wins verified under concurrency.

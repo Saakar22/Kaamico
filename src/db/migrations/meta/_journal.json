@@ -22,6 +22,13 @@
       "when": 1792906067216,
       "tag": "0002_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793115990652,
+      "tag": "0003_worker_verification_index",
+      "breakpoints": true
     }
   ]
 }

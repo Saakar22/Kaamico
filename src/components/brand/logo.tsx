@@ -15,7 +15,7 @@ export function LogoMark({ className }: { className?: string }) {
       <path
         d="M12 7.5v13M12 14.6 18.4 8.4M12.6 14 15.6 17.8 21 11.6"
         fill="none"
-        stroke="#fff"
+        className="stroke-surface"
         strokeWidth="2.6"
         strokeLinecap="round"
         strokeLinejoin="round"
