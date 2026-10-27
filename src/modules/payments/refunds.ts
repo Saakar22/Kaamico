@@ -1,20 +1,24 @@
 import 'server-only'
-import { and, eq, ne, sql, type SQL } from 'drizzle-orm'
+import { and, eq, lt, ne, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb } from '@/db/client'
-import { payments, refunds, workerLedgerEntries } from '@/db/schema'
-import { businessRule, notFound, pgErrorCode } from '@/lib/errors'
+import { bookings, payments, refunds, workerLedgerEntries } from '@/db/schema'
+import { AppError, businessRule, notFound, pgErrorCode } from '@/lib/errors'
+import { logger } from '@/lib/logger'
 import { formatINR } from '@/lib/money'
 import { writeAudit, type AuditContext } from '@/modules/audit/audit'
 import type { Actor } from '@/modules/auth/types'
 import { addOutbox, lockBooking, type BookingRow, type Tx } from '@/modules/bookings/repo'
 import { refundPostingsFor } from '@/modules/ledger/postings'
+import { createRefund } from './razorpay'
 
 /**
  * Refunds (IMPLEMENTATION_PLAN.md §10.15). The total refunded never exceeds what was paid
  * (checked here and by a database trigger). Each refund posts the professional's ledger
- * entries in the same transaction. Online payments are simulated in this release, so a
- * refund is recorded as processed straight away; cash refunds are settled by Kaamico.
+ * entries in the same transaction. Simulated and cash refunds are processed at once (cash
+ * is settled by Kaamico). A Razorpay refund is recorded as REQUESTED, sent to Razorpay
+ * after the transaction commits (`sendProviderRefund`), and confirmed by its webhook; if
+ * Razorpay refuses it, it is marked FAILED and its ledger entries are reversed.
  */
 
 type PaymentRow = typeof payments.$inferSelect
@@ -81,7 +85,7 @@ export async function issueRefund(
         paymentId: payment.id,
         amountPaise,
         reason: input.reason,
-        status: 'PROCESSED',
+        status: payment.provider === 'RAZORPAY' ? 'REQUESTED' : 'PROCESSED',
         initiatedByAdminId: input.admin.userId,
         disputeId: input.disputeId ?? null,
       })
@@ -125,7 +129,94 @@ export async function issueRefund(
     amountPaise,
     disputeId: input.disputeId ?? null,
   })
-  return { refund, keptPaise: left }
+  const provider =
+    payment.provider === 'RAZORPAY' && payment.providerPaymentId
+      ? { refundId: refund.id, providerPaymentId: payment.providerPaymentId, amountPaise }
+      : null
+  if (payment.provider === 'RAZORPAY' && !provider) {
+    throw businessRule('NOT_REFUNDABLE', 'This online payment has no Razorpay payment to refund')
+  }
+  return { refund, keptPaise: left, provider }
+}
+
+export type ProviderRefund = { refundId: string; providerPaymentId: string; amountPaise: number }
+
+/**
+ * Sends a recorded Razorpay refund (call after the recording transaction commits). On
+ * success the refund keeps waiting for the webhook; on failure it is undone.
+ */
+export async function sendProviderRefund(pending: ProviderRefund): Promise<'REQUESTED' | 'FAILED'> {
+  try {
+    const sent = await createRefund({
+      providerPaymentId: pending.providerPaymentId,
+      amountPaise: pending.amountPaise,
+      notes: { refundId: pending.refundId },
+    })
+    await getDb()
+      .update(refunds)
+      .set({
+        providerRefundId: sent.id,
+        ...(sent.status === 'processed' ? { status: 'PROCESSED' as const } : {}),
+      })
+      .where(eq(refunds.id, pending.refundId))
+    return 'REQUESTED'
+  } catch (error) {
+    logger.warn({ err: error, refundId: pending.refundId }, 'razorpay refund failed')
+    await getDb().transaction((tx) => failRefund(tx, pending.refundId))
+    return 'FAILED'
+  }
+}
+
+/**
+ * A refund that did not go through: marked FAILED, its ledger entries reversed and the
+ * payment's status recalculated. Safe to call twice.
+ */
+export async function failRefund(tx: Tx, refundId: string): Promise<void> {
+  const [refund] = await tx.select().from(refunds).where(eq(refunds.id, refundId)).for('update')
+  if (!refund || refund.status === 'FAILED') return
+  const [payment] = await tx
+    .select()
+    .from(payments)
+    .where(eq(payments.id, refund.paymentId))
+    .for('update')
+  const [booking] = await tx.select().from(bookings).where(eq(bookings.id, payment.bookingId))
+  await tx.update(refunds).set({ status: 'FAILED' }).where(eq(refunds.id, refundId))
+  if (booking.workerId) {
+    // Rebuild the entries exactly as posted: against the refunds made before this one.
+    const [earlier] = await tx
+      .select({ total: sql<number>`coalesce(sum(${refunds.amountPaise}), 0)::int` })
+      .from(refunds)
+      .where(
+        and(
+          eq(refunds.paymentId, payment.id),
+          ne(refunds.status, 'FAILED'),
+          lt(refunds.createdAt, refund.createdAt),
+        ),
+      )
+    const original = refundPostingsFor({
+      grossPaise: payment.amountPaise,
+      commissionBps: booking.commissionBps,
+      refundPaise: refund.amountPaise,
+      refundedBeforePaise: earlier.total,
+    })
+    await tx.insert(workerLedgerEntries).values(
+      original.map((p) => ({
+        workerId: booking.workerId!,
+        bookingId: booking.id,
+        type: 'ADJUSTMENT' as const,
+        amountPaise: -p.amountPaise,
+        description: `Refund did not go through · ${booking.code}`,
+      })),
+    )
+  }
+  const still = await refundedSoFar(tx, payment.id)
+  await tx
+    .update(payments)
+    .set({
+      status: still === 0 ? 'CAPTURED' : 'PARTIALLY_REFUNDED',
+      version: payment.version + 1,
+    })
+    .where(eq(payments.id, payment.id))
 }
 
 /** An admin refunds part or all of a payment outside a dispute (audited, idempotent route). */
@@ -137,7 +228,7 @@ export async function refundPayment(
 ) {
   const input = refundInput.parse(raw)
   if (!z.uuid().safeParse(paymentId).success) throw notFound('Payment not found')
-  return getDb().transaction(async (tx) => {
+  const result = await getDb().transaction(async (tx) => {
     const [ref] = await tx
       .select({ bookingId: payments.bookingId })
       .from(payments)
@@ -148,7 +239,7 @@ export async function refundPayment(
     if (!payment || payment.id !== paymentId) {
       throw businessRule('NOT_REFUNDABLE', 'Only a captured payment can be refunded')
     }
-    const { refund, keptPaise } = await issueRefund(tx, {
+    const { refund, keptPaise, provider } = await issueRefund(tx, {
       admin,
       booking,
       payment,
@@ -163,8 +254,19 @@ export async function refundPayment(
       after: { refundId: refund.id, amountPaise: input.amountPaise, keptPaise },
       reason: input.reason,
     })
-    return { refundId: refund.id, amountPaise: input.amountPaise, keptPaise }
+    return { refundId: refund.id, amountPaise: input.amountPaise, keptPaise, provider }
   })
+  const { refundId, amountPaise, keptPaise } = result
+  if (!result.provider) return { refundId, amountPaise, keptPaise, status: 'PROCESSED' as const }
+  const status = await sendProviderRefund(result.provider)
+  if (status === 'FAILED') {
+    throw new AppError(
+      'PAYMENT_PROVIDER_ERROR',
+      'Razorpay did not accept the refund, so nothing was refunded. Please try again.',
+      { status: 502 },
+    )
+  }
+  return { refundId, amountPaise, keptPaise, status }
 }
 
 export const adminPaymentQuery = z.object({

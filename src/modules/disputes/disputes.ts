@@ -15,7 +15,13 @@ import {
   type Tx,
 } from '@/modules/bookings/repo'
 import { canTransition, type BookingStatus } from '@/modules/bookings/state-machine'
-import { issueRefund, lockPaidPayment, refundedSoFar } from '@/modules/payments/refunds'
+import {
+  issueRefund,
+  lockPaidPayment,
+  refundedSoFar,
+  sendProviderRefund,
+  type ProviderRefund,
+} from '@/modules/payments/refunds'
 import { DISPUTE_REASONS, type DisputeReason } from './labels'
 
 /**
@@ -454,7 +460,7 @@ export async function resolveDispute(
 ) {
   const input = resolveInput.parse(raw)
   if (!isUuid(disputeId)) throw notFound('Report not found')
-  return getDb().transaction(async (tx) => {
+  const result = await getDb().transaction(async (tx) => {
     const [ref] = await tx
       .select({ bookingId: disputes.bookingId })
       .from(disputes)
@@ -506,15 +512,16 @@ export async function resolveDispute(
     if (!canTransition('DISPUTED', to, 'ADMIN'))
       throw rule('This booking cannot be closed that way')
 
+    let providerRefund: ProviderRefund | null = null
     if (refund > 0) {
-      await issueRefund(tx, {
+      ;({ provider: providerRefund } = await issueRefund(tx, {
         admin,
         booking,
         payment: payment!,
         amountPaise: refund,
         reason: input.note.slice(0, 300),
         disputeId,
-      })
+      }))
     }
     if (to === 'CANCELLED') {
       // Nothing is owed any more: drop an unfinished payment attempt.
@@ -559,8 +566,22 @@ export async function resolveDispute(
       outcome,
       refundPaise: refund,
     })
-    return { disputeId, outcome, bookingStatus: to, refundPaise: refund }
+    return { disputeId, outcome, bookingStatus: to, refundPaise: refund, providerRefund }
   })
+  // A Razorpay refund is sent once the decision is saved; if Razorpay refuses it, the
+  // decision stands and the refund shows as failed on the payments page to retry.
+  const refundStatus = result.providerRefund
+    ? await sendProviderRefund(result.providerRefund)
+    : result.refundPaise > 0
+      ? 'PROCESSED'
+      : null
+  return {
+    disputeId: result.disputeId,
+    outcome: result.outcome,
+    bookingStatus: result.bookingStatus,
+    refundPaise: result.refundPaise,
+    refundStatus,
+  }
 }
 
 /** `bookingDispute` by booking id, for API callers (404 unless a party to the booking). */

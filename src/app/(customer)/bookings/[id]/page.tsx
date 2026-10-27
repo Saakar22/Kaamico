@@ -25,7 +25,7 @@ import type { Actor } from '@/modules/auth/types'
 import { OPEN_REQUEST, TERMINAL } from '@/modules/bookings/state-machine'
 import { getCustomerBooking } from '@/modules/bookings/views'
 import { bookingDispute, canReport } from '@/modules/disputes/disputes'
-import { bookingPayment } from '@/modules/payments/payments'
+import { bookingPayment, onlineMethod } from '@/modules/payments/payments'
 import { reviewState } from '@/modules/reviews/reviews'
 
 export const instant = false
@@ -89,6 +89,7 @@ export default async function BookingPage({ params, searchParams }: PageProps<'/
               totalPaise={booking.price.totalPaise}
               workerName={firstName}
               state={payment}
+              online={onlineMethod()}
             />
           )}
 

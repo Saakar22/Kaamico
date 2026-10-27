@@ -8,6 +8,7 @@ import { businessRule, conflict, forbidden, notFound, pgErrorCode } from '@/lib/
 import type { Actor } from '@/modules/auth/types'
 import { addOutbox, lockBooking, type BookingRow, type Tx } from '@/modules/bookings/repo'
 import { commissionOf, postingsFor, type PaymentMethod } from '@/modules/ledger/postings'
+import { createOrder, razorpayConfig, verifyCheckoutSignature } from './razorpay'
 import { issueReceipt } from './receipts'
 
 const isUuid = (v: string) => z.uuid().safeParse(v).success
@@ -24,9 +25,9 @@ export type PaymentView = {
   simulated: boolean
 }
 
-type PaymentRow = typeof payments.$inferSelect
+export type PaymentRow = typeof payments.$inferSelect
 
-const toView = (p: PaymentRow): PaymentView => ({
+export const toView = (p: PaymentRow): PaymentView => ({
   id: p.id,
   provider: p.provider,
   status: p.status,
@@ -37,13 +38,31 @@ const toView = (p: PaymentRow): PaymentView => ({
 })
 
 const OPEN = ['CREATED', 'PENDING'] as const
+/** Paid, even if part or all of it was refunded later: never paid again. */
+const PAID = ['CAPTURED', 'PARTIALLY_REFUNDED', 'REFUNDED'] as const
+const isPaid = (status: string) => (PAID as readonly string[]).includes(status)
 
 export const startPaymentInput = z.object({ method: z.enum(['CASH', 'SIMULATED', 'RAZORPAY']) })
+
+/** What the browser needs to open Razorpay Checkout for a payment. */
+export type RazorpayCheckout = {
+  keyId: string
+  orderId: string
+  amountPaise: number
+  currency: 'INR'
+  description: string
+}
+
+/** The online method this deployment offers: the simulated checkout or Razorpay test mode. */
+export function onlineMethod(): 'SIMULATED' | 'RAZORPAY' {
+  return getEnv().PAYMENTS_MODE === 'razorpay' ? 'RAZORPAY' : 'SIMULATED'
+}
 
 /**
  * The customer chooses how to pay a completed job (§10.11). The amount always comes from
  * the booking (agreed price + approved extras), never from the client. Cash waits for the
- * professional to confirm receipt; the simulated checkout waits for a simulated outcome.
+ * professional to confirm receipt; the simulated checkout waits for a simulated outcome;
+ * Razorpay gets an order (created after the transaction commits) for its checkout.
  * Choosing again replaces an unfinished attempt.
  */
 export async function startPayment(
@@ -51,12 +70,64 @@ export async function startPayment(
   bookingId: string,
   raw: unknown,
   idempotencyKey: string,
-): Promise<{ payment: PaymentView }> {
+): Promise<{ payment: PaymentView; checkout?: RazorpayCheckout }> {
   const { method } = startPaymentInput.parse(raw)
   if (!isUuid(bookingId)) throw notFound('Booking not found')
-  if (method === 'RAZORPAY' || (method === 'SIMULATED' && getEnv().PAYMENTS_MODE !== 'simulated')) {
+  if (method !== 'CASH' && method !== onlineMethod()) {
     throw businessRule('PAYMENT_METHOD_UNAVAILABLE', 'This way of paying is not available yet')
   }
+  const { payment, code } = await openPayment(actor, bookingId, method, idempotencyKey)
+  if (method !== 'RAZORPAY') return { payment: toView(payment) }
+  return razorpayCheckout(payment, code)
+}
+
+/** Creates (or reuses) the Razorpay order for a pending payment; a failure fails the attempt. */
+async function razorpayCheckout(
+  payment: PaymentRow,
+  bookingCode: string,
+): Promise<{ payment: PaymentView; checkout: RazorpayCheckout }> {
+  const { keyId } = razorpayConfig()
+  let orderId = payment.providerOrderId
+  let current = payment
+  if (!orderId) {
+    try {
+      const order = await createOrder({
+        amountPaise: payment.amountPaise,
+        receipt: payment.id,
+        notes: { paymentId: payment.id, booking: bookingCode },
+      })
+      orderId = order.id
+    } catch (error) {
+      await getDb()
+        .update(payments)
+        .set({ status: 'FAILED', failureReason: 'Could not start the online payment' })
+        .where(and(eq(payments.id, payment.id), eq(payments.status, 'PENDING')))
+      throw error
+    }
+    ;[current] = await getDb()
+      .update(payments)
+      .set({ providerOrderId: orderId })
+      .where(eq(payments.id, payment.id))
+      .returning()
+  }
+  return {
+    payment: toView(current),
+    checkout: {
+      keyId,
+      orderId,
+      amountPaise: payment.amountPaise,
+      currency: 'INR',
+      description: `Kaamico booking ${bookingCode}`,
+    },
+  }
+}
+
+async function openPayment(
+  actor: Actor,
+  bookingId: string,
+  method: PaymentMethod,
+  idempotencyKey: string,
+): Promise<{ payment: PaymentRow; code: string }> {
   return getDb().transaction(async (tx) => {
     const booking = await lockBooking(tx, bookingId)
     if (booking.customerId !== actor.userId) throw notFound('Booking not found')
@@ -70,11 +141,11 @@ export async function startPayment(
       .from(payments)
       .where(eq(payments.bookingId, booking.id))
       .orderBy(desc(payments.createdAt))
-    if (existing.some((p) => p.status === 'CAPTURED')) {
+    if (existing.some((p) => isPaid(p.status))) {
       throw conflict('ALREADY_PAID', 'This booking is already paid')
     }
     const open = existing.find((p) => (OPEN as readonly string[]).includes(p.status))
-    if (open?.provider === method) return { payment: toView(open) }
+    if (open?.provider === method) return { payment: open, code: booking.code }
     if (open) {
       await tx
         .update(payments)
@@ -100,7 +171,7 @@ export async function startPayment(
         amountPaise: amount,
       })
     }
-    return { payment: toView(created) }
+    return { payment: created, code: booking.code }
   })
 }
 
@@ -113,7 +184,7 @@ function finalAmount(booking: BookingRow): number {
 }
 
 /** Payment, then its booking locked in the usual order (booking first). */
-async function lockPayment(tx: Tx, paymentId: string) {
+export async function lockPayment(tx: Tx, paymentId: string) {
   if (!isUuid(paymentId)) throw notFound('Payment not found')
   const [ref] = await tx
     .select({ bookingId: payments.bookingId })
@@ -181,17 +252,78 @@ export async function confirmCash(
   })
 }
 
+export const razorpayConfirmInput = z.object({
+  razorpay_order_id: z.string().min(1).max(80),
+  razorpay_payment_id: z.string().min(1).max(80),
+  razorpay_signature: z.string().min(1).max(200),
+})
+
+/**
+ * Razorpay Checkout's success callback. The signature (HMAC of order and payment id with
+ * our key secret) proves Razorpay approved this payment for this order, so it is captured
+ * now; the `payment.captured` webhook confirms it too, and whichever comes second is a
+ * no-op. Requires automatic capture to be on in the Razorpay dashboard.
+ */
+export async function confirmRazorpay(
+  actor: Actor,
+  paymentId: string,
+  raw: unknown,
+  now: Date = new Date(),
+): Promise<{ payment: PaymentView }> {
+  const input = razorpayConfirmInput.parse(raw)
+  const { keySecret } = razorpayConfig()
+  return getDb().transaction(async (tx) => {
+    const { booking, payment } = await lockPayment(tx, paymentId)
+    if (booking.customerId !== actor.userId || payment.provider !== 'RAZORPAY') {
+      throw notFound('Payment not found')
+    }
+    const genuine =
+      payment.providerOrderId === input.razorpay_order_id &&
+      verifyCheckoutSignature(
+        {
+          orderId: input.razorpay_order_id,
+          paymentId: input.razorpay_payment_id,
+          signature: input.razorpay_signature,
+        },
+        keySecret,
+      )
+    if (!genuine)
+      throw businessRule('PAYMENT_SIGNATURE_INVALID', 'We could not verify this payment')
+    if (isPaid(payment.status)) return { payment: toView(payment) }
+    if (payment.status !== 'PENDING' && payment.status !== 'FAILED') {
+      throw conflict('PAYMENT_NOT_PENDING', 'This payment has already finished', {
+        status: payment.status,
+      })
+    }
+    return {
+      payment: toView(await capture(tx, booking, payment, now, input.razorpay_payment_id)),
+    }
+  })
+}
+
 /**
  * Marks the payment captured and, in the same transaction, posts the professional's
  * ledger entries (§11.4) and issues the receipt. Unique indexes make a second capture
  * or a double posting impossible even if this ran twice.
  */
-async function capture(tx: Tx, booking: BookingRow, payment: PaymentRow, now: Date) {
+export async function capture(
+  tx: Tx,
+  booking: BookingRow,
+  payment: PaymentRow,
+  now: Date,
+  providerPaymentId?: string,
+) {
   let captured: PaymentRow
   try {
     ;[captured] = await tx
       .update(payments)
-      .set({ status: 'CAPTURED', capturedAt: now, version: payment.version + 1 })
+      .set({
+        status: 'CAPTURED',
+        capturedAt: now,
+        failureReason: null,
+        version: payment.version + 1,
+        ...(providerPaymentId ? { providerPaymentId } : {}),
+      })
       .where(eq(payments.id, payment.id))
       .returning()
   } catch (error) {
@@ -247,7 +379,7 @@ async function capture(tx: Tx, booking: BookingRow, payment: PaymentRow, now: Da
 
 export type BookingPayment = {
   /** UNPAID until a payment is captured; AWAITING_* while one is in progress. */
-  state: 'UNPAID' | 'AWAITING_CASH' | 'AWAITING_SIMULATED' | 'PAID'
+  state: 'UNPAID' | 'AWAITING_CASH' | 'AWAITING_SIMULATED' | 'AWAITING_ONLINE' | 'PAID'
   payment: PaymentView | null
   /** The last failed attempt, if it is the most recent one. */
   lastFailure: string | null
@@ -264,7 +396,7 @@ export async function bookingPayment(bookingId: string): Promise<BookingPayment>
       .where(
         and(
           eq(payments.bookingId, bookingId),
-          inArray(payments.status, ['PENDING', 'CREATED', 'CAPTURED', 'FAILED']),
+          inArray(payments.status, ['PENDING', 'CREATED', 'FAILED', ...PAID]),
         ),
       )
       .orderBy(desc(payments.createdAt)),
@@ -272,7 +404,7 @@ export async function bookingPayment(bookingId: string): Promise<BookingPayment>
       sql`select number from invoices where booking_id = ${bookingId}`,
     ),
   ])
-  const captured = rows.find((p) => p.status === 'CAPTURED')
+  const captured = rows.find((p) => isPaid(p.status))
   const open = rows.find((p) => p.status === 'PENDING' || p.status === 'CREATED')
   const latest = rows[0]
   const current = captured ?? open ?? null
@@ -282,7 +414,9 @@ export async function bookingPayment(bookingId: string): Promise<BookingPayment>
       : open?.provider === 'CASH'
         ? 'AWAITING_CASH'
         : open
-          ? 'AWAITING_SIMULATED'
+          ? open.provider === 'RAZORPAY'
+            ? 'AWAITING_ONLINE'
+            : 'AWAITING_SIMULATED'
           : 'UNPAID',
     payment: current ? toView(current) : null,
     lastFailure: !captured && !open && latest?.status === 'FAILED' ? latest.failureReason : null,

@@ -21,6 +21,12 @@ export async function expectAccessible(page: Page) {
   })
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+    // Toasts that are sliding in or out, hidden, or stacked behind the front one are faded
+    // on purpose; the settled front toast is still checked.
+    .exclude('[data-sonner-toast][data-mounted="false"]')
+    .exclude('[data-sonner-toast][data-removed="true"]')
+    .exclude('[data-sonner-toast][data-visible="false"]')
+    .exclude('[data-sonner-toast][data-front="false"]')
     .analyze()
   const serious = results.violations.filter(
     (v) => v.impact === 'serious' || v.impact === 'critical',

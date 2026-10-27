@@ -32,5 +32,6 @@ export const config = {
     '/profile',
     '/settings',
     '/book/:path*',
+    '/support/:path*',
   ],
 }

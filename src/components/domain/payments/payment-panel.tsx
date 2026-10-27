@@ -9,21 +9,25 @@ import { Button } from '@/components/ui/button'
 import { Money } from '@/components/ui/money'
 import { apiFetch } from '@/lib/api-client'
 import type { BookingPayment } from '@/modules/payments/payments'
+import { RazorpayButton } from './razorpay-button'
 
 /**
- * Paying for a completed job (§4 step 11): cash to the professional, or an online
- * checkout that is clearly simulated in this release. The server sets the amount.
+ * Paying for a completed job (§4 step 11): cash to the professional, or online, either
+ * through a clearly labelled simulated checkout or Razorpay in test mode (`online`).
+ * The server sets the amount.
  */
 export function PaymentPanel({
   bookingId,
   totalPaise,
   workerName,
   state,
+  online = 'SIMULATED',
 }: {
   bookingId: string
   totalPaise: number
   workerName: string
   state: BookingPayment
+  online?: 'SIMULATED' | 'RAZORPAY'
 }) {
   const { pending, error, run } = useApiAction()
   // One key per attempt: a double tap cannot start two payments.
@@ -55,6 +59,9 @@ export function PaymentPanel({
           Paid <Money paise={state.payment.amountPaise} />{' '}
           {state.payment.provider === 'CASH' ? 'in cash' : 'online'}
           {state.payment.simulated && <SimulationBadge label="Simulated: no money moved" />}
+          {state.payment.provider === 'RAZORPAY' && (
+            <SimulationBadge label="Razorpay test mode: no real money" />
+          )}
         </h2>
         {state.receiptNumber && (
           <Link
@@ -83,16 +90,38 @@ export function PaymentPanel({
           <p>
             Hand {amount} to {workerName}. They confirm in their app and your receipt appears here.
           </p>
-          <Button
-            variant="tertiary"
-            className="self-start"
-            onClick={() => start('SIMULATED')}
-            disabled={pending}
-          >
-            <CreditCard aria-hidden="true" />
-            Pay online instead
-          </Button>
+          {online === 'RAZORPAY' ? (
+            <RazorpayButton bookingId={bookingId} variant="tertiary" className="self-start">
+              Pay online instead
+            </RazorpayButton>
+          ) : (
+            <Button
+              variant="tertiary"
+              className="self-start"
+              onClick={() => start('SIMULATED')}
+              disabled={pending}
+            >
+              <CreditCard aria-hidden="true" />
+              Pay online instead
+            </Button>
+          )}
         </>
+      )}
+
+      {state.state === 'AWAITING_ONLINE' && (
+        <div className="flex flex-col gap-3">
+          <p>Your online payment is not finished yet.</p>
+          <div className="flex flex-wrap gap-2">
+            <RazorpayButton bookingId={bookingId}>Continue to payment</RazorpayButton>
+            <Button variant="tertiary" onClick={() => start('CASH')} disabled={pending}>
+              <Banknote aria-hidden="true" />
+              Pay in cash instead
+            </Button>
+          </div>
+          <p className="flex items-center gap-2 text-xs text-ink-600">
+            <SimulationBadge label="Test mode" /> Razorpay test mode: use a test card or UPI ID.
+          </p>
+        </div>
       )}
 
       {state.state === 'AWAITING_SIMULATED' && (
@@ -141,14 +170,26 @@ export function PaymentPanel({
               <Banknote aria-hidden="true" />
               Pay in cash
             </Button>
-            <Button variant="secondary" onClick={() => start('SIMULATED')} disabled={pending}>
-              <CreditCard aria-hidden="true" />
-              Pay online
-            </Button>
+            {online === 'RAZORPAY' ? (
+              <RazorpayButton bookingId={bookingId} variant="secondary" disabled={pending}>
+                Pay online (UPI or card)
+              </RazorpayButton>
+            ) : (
+              <Button variant="secondary" onClick={() => start('SIMULATED')} disabled={pending}>
+                <CreditCard aria-hidden="true" />
+                Pay online
+              </Button>
+            )}
           </div>
-          <p className="flex items-center gap-2 text-xs text-ink-600">
-            <SimulationBadge /> Online payments are simulated in this demo.
-          </p>
+          {online === 'RAZORPAY' ? (
+            <p className="flex items-center gap-2 text-xs text-ink-600">
+              <SimulationBadge label="Test mode" /> Razorpay test mode: no real money moves.
+            </p>
+          ) : (
+            <p className="flex items-center gap-2 text-xs text-ink-600">
+              <SimulationBadge /> Online payments are simulated in this demo.
+            </p>
+          )}
         </>
       )}
 

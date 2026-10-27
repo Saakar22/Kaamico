@@ -61,7 +61,9 @@ test('a customer books and negotiates; the professional does the job; both track
   browser,
   isMobile,
 }, info) => {
-  test.slow()
+  // Two browsers through the whole job: ~45 s alone, longer while the suite's
+  // accessibility sweeps share the server.
+  test.setTimeout(180_000)
   const pros = await plumbersNearKothrud()
   const pro = pros[info.project.name === 'mobile' ? 1 : 0]
   test.skip(!pro, 'Needs the seeded demo data (npm run db:seed)')

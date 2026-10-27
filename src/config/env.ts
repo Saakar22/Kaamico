@@ -19,6 +19,13 @@ const envSchema = z
     OTP_MODE: z.enum(['simulated', 'msg91']).default('simulated'),
     PAYMENTS_MODE: z.enum(['simulated', 'razorpay']).default('simulated'),
     ALLOW_SIMULATION_IN_PRODUCTION: z.stringbool().default(false),
+    /** Razorpay test mode (PAYMENTS_MODE=razorpay). Live keys are refused in this release. */
+    RAZORPAY_KEY_ID: z
+      .string()
+      .regex(/^rzp_test_\w+$/, 'must be a Razorpay test key (rzp_test_…)')
+      .optional(),
+    RAZORPAY_KEY_SECRET: z.string().min(8).optional(),
+    RAZORPAY_WEBHOOK_SECRET: z.string().min(8).optional(),
     STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
     STORAGE_LOCAL_DIR: z.string().min(1).default('./storage'),
     COMMISSION_BPS: z.coerce.number().int().min(0).max(5000).default(1000),
@@ -31,6 +38,21 @@ const envSchema = z
     NEXT_PHASE: z.string().optional(),
   })
   .superRefine((env, ctx) => {
+    if (env.PAYMENTS_MODE === 'razorpay') {
+      for (const key of [
+        'RAZORPAY_KEY_ID',
+        'RAZORPAY_KEY_SECRET',
+        'RAZORPAY_WEBHOOK_SECRET',
+      ] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [key],
+            message: 'required when PAYMENTS_MODE=razorpay',
+          })
+        }
+      }
+    }
     // `next build` prerenders catalog pages from the database but never serves requests,
     // so the runtime-only rules apply when the app starts, not while building.
     if (env.NODE_ENV !== 'production' || env.NEXT_PHASE === BUILD_PHASE) return

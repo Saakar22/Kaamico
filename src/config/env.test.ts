@@ -77,4 +77,19 @@ describe('parseEnv', () => {
       /CRON_SECRET: required in production/,
     )
   })
+
+  it('needs Razorpay test keys, and only test keys, for PAYMENTS_MODE=razorpay', () => {
+    expect(() => parseEnv({ ...base, PAYMENTS_MODE: 'razorpay' })).toThrow(
+      /RAZORPAY_KEY_ID: required when PAYMENTS_MODE=razorpay/,
+    )
+    const keys = {
+      RAZORPAY_KEY_ID: 'rzp_test_abc123',
+      RAZORPAY_KEY_SECRET: 'secret-123456',
+      RAZORPAY_WEBHOOK_SECRET: 'whsec-123456',
+    }
+    expect(parseEnv({ ...base, PAYMENTS_MODE: 'razorpay', ...keys }).PAYMENTS_MODE).toBe('razorpay')
+    expect(() =>
+      parseEnv({ ...base, PAYMENTS_MODE: 'razorpay', ...keys, RAZORPAY_KEY_ID: 'rzp_live_abc123' }),
+    ).toThrow(/must be a Razorpay test key/)
+  })
 })

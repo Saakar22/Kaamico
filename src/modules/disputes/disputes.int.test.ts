@@ -13,7 +13,7 @@ import { SESSION_COOKIE_PLAIN } from '@/modules/auth/cookies'
 import { createSession } from '@/modules/auth/sessions'
 import { transition } from '@/modules/bookings/lifecycle'
 import { dispatchOutbox } from '@/modules/notifications/dispatcher'
-import { simulatePayment, startPayment } from '@/modules/payments/payments'
+import { bookingPayment, simulatePayment, startPayment } from '@/modules/payments/payments'
 import { call, json, req, userWithSession, withId } from '@/test/api'
 import { bookingWorld } from '@/test/booking-world'
 import { connectTestDb, hasTestDatabase, truncateAll } from '@/test/db'
@@ -205,6 +205,11 @@ describe.skipIf(!hasTestDatabase)('disputes, refunds and support', () => {
       expect(await json(res)).toMatchObject({ bookingStatus: 'COMPLETED' })
       // ₹300 kept: ₹300 − 10% fee.
       expect(await ledgerSum(j.bookingId)).toBe(27_000)
+      // Partly refunded still counts as paid: no second payment.
+      expect((await bookingPayment(j.bookingId)).state).toBe('PAID')
+      await expect(
+        startPayment(j.c.actor, j.bookingId, { method: 'CASH' }, randomUUID()),
+      ).rejects.toMatchObject({ code: 'ALREADY_PAID' })
     })
 
     it('an unpaid job: the professional’s favour completes it (payable), the customer’s cancels it', async () => {
