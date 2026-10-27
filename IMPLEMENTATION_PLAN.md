@@ -1379,7 +1379,7 @@ Road routing and travel time; real-time GPS sharing; masked calling; Hindi and r
 - [x] Brand tokens centralised; no hard-coded colours in components.
 
 ### Engineering
-- [ ] Clean clone → `npm ci` → `db:reset` → `dev` works with the README instructions alone. *(Not re-checked on a fresh machine in Phase 11.)*
+- [x] Clean clone → `npm ci` → `db:reset` → `dev` works with the README instructions alone. *(Checked 2026-10-28 from a fresh clone on the dev machine with new databases; tests passed there too.)*
 - [ ] CI: lint, typecheck, unit/integration, E2E (or nightly), build all green. *(All green locally; GitHub Actions results not yet confirmed.)*
 - [x] Migrations reproducible; seed deterministic.
 - [x] Structured logs with request IDs; `/api/health` reports DB status.
