@@ -1,4 +1,4 @@
-import { CalendarCheck, ChevronRight, Heart, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, ChevronRight, Heart, LifeBuoy, type LucideIcon } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SignOutButton } from '@/components/auth/sign-out-button'
@@ -15,6 +15,7 @@ export const metadata: Metadata = { title: 'Your account' }
 const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/bookings', label: 'Your bookings', icon: CalendarCheck },
   { href: '/favorites', label: 'Saved professionals', icon: Heart },
+  { href: '/support', label: 'Help and support', icon: LifeBuoy },
 ]
 
 export default async function ProfilePage() {

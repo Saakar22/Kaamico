@@ -6,15 +6,19 @@ import type postgres from 'postgres'
 /** No serious or critical WCAG 2.2 AA violations on the page as it is now. */
 export async function expectAccessible(page: Page) {
   // Mid-animation opacity (dialogs popping in, toasts sliding in) reads as low contrast.
-  // Infinite ones (spinners, pulses) never finish, so wait only for those that end.
-  await page.evaluate(() =>
-    Promise.all(
-      document
+  // Infinite ones (spinners, pulses) never finish, so wait only for those that end. A toast
+  // can start its transition a frame after the last one ends, so check again until calm.
+  await page.evaluate(async () => {
+    for (let round = 0; round < 5; round++) {
+      const running = document
         .getAnimations()
+        .filter((a) => a.playState === 'running')
         .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
-        .map((a) => a.finished.catch(() => undefined)),
-    ),
-  )
+      if (running.length === 0) return
+      await Promise.all(running.map((a) => a.finished.catch(() => undefined)))
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    }
+  })
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
     .analyze()

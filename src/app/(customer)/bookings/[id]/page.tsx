@@ -1,10 +1,12 @@
-import { CalendarClock, KeyRound, Lock, MapPin, MessagesSquare } from 'lucide-react'
+import { CalendarClock, KeyRound, LifeBuoy, Lock, MapPin, MessagesSquare } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { AutoRefresh } from '@/components/domain/booking/auto-refresh'
 import { BookingTimeline } from '@/components/domain/booking/booking-timeline'
 import { ChargeApprovalDialog } from '@/components/domain/booking/charge-approval-dialog'
+import { DisputePanel } from '@/components/domain/disputes/dispute-panel'
+import { ReportProblemDialog } from '@/components/domain/disputes/report-problem-dialog'
 import { PriceBreakdown } from '@/components/domain/booking/price-breakdown'
 import { PaymentPanel } from '@/components/domain/payments/payment-panel'
 import { RatingStars } from '@/components/domain/professionals/rating'
@@ -22,6 +24,7 @@ import { requirePageActor } from '@/modules/auth/page-guards'
 import type { Actor } from '@/modules/auth/types'
 import { OPEN_REQUEST, TERMINAL } from '@/modules/bookings/state-machine'
 import { getCustomerBooking } from '@/modules/bookings/views'
+import { bookingDispute, canReport } from '@/modules/disputes/disputes'
 import { bookingPayment } from '@/modules/payments/payments'
 import { reviewState } from '@/modules/reviews/reviews'
 
@@ -52,6 +55,13 @@ export default async function BookingPage({ params, searchParams }: PageProps<'/
   const [payment, review] = completed
     ? await Promise.all([bookingPayment(booking.id), reviewState(actor, booking.id)])
     : [null, null]
+  const dispute = await bookingDispute(actor, {
+    id: booking.id,
+    customerId: actor.userId,
+    workerId: null,
+  })
+  const disputeOpen = dispute?.status === 'OPEN' || dispute?.status === 'UNDER_REVIEW'
+  const report = canReport(booking)
 
   const firstName = booking.worker.displayName.split(' ')[0]
   const when =
@@ -72,6 +82,7 @@ export default async function BookingPage({ params, searchParams }: PageProps<'/
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
+          {dispute && <DisputePanel dispute={dispute} viewer="CUSTOMER" />}
           {payment && booking.price.totalPaise !== null && (
             <PaymentPanel
               bookingId={booking.id}
@@ -227,6 +238,16 @@ export default async function BookingPage({ params, searchParams }: PageProps<'/
               </Link>
             </CardContent>
           </Card>
+          {report.allowed && !disputeOpen && (
+            <ReportProblemDialog bookingId={booking.id} safetyOnly={report.safetyOnly} />
+          )}
+          <Link
+            href={`/support?booking=${booking.id}`}
+            className="inline-flex h-11 items-center gap-2 text-sm font-medium text-brand-700 hover:underline"
+          >
+            <LifeBuoy aria-hidden="true" className="size-4" />
+            Get help with this booking
+          </Link>
           {CANCELLABLE.includes(booking.status) && (
             <CancelBookingButton
               bookingId={booking.id}

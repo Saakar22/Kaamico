@@ -10,7 +10,12 @@ import { expectAccessible } from './helpers'
 type Role = 'customer' | 'worker' | 'admin'
 type Target = { role: Role; path: string }
 
-const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} })
+const sql = postgres(process.env.DATABASE_URL!, {
+  max: 1,
+  onnotice: () => {},
+  // Closes itself when idle, rather than in afterAll: a worker may run this file again.
+  idle_timeout: 5,
+})
 const tokens: Partial<Record<Role, string>> = {}
 let targets: Target[] = []
 // Projects run in parallel workers, so each deletes only the sessions it made.
@@ -80,6 +85,16 @@ async function discover(): Promise<Target[]> {
       where status = 'SUBMITTED' order by submitted_at limit 1`,
   )
   const anyBooking = confirmed ?? requested
+  const dispute = await one(
+    sql<
+      { id: string; bookingId: string }[]
+    >`select d.id, d.booking_id as "bookingId" from disputes d
+      join bookings b on b.id = d.booking_id where b.customer_id = ${priya.id} limit 1`,
+  )
+  const workerTicket = await one(
+    sql<{ id: string }[]>`select id from support_tickets where user_id = ${rakesh.id} limit 1`,
+  )
+  const anyTicket = await one(sql<{ id: string }[]>`select id from support_tickets limit 1`)
 
   const optional = (role: Role, path: string | undefined) => (path ? [{ role, path }] : [])
   return [
@@ -88,6 +103,8 @@ async function discover(): Promise<Target[]> {
     { role: 'customer', path: '/bookings?tab=past' },
     { role: 'customer', path: '/profile' },
     { role: 'customer', path: '/favorites' },
+    { role: 'customer', path: '/support' },
+    ...optional('customer', dispute && `/bookings/${dispute.bookingId}`),
     ...optional('customer', confirmed && `/bookings/${confirmed.id}`),
     ...optional('customer', requested && `/bookings/${requested.id}/negotiate`),
     ...optional('customer', paid && `/bookings/${paid.id}/receipt`),
@@ -107,6 +124,8 @@ async function discover(): Promise<Target[]> {
     { role: 'worker', path: '/worker/profile' },
     { role: 'worker', path: '/worker/verification' },
     { role: 'worker', path: '/worker/reviews' },
+    { role: 'worker', path: '/worker/support' },
+    ...optional('worker', workerTicket && `/worker/support/${workerTicket.id}`),
     { role: 'admin', path: '/admin' },
     { role: 'admin', path: '/admin/verifications' },
     ...optional('admin', application && `/admin/verifications/${application.id}`),
@@ -115,6 +134,11 @@ async function discover(): Promise<Target[]> {
     { role: 'admin', path: '/admin/users' },
     { role: 'admin', path: '/admin/reviews' },
     { role: 'admin', path: '/admin/reviews?status=ALL' },
+    { role: 'admin', path: '/admin/disputes' },
+    ...optional('admin', dispute && `/admin/disputes/${dispute.id}`),
+    { role: 'admin', path: '/admin/payments' },
+    { role: 'admin', path: '/admin/support' },
+    ...optional('admin', anyTicket && `/admin/support/${anyTicket.id}`),
     { role: 'admin', path: '/admin/categories' },
     { role: 'admin', path: '/admin/audit-logs' },
   ]
@@ -136,7 +160,6 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await sql`delete from auth_sessions where token_hash in ${sql(minted)}`
-  await sql.end()
 })
 
 test('every signed-in P0 route is accessible and fits the screen', async ({ page, isMobile }) => {

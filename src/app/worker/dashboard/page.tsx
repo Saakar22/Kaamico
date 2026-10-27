@@ -1,6 +1,7 @@
 import {
   CalendarClock,
   IndianRupee,
+  LifeBuoy,
   MapPin,
   ShieldCheck,
   Star,
@@ -38,6 +39,7 @@ const SETTINGS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/worker/availability', label: 'Hours and work area', icon: CalendarClock },
   { href: '/worker/verification', label: 'ID verification', icon: ShieldCheck },
   { href: '/worker/reviews', label: 'Reviews and replies', icon: Star },
+  { href: '/worker/support', label: 'Help and support', icon: LifeBuoy },
 ]
 
 export default async function WorkerDashboardPage() {

@@ -42,6 +42,8 @@ export const TRANSITIONS: readonly Rule[] = [
   { from: 'COMPLETED', to: 'DISPUTED', by: ['CUSTOMER', 'WORKER'] },
   { from: 'DISPUTED', to: 'COMPLETED', by: ['ADMIN'] },
   { from: 'DISPUTED', to: 'CANCELLED', by: ['ADMIN'] },
+  // A rejected report on a job still in progress hands the job back to the professional.
+  { from: 'DISPUTED', to: 'IN_PROGRESS', by: ['ADMIN'] },
 ]
 
 export const TERMINAL: readonly BookingStatus[] = ['COMPLETED', 'CANCELLED', 'EXPIRED']

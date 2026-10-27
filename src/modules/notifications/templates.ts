@@ -199,6 +199,41 @@ export function draftNotifications(
           '/worker/reviews',
         ),
       ]
+    case 'dispute.opened':
+      return payload.raisedBy === 'WORKER'
+        ? [
+            toCustomer(
+              `${c.workerFirstName} reported a problem`,
+              `${ref} · Kaamico will look into it`,
+              cust.booking,
+            ),
+          ]
+        : [
+            toWorker(
+              `${c.customerFirstName} reported a problem`,
+              `${ref} · Kaamico will look into it`,
+              work.job,
+            ),
+          ]
+    case 'dispute.resolved': {
+      const refund = Number(payload.refundPaise) || 0
+      const body = refund > 0 ? `${ref} · ${formatINR(refund)} refunded` : ref
+      return [
+        toCustomer('Kaamico has resolved the reported problem', body, cust.booking),
+        toWorker('Kaamico has resolved the reported problem', body, work.job),
+      ]
+    }
+    case 'payment.refunded':
+      // A refund from a dispute is announced with its resolution.
+      if (payload.disputeId) return []
+      return [
+        toCustomer(`${formatINR(Number(payload.amountPaise))} refunded`, ref, cust.booking),
+        toWorker(
+          `${formatINR(Number(payload.amountPaise))} refunded to ${c.customerFirstName}`,
+          `${ref} · see your earnings`,
+          '/worker/earnings',
+        ),
+      ]
     case 'review.replied':
       return [toCustomer(`${c.workerFirstName} replied to your review`, ref, cust.booking)]
 
@@ -227,6 +262,9 @@ export const BOOKING_TOPICS = new Set([
   'payment.captured',
   'review.created',
   'review.replied',
+  'dispute.opened',
+  'dispute.resolved',
+  'payment.refunded',
 ])
 
 /** The professional hears about the review of their ID verification. */

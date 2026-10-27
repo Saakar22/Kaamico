@@ -121,6 +121,9 @@ const rows = {
   favorites: [] as Insert<typeof s.favorites>[],
   notifications: [] as Insert<typeof s.notifications>[],
   audit: [] as Insert<typeof s.adminAuditLogs>[],
+  disputes: [] as Insert<typeof s.disputes>[],
+  tickets: [] as Insert<typeof s.supportTickets>[],
+  ticketMessages: [] as Insert<typeof s.ticketMessages>[],
 }
 /** Booking fields set after offers exist (bookings ↔ price_offers reference each other). */
 const bookingFinal = new Map<string, Partial<Insert<typeof s.bookings>>>()
@@ -1058,6 +1061,81 @@ rows.favorites.push({ customerId: priya.userId, workerId: rakesh.id })
   }
 }
 
+// Priya reported a problem with her latest unreviewed job: it waits in the admin queue.
+{
+  const job = rows.bookings
+    .filter((b) => b.customerId === priya.userId && bookingFinal.get(b.id!)?.status === 'COMPLETED')
+    .filter((b) => !rows.reviews.some((r) => r.bookingId === b.id))
+    .map((b) => ({ id: b.id!, completedAt: bookingFinal.get(b.id!)!.completedAt as Date }))
+    .sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime())[0]
+  if (job) {
+    bookingFinal.get(job.id)!.status = 'DISPUTED'
+    const reportedAt = at(job.completedAt, 6 * HOUR)
+    rows.history.push({
+      bookingId: job.id,
+      fromStatus: 'COMPLETED',
+      toStatus: 'DISPUTED',
+      actorUserId: priya.userId,
+      actorRole: 'CUSTOMER',
+      reason: 'POOR_QUALITY',
+      createdAt: reportedAt,
+    })
+    rows.disputes.push({
+      bookingId: job.id,
+      raisedByUserId: priya.userId,
+      raisedByRole: 'CUSTOMER',
+      reason: 'POOR_QUALITY',
+      description: 'The problem came back the same evening. I had to call someone else to fix it.',
+      previousBookingStatus: 'COMPLETED',
+      createdAt: reportedAt,
+    })
+  }
+}
+
+// Help requests: Aditya's has a reply from Kaamico; Rakesh's waits for one.
+{
+  const adityaTicket = randomUUID()
+  const rakeshTicket = randomUUID()
+  rows.tickets.push(
+    {
+      id: adityaTicket,
+      userId: aditya.userId,
+      category: 'PAYMENT',
+      subject: 'Can I get a GST invoice?',
+      status: 'IN_PROGRESS',
+      assignedAdminId: adminId,
+      createdAt: at(NOW, -26 * HOUR),
+    },
+    {
+      id: rakeshTicket,
+      userId: rakesh.userId,
+      category: 'ACCOUNT',
+      subject: 'When can I withdraw my earnings?',
+      createdAt: at(NOW, -4 * HOUR),
+    },
+  )
+  rows.ticketMessages.push(
+    {
+      ticketId: adityaTicket,
+      senderUserId: aditya.userId,
+      body: 'My company needs a GST invoice for the fan installation. Is that possible?',
+      createdAt: at(NOW, -26 * HOUR),
+    },
+    {
+      ticketId: adityaTicket,
+      senderUserId: adminId,
+      body: 'Kaamico receipts are not tax invoices yet. We will let you know when they are.',
+      createdAt: at(NOW, -20 * HOUR),
+    },
+    {
+      ticketId: rakeshTicket,
+      senderUserId: rakesh.userId,
+      body: 'My earnings page shows a balance. How do I get it into my bank account?',
+      createdAt: at(NOW, -4 * HOUR),
+    },
+  )
+}
+
 const pendingWorker = workers[4]
 rows.notifications.push(
   {
@@ -1170,6 +1248,9 @@ try {
     await insertAll(tx, s.payouts, rows.payouts)
     await insertAll(tx, s.workerLedgerEntries, rows.ledger)
     await insertAll(tx, s.reviews, rows.reviews)
+    await insertAll(tx, s.disputes, rows.disputes)
+    await insertAll(tx, s.supportTickets, rows.tickets)
+    await insertAll(tx, s.ticketMessages, rows.ticketMessages)
     await insertAll(tx, s.favorites, rows.favorites)
     await insertAll(tx, s.notifications, rows.notifications)
     await insertAll(tx, s.adminAuditLogs, rows.audit)

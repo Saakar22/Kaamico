@@ -4,15 +4,17 @@ import { expectAccessible, signInAs } from './helpers'
 
 // A professional replies to a review and reports another; a customer saves a professional.
 
-const sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} })
+const sql = postgres(process.env.DATABASE_URL!, {
+  max: 1,
+  onnotice: () => {},
+  // Closes itself when idle, rather than in afterAll: a worker may run this file again.
+  idle_timeout: 5,
+})
 // Tests run in parallel workers, so each deletes only the sessions it made.
 const tag = () => `e2e reviews ${test.info().testId}`
 
 test.afterEach(async () => {
   await sql`delete from auth_sessions where user_agent = ${tag()}`
-})
-test.afterAll(async () => {
-  await sql.end()
 })
 
 test('a professional replies to a review and reports another', async ({ page }, info) => {

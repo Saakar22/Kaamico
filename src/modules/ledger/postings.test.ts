@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { commissionOf, netOf, postingsFor } from './postings'
+import { commissionOf, netOf, postingsFor, refundPostingsFor } from './postings'
 
 /** Deterministic pseudo-random integers, so the property checks are repeatable. */
 function* samples(count: number, seed = 42) {
@@ -65,5 +65,76 @@ describe('postingsFor (properties over 2,000 amounts and rates)', () => {
     expect(postingsFor({ grossPaise: 50_000, commissionBps: 0, method: 'SIMULATED' })).toEqual([
       { type: 'JOB_EARNING', amountPaise: 50_000 },
     ])
+  })
+})
+
+describe('refundPostingsFor', () => {
+  it('claws back the refund and returns the fee Kaamico no longer earns', () => {
+    expect(
+      refundPostingsFor({
+        grossPaise: 65_000,
+        commissionBps: 1000,
+        refundPaise: 15_000,
+        refundedBeforePaise: 0,
+      }),
+    ).toEqual([
+      { type: 'REFUND_CLAWBACK', amountPaise: -15_000 },
+      { type: 'ADJUSTMENT', amountPaise: 1_500 },
+    ])
+  })
+
+  it('a full refund in pieces leaves the professional with nothing and Kaamico with no fee', () => {
+    for (const { gross, bps } of samples(300)) {
+      if (gross < 3) continue
+      const job = postingsFor({ grossPaise: gross, commissionBps: bps, method: 'SIMULATED' })
+      const parts = [Math.floor(gross / 3), Math.floor(gross / 3)]
+      parts.push(gross - parts[0] - parts[1])
+      let before = 0
+      const refunds = parts.flatMap((refundPaise) => {
+        const out = refundPostingsFor({
+          grossPaise: gross,
+          commissionBps: bps,
+          refundPaise,
+          refundedBeforePaise: before,
+        })
+        before += refundPaise
+        return out
+      })
+      expect(sum(job) + sum(refunds)).toBe(0)
+    }
+  })
+
+  it('after a partial refund the professional keeps the net of what was finally paid', () => {
+    for (const { gross, bps } of samples(300, 7)) {
+      if (gross < 2) continue
+      const refund = Math.floor(gross / 2)
+      const job = postingsFor({ grossPaise: gross, commissionBps: bps, method: 'SIMULATED' })
+      const back = refundPostingsFor({
+        grossPaise: gross,
+        commissionBps: bps,
+        refundPaise: refund,
+        refundedBeforePaise: 0,
+      })
+      expect(sum(job) + sum(back)).toBe(netOf(gross - refund, bps))
+    }
+  })
+
+  it('refuses refunds above what is left', () => {
+    expect(() =>
+      refundPostingsFor({
+        grossPaise: 1000,
+        commissionBps: 1000,
+        refundPaise: 600,
+        refundedBeforePaise: 500,
+      }),
+    ).toThrow(RangeError)
+    expect(() =>
+      refundPostingsFor({
+        grossPaise: 1000,
+        commissionBps: 1000,
+        refundPaise: 0,
+        refundedBeforePaise: 0,
+      }),
+    ).toThrow(RangeError)
   })
 })

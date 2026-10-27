@@ -1,4 +1,11 @@
-import { CalendarClock, ChevronLeft, ExternalLink, MapPin, MessagesSquare } from 'lucide-react'
+import {
+  CalendarClock,
+  ChevronLeft,
+  ExternalLink,
+  LifeBuoy,
+  MapPin,
+  MessagesSquare,
+} from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -6,6 +13,8 @@ import { AutoRefresh } from '@/components/domain/booking/auto-refresh'
 import { BookingTimeline } from '@/components/domain/booking/booking-timeline'
 import { ChargeProposalForm } from '@/components/domain/booking/charge-proposal-form'
 import { PriceBreakdown } from '@/components/domain/booking/price-breakdown'
+import { DisputePanel } from '@/components/domain/disputes/dispute-panel'
+import { ReportProblemDialog } from '@/components/domain/disputes/report-problem-dialog'
 import { StatusActionBar } from '@/components/domain/booking/status-action-bar'
 import { WorkerPaymentPanel } from '@/components/domain/payments/worker-payment-panel'
 import { statusLabel } from '@/components/domain/negotiation/booking-status'
@@ -17,6 +26,7 @@ import { formatIstDateTime } from '@/lib/time'
 import type { Actor } from '@/modules/auth/types'
 import { TERMINAL } from '@/modules/bookings/state-machine'
 import { getWorkerBooking } from '@/modules/bookings/views'
+import { bookingDispute, canReport } from '@/modules/disputes/disputes'
 import { commissionOf } from '@/modules/ledger/postings'
 import { bookingPayment } from '@/modules/payments/payments'
 import { negotiationConfig } from '@/modules/negotiation/config'
@@ -42,6 +52,14 @@ export default async function WorkerJobPage({ params }: PageProps<'/worker/booki
   const actor = await requireWorkerPage()
   const job = await load(actor, (await params).id)
   const payment = job.status === 'COMPLETED' ? await bookingPayment(job.id) : null
+  // Only the assigned professional reaches this page, so the booking is theirs.
+  const dispute = await bookingDispute(actor, {
+    id: job.id,
+    customerId: '',
+    workerId: actor.workerId,
+  })
+  const disputeOpen = dispute?.status === 'OPEN' || dispute?.status === 'UNDER_REVIEW'
+  const report = canReport(job)
   const name = job.customerFirstName
   const when =
     job.timing === 'ON_DEMAND' && !job.slot
@@ -81,6 +99,7 @@ export default async function WorkerJobPage({ params }: PageProps<'/worker/booki
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
+          {dispute && <DisputePanel dispute={dispute} viewer="WORKER" />}
           {address && (
             <Card>
               <CardContent className="flex flex-col gap-3">
@@ -154,6 +173,16 @@ export default async function WorkerJobPage({ params }: PageProps<'/worker/booki
               </Link>
             </CardContent>
           </Card>
+          {report.allowed && !disputeOpen && (
+            <ReportProblemDialog bookingId={job.id} safetyOnly={report.safetyOnly} />
+          )}
+          <Link
+            href={`/worker/support?booking=${job.id}`}
+            className="inline-flex h-11 items-center gap-2 text-sm font-medium text-brand-700 hover:underline"
+          >
+            <LifeBuoy aria-hidden="true" className="size-4" />
+            Get help with this job
+          </Link>
           {job.status === 'CONFIRMED' && (
             <CancelBookingButton
               bookingId={job.id}

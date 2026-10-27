@@ -41,3 +41,33 @@ export function postingsFor(input: {
 export function netOf(grossPaise: number, commissionBps: number): number {
   return grossPaise - commissionOf(grossPaise, commissionBps)
 }
+
+export type RefundPosting = { type: 'REFUND_CLAWBACK' | 'ADJUSTMENT'; amountPaise: number }
+
+/**
+ * Ledger entries when `refundPaise` of a job is returned to the customer. The professional
+ * gives back the refunded amount, and Kaamico returns the fee it no longer earns: the fee
+ * always equals the fee on what the customer finally paid, across any number of partial
+ * refunds (`refundedBeforePaise` = refunds already made).
+ */
+export function refundPostingsFor(input: {
+  grossPaise: number
+  commissionBps: number
+  refundPaise: number
+  refundedBeforePaise: number
+}): RefundPosting[] {
+  const { grossPaise, commissionBps, refundPaise, refundedBeforePaise } = input
+  if (!Number.isInteger(refundPaise) || refundPaise <= 0) {
+    throw new RangeError('refund must be whole positive paise')
+  }
+  if (refundedBeforePaise + refundPaise > grossPaise) {
+    throw new RangeError('refunds cannot exceed the amount paid')
+  }
+  const remainingBefore = grossPaise - refundedBeforePaise
+  const feeReturned =
+    commissionOf(remainingBefore, commissionBps) -
+    commissionOf(remainingBefore - refundPaise, commissionBps)
+  const postings: RefundPosting[] = [{ type: 'REFUND_CLAWBACK', amountPaise: -refundPaise }]
+  if (feeReturned > 0) postings.push({ type: 'ADJUSTMENT', amountPaise: feeReturned })
+  return postings
+}

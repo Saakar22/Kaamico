@@ -271,6 +271,7 @@ function commonFields(row: BaseRow) {
       totalPaise: row.final_amount_paise,
     },
     cancellationReason: row.cancellation_reason,
+    completedAt: iso(row.completed_at),
   }
 }
 

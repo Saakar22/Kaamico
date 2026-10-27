@@ -2,7 +2,7 @@
 
 **Local Skills. Fair Prices.** A hyperlocal marketplace for household services in India. Professionals set their own prices, and customers can agree a fair price with them through transparent offers.
 
-> **Status: Phase 12 in progress (P1).** P0 is complete; Phase 12a adds review replies, reports and moderation, saved professionals and the account page. Customers find a professional, agree a price, track the job, approve extras, then pay in cash or through a clearly labelled simulated online checkout, get a numbered receipt and leave a review. Professionals run each job, confirm cash, and see every earning, fee and payout in their ledger. Admins review ID verification, oversee bookings and payments, suspend accounts, edit the catalog and read the audit log. No real money moves: OTP, online payments and payouts are simulated. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap, and the [demo guide](#demo-guide) for a 10-minute walkthrough.
+> **Status: Phase 12 in progress (P1).** P0 is complete; Phase 12 so far adds review replies, reports and moderation, saved professionals, the account page, reported problems with admin resolution and refunds, and help requests. Customers find a professional, agree a price, track the job, approve extras, then pay in cash or through a clearly labelled simulated online checkout, get a numbered receipt and leave a review. Professionals run each job, confirm cash, and see every earning, fee and payout in their ledger. Admins review ID verification, oversee bookings and payments, suspend accounts, edit the catalog and read the audit log. No real money moves: OTP, online payments and payouts are simulated. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap, and the [demo guide](#demo-guide) for a 10-minute walkthrough.
 
 ## Tech stack
 
@@ -115,7 +115,15 @@ What is simulated, and says so on screen: phone OTP, online payments, payouts an
 - **Replies and reports** (`/worker/reviews`): a professional can reply once to each review, publicly, and report a review that is unfair or about another job (the customer can report too, through the API). A reported review stays public until an admin decides.
 - **Moderation** (`/admin/reviews`): reported reviews are listed oldest first. Hiding one takes it off the profile and out of the rating in the same transaction; restoring brings it back and keeping it dismisses the report. Both need a reason and are audited.
 - **Saved professionals** (`/favorites`): customers save a professional from their profile and book them again from the list. Professionals who are later suspended or lose verification drop out of the list. `/profile` holds the customer's name and an optional email (the phone number is the sign-in).
-- **Not yet:** Razorpay test mode, refunds, disputes and payout requests (rest of Phase 12), and collecting the visit fee when a customer cancels after the professional sets off (it is recorded on the booking history only).
+- **Not yet:** Razorpay test mode (rest of Phase 12) and payout requests, and collecting the visit fee when a customer cancels after the professional sets off (it is recorded on the booking history only).
+
+## Problems, refunds and support
+
+- **Report a problem** (customer and professional job pages): during a job only a safety concern, and up to 72 hours after completion any problem. The booking moves to DISPUTED (no payment or review until it is settled) and the other side is told. Both sides can add notes; the description itself stays private to Kaamico.
+- **Resolution** (`/admin/disputes`): in the customer's favour (refund a paid job; an unpaid one, or a full refund, cancels the booking), in the professional's favour (no refund; the job stands and can be paid), a split (partial refund), or reject (the booking goes back to where it was, including to IN_PROGRESS). The decision, any refund, its ledger entries, the booking change and the audit row are one transaction, guarded by a version check.
+- **Refunds** (`/admin/payments`, or as part of a resolution) can be made in parts, never above what was paid (checked in the service and by a database trigger, so concurrent refunds cannot overshoot). Each refund posts `−refund` REFUND_CLAWBACK and `+fee returned` ADJUSTMENT, so Kaamico's fee always equals the fee on what the customer finally paid. Online refunds are simulated like online payments.
+- **Help and support** (`/support`, `/worker/support`, `/admin/support`): a request on any topic, optionally about one booking, with a message thread. Admin replies are signed "Kaamico support" and notify the person; resolving, closing and reopening are audited. Writing again reopens a resolved request.
+- **Not yet:** photo evidence on reports, and freezing payouts during a report (payout requests come later).
 
 ## Admin console
 
