@@ -2,6 +2,8 @@ import { CalendarClock, MapPin } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { AutoRefresh } from '@/components/domain/booking/auto-refresh'
+import { QuickMatchPanel } from '@/components/domain/booking/quick-match-panel'
 import { statusLabel } from '@/components/domain/negotiation/booking-status'
 import { CancelBookingButton } from '@/components/domain/negotiation/cancel-booking-button'
 import { NegotiationThread } from '@/components/domain/negotiation/negotiation-thread'
@@ -14,7 +16,7 @@ import { Money } from '@/components/ui/money'
 import { AppError } from '@/lib/errors'
 import { formatIstDateTime } from '@/lib/time'
 import { requirePageActor } from '@/modules/auth/page-guards'
-import { getCustomerBooking } from '@/modules/bookings/views'
+import { getCustomerBooking, getQuickMatch } from '@/modules/bookings/views'
 import { unitSuffix } from '@/modules/catalog/units'
 
 export const instant = false
@@ -43,30 +45,48 @@ export default async function NegotiatePage({ params }: PageProps<'/bookings/[id
   const afterSetOff = booking.status === 'EN_ROUTE' || booking.status === 'ARRIVED'
   // Confirmed or later: the booking page tracks it; the thread stays for messages.
   const booked = !['REQUESTED', 'NEGOTIATING', 'CANCELLED', 'EXPIRED'].includes(booking.status)
+  // An open quick match has no single professional yet: show everyone it went to.
+  const matching =
+    booking.mode === 'BROADCAST' && ['REQUESTED', 'NEGOTIATING'].includes(booking.status)
+  const candidates = matching ? await getQuickMatch(actor, booking.id) : []
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={booking.service.name}
-        description={`${statusLabel(booking.status, 'customer', firstName)} · ${booking.code}`}
+        description={
+          matching
+            ? `Quick match · ${booking.code}`
+            : `${statusLabel(booking.status, 'customer', firstName)} · ${booking.code}`
+        }
       />
+      <AutoRefresh intervalMs={5_000} enabled={matching} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
-          <NegotiationThread
-            viewer="customer"
-            counterpartName={firstName}
-            data={{
-              bookingId: booking.id,
-              status: booking.status,
-              version: booking.version,
-              listedPaise: booking.price.listedPaise,
-              agreedPaise: booking.price.agreedPaise,
-              offers: booking.offers,
-              messages: booking.messages,
-              negotiation: booking.negotiation,
-              startCode: booking.startCode,
-            }}
-          />
+          {matching && (
+            <QuickMatchPanel
+              bookingId={booking.id}
+              version={booking.version}
+              candidates={candidates}
+            />
+          )}
+          {!matching && (
+            <NegotiationThread
+              viewer="customer"
+              counterpartName={firstName}
+              data={{
+                bookingId: booking.id,
+                status: booking.status,
+                version: booking.version,
+                listedPaise: booking.price.listedPaise,
+                agreedPaise: booking.price.agreedPaise,
+                offers: booking.offers,
+                messages: booking.messages,
+                negotiation: booking.negotiation,
+                startCode: booking.startCode,
+              }}
+            />
+          )}
           {booked && (
             <Button asChild size="lg" className="self-start">
               <Link href={`/bookings/${booking.id}`}>Track your booking</Link>
@@ -94,18 +114,20 @@ export default async function NegotiatePage({ params }: PageProps<'/bookings/[id
         <aside className="flex flex-col gap-4" aria-label="Booking summary">
           <Card>
             <CardContent className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <Avatar name={booking.worker.displayName} src={booking.worker.photoUrl} />
-                <div className="flex flex-col gap-1">
-                  <Link
-                    href={`/professionals/${booking.worker.id}`}
-                    className="font-semibold hover:underline"
-                  >
-                    {booking.worker.displayName}
-                  </Link>
-                  <VerificationBadge status="VERIFIED" />
+              {!matching && (
+                <div className="flex items-center gap-3">
+                  <Avatar name={booking.worker.displayName} src={booking.worker.photoUrl} />
+                  <div className="flex flex-col gap-1">
+                    <Link
+                      href={`/professionals/${booking.worker.id}`}
+                      className="font-semibold hover:underline"
+                    >
+                      {booking.worker.displayName}
+                    </Link>
+                    <VerificationBadge status="VERIFIED" />
+                  </div>
                 </div>
-              </div>
+              )}
               <dl className="flex flex-col gap-2 text-sm">
                 <div className="flex items-start gap-2">
                   <dt className="sr-only">When</dt>

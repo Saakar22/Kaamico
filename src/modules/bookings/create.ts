@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, count, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { getEnv } from '@/config/env'
 import { getDb } from '@/db/client'
@@ -83,20 +83,23 @@ export async function createBooking(
       // Serialise this customer's requests so the open-request limits hold under races.
       await tx.execute(sql`select 1 from users where id = ${actor.userId} for update`)
       const open = await tx
-        .select({ workerId: bookingInvitations.workerId, n: count() })
+        .select({ bookingId: bookings.id, workerId: bookingInvitations.workerId })
         .from(bookings)
         .innerJoin(bookingInvitations, eq(bookingInvitations.bookingId, bookings.id))
         .where(
           and(eq(bookings.customerId, actor.userId), inArray(bookings.status, [...OPEN_REQUEST])),
         )
-        .groupBy(bookingInvitations.workerId)
       if (open.some((o) => o.workerId === input.workerId)) {
         throw conflict(
           'DUPLICATE_REQUEST',
           'You already have an open request with this professional',
         )
       }
-      if (open.length >= negotiationConfig.limits.openRequestsPerCustomer) {
+      // A quick match invites several professionals but is one request.
+      if (
+        new Set(open.map((o) => o.bookingId)).size >=
+        negotiationConfig.limits.openRequestsPerCustomer
+      ) {
         throw businessRule(
           'TOO_MANY_OPEN_REQUESTS',
           `You can have up to ${negotiationConfig.limits.openRequestsPerCustomer} open requests at a time`,

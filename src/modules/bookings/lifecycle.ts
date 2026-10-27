@@ -300,11 +300,30 @@ export async function declineRequest(
     await tx
       .update(priceOffers)
       .set({ status: 'REJECTED', respondedAt: now, respondedByUserId: actor.userId })
-      .where(and(eq(priceOffers.bookingId, booking.id), eq(priceOffers.status, 'PENDING')))
+      .where(
+        and(
+          eq(priceOffers.bookingId, booking.id),
+          eq(priceOffers.workerId, actor.workerId!),
+          eq(priceOffers.status, 'PENDING'),
+        ),
+      )
     await tx
       .update(bookingInvitations)
       .set({ status: 'DECLINED', respondedAt: now })
       .where(eq(bookingInvitations.id, invitationId))
+    if (booking.mode === 'BROADCAST') {
+      // Quick match: the others may still accept. Only when nobody is left does it end.
+      const [left] = await tx.execute<{ n: number }>(sql`
+        select count(*)::int as n from booking_invitations
+        where booking_id = ${booking.id} and status in ('INVITED', 'SEEN', 'QUOTED')`)
+      if (left.n > 0) {
+        await tx
+          .update(bookings)
+          .set({ version: booking.version + 1 })
+          .where(eq(bookings.id, booking.id))
+        return { bookingId: booking.id, status: booking.status }
+      }
+    }
     await tx
       .update(bookings)
       .set({

@@ -65,12 +65,20 @@ export function draftNotifications(
   switch (topic) {
     case 'booking.requested':
       return [
-        toWorker(
-          `New request: ${c.serviceName}`,
-          `From ${c.customerFirstName} · ${c.code}`,
-          work.request,
-        ),
+        payload.quickMatch
+          ? toWorker(
+              `Quick match: ${c.serviceName} now`,
+              `From ${c.customerFirstName} · first to accept gets the job · ${c.code}`,
+              work.request,
+            )
+          : toWorker(
+              `New request: ${c.serviceName}`,
+              `From ${c.customerFirstName} · ${c.code}`,
+              work.request,
+            ),
       ]
+    case 'request.taken':
+      return [toWorker('Booked by another professional', ref, work.request)]
 
     case 'offer.created': {
       if (!c.offer) return []
@@ -262,6 +270,7 @@ export const BOOKING_TOPICS = new Set([
   'payment.captured',
   'review.created',
   'review.replied',
+  'request.taken',
   'dispute.opened',
   'dispute.resolved',
   'payment.refunded',

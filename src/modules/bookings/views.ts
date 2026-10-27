@@ -108,6 +108,7 @@ type BaseRow = {
   job_lat: number
   job_lng: number
   commission_bps: number
+  mode: 'DIRECT' | 'BROADCAST'
 }
 
 const iso = (v: Date | string | null) => (v ? new Date(v).toISOString() : null)
@@ -123,7 +124,8 @@ async function loadBase(where: ReturnType<typeof sql>): Promise<BaseRow | undefi
            b.service_id, s.name as service_name, s.pricing_unit, b.description, b.locality_label,
            b.address_snapshot, b.listed_price_paise, b.agreed_price_paise, b.approved_charges_paise,
            b.final_amount_paise, p.min_charge_paise, p.is_negotiable, b.start_code_attempts,
-           b.cancellation_reason, b.completed_at, b.job_lat, b.job_lng, b.commission_bps
+           b.cancellation_reason, b.completed_at, b.job_lat, b.job_lng, b.commission_bps,
+           b.mode
     from bookings b
     join booking_invitations i on i.booking_id = b.id
     join worker_profiles w on w.id = i.worker_id
@@ -194,7 +196,8 @@ async function threadParts(row: BaseRow, viewer: { userId: string; party: Party 
       negotiationConfig.maxOffers - offerViews.length,
     ),
   )
-  const listed = row.listed_price_paise ?? 0
+  // A quick match has no single listed price: each thread starts at that professional's.
+  const listed = row.listed_price_paise ?? offers[0]?.amountPaise ?? 0
   const terms = {
     listedPricePaise: listed,
     minChargePaise: row.min_charge_paise ?? 0,
@@ -272,6 +275,7 @@ function commonFields(row: BaseRow) {
     },
     cancellationReason: row.cancellation_reason,
     completedAt: iso(row.completed_at),
+    mode: row.mode,
   }
 }
 
@@ -470,4 +474,76 @@ export async function listWorkerRequests(
         : null,
     expiresAt: iso(r.expires_at),
   }))
+}
+
+export type QuickMatchCandidate = {
+  workerId: string
+  displayName: string
+  photoUrl: string | null
+  rating: { avg: number | null; count: number }
+  distanceKm: number
+  status: 'WAITING' | 'COUNTERED' | 'DECLINED' | 'EXPIRED' | 'WON' | 'LOST'
+  /** Their price for the job: your offer at their listed price, or their counteroffer. */
+  pricePaise: number
+  /** A counteroffer you can accept now. */
+  acceptableOfferId: string | null
+}
+
+/** Everyone a quick match went to, and where each one stands (the customer's view). */
+export async function getQuickMatch(actor: Actor, bookingId: string) {
+  if (!z.uuid().safeParse(bookingId).success) throw notFound('Booking not found')
+  const rows = await getDb().execute<{
+    worker_id: string
+    display_name: string
+    photo_key: string | null
+    rating_sum: number
+    rating_count: number
+    distance_km: number
+    invitation_status: string
+    offer_id: string | null
+    offered_by: 'CUSTOMER' | 'WORKER' | null
+    amount_paise: number | null
+    offer_status: string | null
+  }>(sql`
+    select i.worker_id, w.display_name, w.photo_key, w.rating_sum, w.rating_count,
+           i.distance_km, i.status as invitation_status,
+           o.id as offer_id, o.offered_by, o.amount_paise, o.status as offer_status
+    from bookings b
+    join booking_invitations i on i.booking_id = b.id
+    join worker_profiles w on w.id = i.worker_id
+    left join lateral (
+      select id, offered_by, amount_paise, status from price_offers
+      where booking_id = b.id and worker_id = i.worker_id order by round desc limit 1
+    ) o on true
+    where b.id = ${bookingId} and b.customer_id = ${actor.userId} and b.mode = 'BROADCAST'
+    order by i.distance_km asc, w.display_name`)
+  if (rows.length === 0) throw notFound('Booking not found')
+  return rows.map<QuickMatchCandidate>((r) => {
+    const countered = r.offered_by === 'WORKER' && r.offer_status === 'PENDING'
+    const status: QuickMatchCandidate['status'] =
+      r.invitation_status === 'DECLINED'
+        ? 'DECLINED'
+        : r.invitation_status === 'EXPIRED'
+          ? 'EXPIRED'
+          : r.invitation_status === 'WON'
+            ? 'WON'
+            : r.invitation_status === 'LOST'
+              ? 'LOST'
+              : countered
+                ? 'COUNTERED'
+                : 'WAITING'
+    return {
+      workerId: r.worker_id,
+      displayName: r.display_name,
+      photoUrl: photoUrl(r.worker_id, r.photo_key),
+      rating: {
+        avg: r.rating_count > 0 ? Math.round((r.rating_sum / r.rating_count) * 10) / 10 : null,
+        count: r.rating_count,
+      },
+      distanceKm: Number(r.distance_km),
+      status,
+      pricePaise: r.amount_paise ?? 0,
+      acceptableOfferId: countered ? r.offer_id : null,
+    }
+  })
 }

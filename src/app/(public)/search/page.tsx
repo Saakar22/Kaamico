@@ -1,4 +1,12 @@
-import { CalendarClock, ChevronLeft, Info, MapPin, SearchX, SlidersHorizontal } from 'lucide-react'
+import {
+  CalendarClock,
+  ChevronLeft,
+  Info,
+  MapPin,
+  SearchX,
+  SlidersHorizontal,
+  Zap,
+} from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { connection } from 'next/server'
@@ -313,12 +321,27 @@ async function ProfessionalResults({
   }
 
   const firstRadius = matchingConfig.radiiKm[0]
+  const freeNow = result.items.filter((p) => p.availability.now).length
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-ink-600" aria-live="polite">
         {result.total} {result.total === 1 ? 'professional' : 'professionals'} within{' '}
         {result.radiusKm} km
       </p>
+      {freeNow > 0 && (
+        <div className="flex flex-col gap-3 rounded-lg border border-accent-500 bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-start gap-2">
+            <Zap aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-accent-500" />
+            <span>
+              <span className="font-semibold">Need it now?</span> Send one request to the nearest
+              free professionals; the first to accept is booked.
+            </span>
+          </p>
+          <Button asChild variant="secondary" className="shrink-0">
+            <Link href={`/book/${filters.service}/quick`}>Quick match</Link>
+          </Button>
+        </div>
+      )}
       {result.radiusKm > firstRadius && (
         <p className="flex items-start gap-2 rounded-md bg-info-600/10 px-3 py-2 text-sm text-ink-900">
           <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-info-600" />

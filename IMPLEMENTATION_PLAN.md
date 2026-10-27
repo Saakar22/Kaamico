@@ -1385,9 +1385,9 @@ Road routing and travel time; real-time GPS sharing; masked calling; Hindi and r
 - [x] Structured logs with request IDs; `/api/health` reports DB status.
 
 ### P1 (when undertaken)
-- [ ] Broadcast quick match with first-accept-wins verified under concurrency.
-- [ ] Disputes with admin resolution, refunds and ledger adjustments.
-- [ ] Razorpay test-mode payments with verified webhooks.
+- [x] Broadcast quick match with first-accept-wins verified under concurrency.
+- [x] Disputes with admin resolution, refunds and ledger adjustments.
+- [x] Razorpay test-mode payments with verified webhooks. *(Against a faked Razorpay API; not yet run with real test keys.)*
 - [ ] Support tickets, review moderation, favorites, SSE updates, Sentry.
 
 ---

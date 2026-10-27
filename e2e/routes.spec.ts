@@ -110,6 +110,7 @@ async function discover(): Promise<Target[]> {
     ...optional('customer', paid && `/bookings/${paid.id}/receipt`),
     ...optional('customer', reviewable && `/bookings/${reviewable.id}/review`),
     ...optional('customer', service && `/book/${service.serviceId}?worker=${rakesh.workerId}`),
+    ...optional('customer', service && `/book/${service.serviceId}/quick`),
     { role: 'customer', path: `/professionals/${rakesh.workerId}` },
     { role: 'worker', path: '/worker/dashboard' },
     { role: 'worker', path: '/worker/onboarding' },

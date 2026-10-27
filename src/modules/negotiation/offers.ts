@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, asc, eq, ne, sql } from 'drizzle-orm'
+import { and, asc, eq, ne, notInArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb } from '@/db/client'
 import {
@@ -309,7 +309,12 @@ export async function acceptOffer(
             status: sql`case when ${bookingInvitations.workerId} = ${worker.workerId} then 'WON'::invitation_status else 'LOST'::invitation_status end`,
             respondedAt: now,
           })
-          .where(eq(bookingInvitations.bookingId, booking.id))
+          .where(
+            and(
+              eq(bookingInvitations.bookingId, booking.id),
+              notInArray(bookingInvitations.status, ['DECLINED', 'EXPIRED']),
+            ),
+          )
         await tx
           .update(bookings)
           .set({
@@ -340,6 +345,21 @@ export async function acceptOffer(
           workerId: worker.workerId,
           by: me.party,
         })
+        if (booking.mode === 'BROADCAST') {
+          // Quick match: everyone else still in the running hears it has gone.
+          const others = await tx
+            .select({ workerId: bookingInvitations.workerId })
+            .from(bookingInvitations)
+            .where(
+              and(
+                eq(bookingInvitations.bookingId, booking.id),
+                eq(bookingInvitations.status, 'LOST'),
+              ),
+            )
+          for (const o of others) {
+            await addOutbox(tx, 'request.taken', { bookingId: booking.id, workerId: o.workerId })
+          }
+        }
         return { bookingId: booking.id, status: 'CONFIRMED' as const }
       })
     } catch (error) {

@@ -29,6 +29,8 @@ export default async function WorkerRequestPage({ params }: PageProps<'/worker/r
     throw error
   }
   const open = ['REQUESTED', 'NEGOTIATING'].includes(request.status)
+  // A quick match someone else accepted: say so rather than the booking's own status.
+  const lost = request.invitationStatus === 'LOST' && !request.assigned
   const when =
     request.timing === 'ON_DEMAND'
       ? 'As soon as possible'
@@ -45,8 +47,14 @@ export default async function WorkerRequestPage({ params }: PageProps<'/worker/r
       </Link>
       <PageHeader
         title={`${request.service.name} for ${request.customerFirstName}`}
-        description={`${statusLabel(request.status, 'worker', request.customerFirstName)} · ${request.code}`}
+        description={`${lost ? 'Booked by another professional' : statusLabel(request.status, 'worker', request.customerFirstName)} · ${request.code}`}
       />
+      {request.mode === 'BROADCAST' && open && (
+        <p className="rounded-lg border border-accent-500 bg-surface p-3 text-sm" role="note">
+          <span className="font-semibold">Quick match:</span> {request.customerFirstName} sent this
+          to a few nearby professionals. The first to accept gets the job.
+        </p>
+      )}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4">
           {request.assigned && (

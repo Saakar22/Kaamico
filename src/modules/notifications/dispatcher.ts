@@ -31,6 +31,19 @@ async function bookingContext(
   payload: Record<string, unknown>,
 ): Promise<BookingContext | null> {
   if (!isUuid(payload.bookingId)) return null
+  const [offer] = isUuid(payload.offerId)
+    ? await tx
+        .select({
+          offeredBy: priceOffers.offeredBy,
+          amountPaise: priceOffers.amountPaise,
+          workerId: priceOffers.workerId,
+        })
+        .from(priceOffers)
+        .where(eq(priceOffers.id, payload.offerId))
+    : []
+  // Which professional the event is about: the assigned one once confirmed; before that
+  // (a quick match invites several), the one named in the event or its offer.
+  const about = isUuid(payload.workerId) ? payload.workerId : (offer?.workerId ?? null)
   const [row] = await tx.execute<{
     code: string
     service_name: string
@@ -50,16 +63,10 @@ async function bookingContext(
     join booking_invitations i on i.booking_id = b.id
     join worker_profiles w on w.id = i.worker_id
     where b.id = ${payload.bookingId}
-    order by (i.worker_id = b.worker_id) desc nulls last
+    order by (i.worker_id = coalesce(b.worker_id, ${about}::uuid)) desc nulls last
     limit 1`)
   if (!row) return null
 
-  const [offer] = isUuid(payload.offerId)
-    ? await tx
-        .select({ offeredBy: priceOffers.offeredBy, amountPaise: priceOffers.amountPaise })
-        .from(priceOffers)
-        .where(eq(priceOffers.id, payload.offerId))
-    : []
   const [charge] = isUuid(payload.chargeId)
     ? await tx
         .select({
@@ -80,7 +87,7 @@ async function bookingContext(
     workerFirstName: firstName(row.worker_name, 'Your professional'),
     invitationId: row.invitation_id,
     totalPaise: row.final_amount_paise,
-    offer: offer ?? null,
+    offer: offer ? { offeredBy: offer.offeredBy, amountPaise: offer.amountPaise } : null,
     charge: charge ?? null,
   }
 }

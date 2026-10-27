@@ -4,6 +4,7 @@ import { idempotencyKeyFrom, idempotentResponse } from '@/lib/idempotency'
 import { readJson } from '@/lib/request'
 import { requireApiActor } from '@/modules/auth/actor'
 import { createBooking } from '@/modules/bookings/create'
+import { createQuickMatch } from '@/modules/bookings/quick-match'
 import { CUSTOMER_TABS, listCustomerBookings } from '@/modules/bookings/lists'
 
 const listQuery = z.object({
@@ -21,8 +22,10 @@ export const GET = route(async (request) => {
 })
 
 /**
- * Creates a booking request (idempotent). Errors: WORKER_UNAVAILABLE, OUT_OF_RANGE,
- * SLOT_TAKEN (409 with `alternatives`), OFFER_BELOW_FLOOR, TOO_MANY_OPEN_REQUESTS.
+ * Creates a booking request (idempotent). With `mode: 'BROADCAST'` it is a quick match
+ * sent to up to five nearby professionals free now (NO_ONE_AVAILABLE when there are none).
+ * Errors: WORKER_UNAVAILABLE, OUT_OF_RANGE, SLOT_TAKEN (409 with `alternatives`),
+ * OFFER_BELOW_FLOOR, TOO_MANY_OPEN_REQUESTS.
  */
 export const POST = route(async (request) => {
   const actor = await requireApiActor(request, { role: 'CUSTOMER' })
@@ -31,6 +34,12 @@ export const POST = route(async (request) => {
   return idempotentResponse(
     request,
     { userId: actor.userId, route: 'POST /api/v1/bookings', body },
-    async () => ({ status: 201, body: await createBooking(actor, body, key) }),
+    async () => ({
+      status: 201,
+      body:
+        (body as { mode?: unknown } | null)?.mode === 'BROADCAST'
+          ? await createQuickMatch(actor, body, key)
+          : await createBooking(actor, body, key),
+    }),
   )
 })

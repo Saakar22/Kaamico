@@ -2,7 +2,7 @@
 
 **Local Skills. Fair Prices.** A hyperlocal marketplace for household services in India. Professionals set their own prices, and customers can agree a fair price with them through transparent offers.
 
-> **Status: Phase 12 in progress (P1).** P0 is complete; Phase 12 so far adds review replies, reports and moderation, saved professionals, the account page, reported problems with admin resolution and refunds, help requests and Razorpay test mode. Customers find a professional, agree a price, track the job, approve extras, then pay in cash or through a clearly labelled simulated online checkout, get a numbered receipt and leave a review. Professionals run each job, confirm cash, and see every earning, fee and payout in their ledger. Admins review ID verification, oversee bookings and payments, suspend accounts, edit the catalog and read the audit log. No real money moves: OTP, online payments and payouts are simulated. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap, and the [demo guide](#demo-guide) for a 10-minute walkthrough.
+> **Status: Phase 12 in progress (P1).** P0 is complete; Phase 12 so far adds review replies, reports and moderation, saved professionals, the account page, reported problems with admin resolution and refunds, help requests, Razorpay test mode and quick match. Customers find a professional, agree a price, track the job, approve extras, then pay in cash or through a clearly labelled simulated online checkout, get a numbered receipt and leave a review. Professionals run each job, confirm cash, and see every earning, fee and payout in their ledger. Admins review ID verification, oversee bookings and payments, suspend accounts, edit the catalog and read the audit log. No real money moves: OTP, online payments and payouts are simulated. See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and roadmap, and the [demo guide](#demo-guide) for a 10-minute walkthrough.
 
 ## Tech stack
 
@@ -99,6 +99,14 @@ What is simulated, and says so on screen: phone OTP, online payments, payouts an
 - **Start codes** are derived from the booking ID and `AUTH_SECRET`, so the customer can always see theirs; only a hash is stored. Changing `AUTH_SECRET` changes the codes of active bookings.
 - **Cancelling:** customers cancel free until the professional sets off, then a visit fee of min(₹99, minimum charge) is recorded (collected with payments in Phase 10); no cancelling once work has started. Professionals cancel a confirmed job with a reason (it counts against reliability), or a no-show 20 minutes after arriving. Declining a request cancels it so the customer can choose someone else.
 - **Privacy:** before confirmation the professional sees the customer's first name, area and distance only; the full address appears once confirmed and disappears 24 hours after completion.
+
+## Quick match
+
+For a job now, a customer can skip comparing and send one request (`/book/:serviceId/quick`, or "Quick match" above search results when someone is free now; `POST /api/v1/bookings` with `mode: "BROADCAST"`).
+
+- **Who gets it:** the best-ranked professionals (the same matching as search) who are free now and travel to the address, up to five, skipping anyone this customer already has an open request with. Each gets an offer at their own listed price and a "Quick match" notification. It counts as one of the customer's three open requests.
+- **First accept wins:** the professionals' accepts go through the normal acceptance path, which locks the booking row first. Exactly one confirms (`src/modules/bookings/quick-match.int.test.ts` races five at once); the others become LOST, are told "Booked by another professional", and never see the address. A professional can also counter; the customer sees everyone's status and price on the request page (refreshing every 5 seconds) and can accept a counteroffer.
+- **Declining** closes only that professional's invitation; the request ends when nobody is left (or when it expires, like any on-demand request).
 
 ## Dashboards, tracking and notifications
 
