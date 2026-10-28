@@ -2,6 +2,7 @@ import {
   Banknote,
   BriefcaseBusiness,
   CalendarCheck,
+  ChartColumn,
   ClipboardList,
   FolderTree,
   House,
@@ -46,6 +47,7 @@ export const workerNav: NavItem[] = [
 
 export const adminNav: NavItem[] = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard, matchNested: false },
+  { href: '/admin/analytics', label: 'Analytics', icon: ChartColumn },
   { href: '/admin/verifications', label: 'Verifications', icon: ShieldCheck },
   { href: '/admin/bookings', label: 'Bookings', icon: ClipboardList },
   { href: '/admin/disputes', label: 'Reported problems', icon: ShieldAlert },

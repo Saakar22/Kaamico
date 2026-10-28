@@ -1,6 +1,8 @@
 import { Wallet } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { BarList } from '@/components/charts/bar-list'
+import { ColumnChart } from '@/components/charts/column-chart'
 import { SimulationBadge } from '@/components/domain/trust-badges'
 import { PayoutRequest } from '@/components/domain/worker/payout-request'
 import { LinkTabs } from '@/components/patterns/link-tabs'
@@ -13,7 +15,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Money } from '@/components/ui/money'
 import { Table, TD, TH, THead, TR } from '@/components/ui/table'
 import { cn } from '@/lib/cn'
+import { formatINR } from '@/lib/money'
 import { formatIstDateTime } from '@/lib/time'
+import { workerAnalytics } from '@/modules/analytics/worker'
 import { earningsSummary, listLedger, PERIODS, type Period } from '@/modules/ledger/earnings'
 import { listPayouts, payoutAvailability, type PayoutView } from '@/modules/ledger/payouts'
 import { requireWorkerPage } from '@/modules/workers/page-guard'
@@ -45,18 +49,28 @@ const PAYOUT_STATUS: Record<
   FAILED: { label: 'Failed', tone: 'danger' },
 }
 
+const weekTick = new Intl.DateTimeFormat('en-IN', {
+  timeZone: 'Asia/Kolkata',
+  day: 'numeric',
+  month: 'short',
+})
+const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`
+
 /** Gross, fee, net and balance straight from the ledger (§5 `/worker/earnings`). */
 export default async function EarningsPage({ searchParams }: PageProps<'/worker/earnings'>) {
   const actor = await requireWorkerPage()
   const { period: rawPeriod, cursor: rawCursor } = await searchParams
   const period = PERIODS.find((p) => p === rawPeriod) ?? 'week'
   const cursor = typeof rawCursor === 'string' ? rawCursor : null
-  const [summary, ledger, payouts, ready] = await Promise.all([
+  const [summary, ledger, payouts, ready, trends] = await Promise.all([
     earningsSummary(actor.workerId, period),
     listLedger(actor.workerId, cursor),
     listPayouts(actor.workerId),
     payoutAvailability(actor.workerId),
+    workerAnalytics(actor.workerId, period),
   ])
+  const { requests } = trends
+  const answered = requests.won + requests.declined + requests.missed
   const owed = summary.balancePaise < 0
 
   return (
@@ -124,6 +138,79 @@ export default async function EarningsPage({ searchParams }: PageProps<'/worker/
           }
         />
       </div>
+
+      <section aria-labelledby="trends-title" className="flex flex-col gap-3">
+        <h2 id="trends-title" className="font-display text-xl font-bold">
+          How you are doing
+        </h2>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardContent>
+              <ColumnChart
+                title="You earned, by week (after Kaamico's fee)"
+                unit="paise"
+                valueHeader="You earned"
+                detailHeader="Jobs"
+                columns={trends.weeks.map((w) => {
+                  const tick = weekTick.format(new Date(w.weekStart))
+                  return {
+                    key: w.weekStart,
+                    tick,
+                    name: `Week of ${tick}`,
+                    value: w.netPaise,
+                    display: formatINR(w.netPaise),
+                    detail: plural(w.jobs, 'job'),
+                  }
+                })}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex flex-col gap-5">
+              {trends.byService.length === 0 ? (
+                <p className="text-sm text-ink-600">
+                  No paid jobs {period === 'all' ? 'yet' : PERIOD_LABEL[period].toLowerCase()}.
+                </p>
+              ) : (
+                <BarList
+                  title={`Your earnings by service, ${PERIOD_LABEL[period].toLowerCase()}`}
+                  rows={trends.byService.map((s) => ({
+                    key: s.serviceId,
+                    label: s.name,
+                    detail: plural(s.jobs, 'job'),
+                    value: s.netPaise,
+                    display: formatINR(s.netPaise),
+                  }))}
+                />
+              )}
+              <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-3">
+                <StatTile
+                  label={`Requests, last ${requests.days} days`}
+                  value={requests.received}
+                />
+                <StatTile
+                  label="Booked with you"
+                  value={requests.won}
+                  hint={
+                    answered > 0
+                      ? `${Math.round((requests.won / answered) * 100)}% of the ones that finished`
+                      : undefined
+                  }
+                />
+                <StatTile
+                  label="Declined or missed"
+                  value={requests.declined + requests.missed}
+                  hint={
+                    requests.missed > 0
+                      ? `${requests.missed} timed out or went to someone else`
+                      : undefined
+                  }
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
 
       <section aria-labelledby="ledger-title" className="flex flex-col gap-3">
         <h2 id="ledger-title" className="font-display text-xl font-bold">

@@ -18,6 +18,7 @@ import {
   WORKER_LAST_NAMES,
   type ServiceSeed,
 } from './data.ts'
+import { istDateKey } from '../../lib/time.ts'
 import { createRandom } from './random.ts'
 
 try {
@@ -124,6 +125,7 @@ const rows = {
   disputes: [] as Insert<typeof s.disputes>[],
   tickets: [] as Insert<typeof s.supportTickets>[],
   ticketMessages: [] as Insert<typeof s.ticketMessages>[],
+  searches: [] as Insert<typeof s.searchDailyCounts>[],
 }
 /** Booking fields set after offers exist (bookings ↔ price_offers reference each other). */
 const bookingFinal = new Map<string, Partial<Insert<typeof s.bookings>>>()
@@ -1063,6 +1065,30 @@ createBooking({
   }
 }
 
+// Search counts for the admin funnel: a few searches behind every request, some finding nobody.
+{
+  const counts = new Map<
+    string,
+    { day: string; serviceId: string; searches: number; empty: number }
+  >()
+  for (const b of rows.bookings) {
+    const day = istDateKey(b.createdAt as Date)
+    const key = `${day}:${b.serviceId}`
+    const c = counts.get(key) ?? { day, serviceId: b.serviceId, searches: 0, empty: 0 }
+    c.searches += rnd.int(2, 6)
+    c.empty += rnd.int(0, 3) === 0 ? 1 : 0
+    counts.set(key, c)
+  }
+  for (const c of counts.values()) {
+    rows.searches.push({
+      day: c.day,
+      serviceId: c.serviceId,
+      searches: c.searches,
+      emptyResults: c.empty,
+    })
+  }
+}
+
 rows.favorites.push({ customerId: priya.userId, workerId: rakesh.id })
 
 // Rakesh has replied to his best review and reported his worst, which waits in the admin queue.
@@ -1274,6 +1300,7 @@ try {
     await insertAll(tx, s.favorites, rows.favorites)
     await insertAll(tx, s.notifications, rows.notifications)
     await insertAll(tx, s.adminAuditLogs, rows.audit)
+    await insertAll(tx, s.searchDailyCounts, rows.searches)
   })
 
   const statuses = new Map<string, number>()

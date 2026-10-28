@@ -1390,6 +1390,7 @@ Road routing and travel time; real-time GPS sharing; masked calling; Hindi and r
 - [x] Razorpay test-mode payments with verified webhooks. *(Against a faked Razorpay API; not yet run with real test keys.)*
 - [x] Support tickets, review moderation, favorites, SSE updates, Sentry. *(Sentry verified with reporting off and a dummy DSN; not yet against a real project.)*
 - [x] Payout requests (simulated): ₹100 minimum, 72 h hold, held during open reports, admin settlement audited.
+- [x] Worker earnings analytics (weekly trend, by service, request outcomes) and admin analytics (search → request → booking → completion funnel, negotiation outcomes, supply by locality).
 
 ---
 

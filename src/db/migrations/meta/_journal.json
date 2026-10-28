@@ -57,6 +57,13 @@
       "when": 1793210238272,
       "tag": "0007_payout_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793212129241,
+      "tag": "0008_search_daily_counts",
+      "breakpoints": true
     }
   ]
 }

@@ -139,6 +139,8 @@ async function discover(): Promise<Target[]> {
     ...optional('admin', dispute && `/admin/disputes/${dispute.id}`),
     { role: 'admin', path: '/admin/payments' },
     { role: 'admin', path: '/admin/payouts' },
+    { role: 'admin', path: '/admin/analytics' },
+    { role: 'admin', path: '/admin/analytics?days=7' },
     { role: 'admin', path: '/admin/support' },
     ...optional('admin', anyTicket && `/admin/support/${anyTicket.id}`),
     { role: 'admin', path: '/admin/categories' },

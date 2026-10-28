@@ -2,6 +2,7 @@ import 'server-only'
 import { z } from 'zod'
 import { businessRule, notFound } from '@/lib/errors'
 import { istDateKey, toIstParts } from '@/lib/time'
+import { countSearch } from '@/modules/analytics/searches'
 import { earliestStart, nextFreeStart } from '@/modules/availability/slots'
 import { getService, type ServiceDetail } from '@/modules/catalog/catalog'
 import type { PricingUnit } from '@/modules/catalog/units'
@@ -188,6 +189,8 @@ export async function searchProfessionals(
     dateSeed: istDateKey(now),
   })
   const ordered = q.sort === 'recommended' ? injectNewWorker(ranked, config.pageSize) : ranked
+  // Later pages of the same search are not new searches.
+  if (!q.cursor) await countSearch(service.id, ordered.length === 0, now)
 
   const offset = q.cursor ? Number(q.cursor) : 0
   const page = ordered.slice(offset, offset + q.limit)
