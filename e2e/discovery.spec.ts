@@ -86,10 +86,49 @@ test.describe('discovery', () => {
     await expect(page.getByRole('dialog', { name: 'Where do you need help?' })).toBeVisible()
   })
 
+  test('city pages lead from a city to local prices and a professional', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('link', { name: /^Pune/ }).click()
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Home services in Pune' }),
+    ).toBeVisible()
+    await expectAccessible(page)
+    await page.getByRole('link', { name: /^Plumbing in Pune/ }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Plumbing in Pune' })).toBeVisible()
+    await expect(page).toHaveTitle(/Plumbing in Pune/)
+    await expect(page.locator('link[rel=canonical]')).toHaveAttribute(
+      'href',
+      /\/in\/pune\/plumbing$/,
+    )
+    // Structured data for search engines: breadcrumbs and the services with their prices.
+    // Reload: after client navigation the previous page stays mounted (hidden).
+    await page.reload()
+    const jsonLd = await page.locator('script[type="application/ld+json"]').allTextContents()
+    expect(jsonLd.map((t) => JSON.parse(t)['@type'])).toEqual(['BreadcrumbList', 'ItemList'])
+    await expectAccessible(page)
+
+    const pros = page.getByRole('region', { name: /Top-rated plumbing professionals/ })
+    await pros.getByRole('link').first().click()
+    await expect(page).toHaveURL(/\/professionals\/[\w-]+$/)
+  })
+
+  test('robots.txt and the sitemap point crawlers at the public pages', async ({ request }) => {
+    const robots = await (await request.get('/robots.txt')).text()
+    expect(robots).toContain('Disallow: /admin')
+    expect(robots).toMatch(/Sitemap: .+\/sitemap\.xml/)
+    const sitemap = await (await request.get('/sitemap.xml')).text()
+    expect(sitemap).toContain('/in/pune/plumbing</loc>')
+    expect(sitemap).toContain('/professionals/')
+  })
+
   test('unknown professionals and categories show the not-found page', async ({ page }) => {
     await page.goto('/professionals/00000000-0000-7000-8000-000000000000')
     await expect(page.getByRole('heading', { name: "We couldn't find that page" })).toBeVisible()
     await page.goto('/services/no-such-category')
+    await expect(page.getByRole('heading', { name: "We couldn't find that page" })).toBeVisible()
+    await page.goto('/in/atlantis')
+    await expect(page.getByRole('heading', { name: "We couldn't find that page" })).toBeVisible()
+    await page.goto('/in/pune/no-such-category')
     await expect(page.getByRole('heading', { name: "We couldn't find that page" })).toBeVisible()
   })
 })

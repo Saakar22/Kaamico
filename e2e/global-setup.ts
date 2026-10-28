@@ -6,6 +6,8 @@ const ROUTES = [
   '/',
   '/services',
   '/services/plumbing',
+  '/in/pune',
+  '/in/pune/plumbing',
   '/search?q=plumber',
   '/login',
   '/admin/login',

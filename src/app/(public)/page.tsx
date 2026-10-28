@@ -14,6 +14,7 @@ import { SearchBar } from '@/components/domain/catalog/search-bar'
 import { Button } from '@/components/ui/button'
 import { brand } from '@/config/brand'
 import { listCategories } from '@/modules/catalog/catalog'
+import { listCities } from '@/modules/seo/cities'
 
 const STEPS: { icon: LucideIcon; title: string; body: string }[] = [
   {
@@ -40,7 +41,7 @@ const TRUST: { icon: LucideIcon; text: string }[] = [
 ]
 
 export default async function HomePage() {
-  const categories = await listCategories()
+  const [categories, cities] = await Promise.all([listCategories(), listCities()])
   return (
     <div className="flex flex-col gap-12 sm:gap-16">
       <section className="flex flex-col gap-5 pt-2 sm:pt-8" aria-labelledby="hero-title">
@@ -88,6 +89,29 @@ export default async function HomePage() {
           ))}
         </ol>
       </section>
+
+      {cities.length > 0 && (
+        <section aria-labelledby="cities-title" className="flex flex-col gap-3">
+          <h2 id="cities-title" className="font-display text-2xl font-bold">
+            Cities we serve
+          </h2>
+          <ul className="flex flex-wrap gap-2">
+            {cities.map((c) => (
+              <li key={c.slug}>
+                <Link
+                  href={`/in/${c.slug}`}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface px-4 hover:border-brand-600"
+                >
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-sm text-ink-600">
+                    {c.localities.length} {c.localities.length === 1 ? 'area' : 'areas'}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="trust-title" className="flex flex-col gap-4">
         <h2 id="trust-title" className="font-display text-2xl font-bold">

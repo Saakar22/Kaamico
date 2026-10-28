@@ -7,6 +7,8 @@ const pages = [
   '/',
   '/services',
   '/services/plumbing',
+  '/in/pune',
+  '/in/bengaluru/plumbing',
   '/search',
   '/search?q=plumber',
   '/terms',

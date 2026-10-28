@@ -24,6 +24,9 @@ export const metadata: Metadata = {
   },
   description: brand.description,
   applicationName: brand.name,
+  // Absolute canonical and Open Graph URLs; the server's own env check validates APP_URL.
+  metadataBase: new URL(process.env.APP_URL ?? 'http://localhost:3000'),
+  openGraph: { siteName: brand.name, locale: 'en_IN', type: 'website' },
 }
 
 export const viewport: Viewport = {
