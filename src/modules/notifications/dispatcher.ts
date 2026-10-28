@@ -41,8 +41,8 @@ async function bookingContext(
         .from(priceOffers)
         .where(eq(priceOffers.id, payload.offerId))
     : []
-  // Which professional the event is about: the assigned one once confirmed; before that
-  // (a quick match invites several), the one named in the event or its offer.
+  // Which professional the event is about: the one named in the event or its offer (a
+  // quick match invites several, and tells each one who lost), else the assigned one.
   const about = isUuid(payload.workerId) ? payload.workerId : (offer?.workerId ?? null)
   const [row] = await tx.execute<{
     code: string
@@ -63,7 +63,7 @@ async function bookingContext(
     join booking_invitations i on i.booking_id = b.id
     join worker_profiles w on w.id = i.worker_id
     where b.id = ${payload.bookingId}
-    order by (i.worker_id = coalesce(b.worker_id, ${about}::uuid)) desc nulls last
+    order by (i.worker_id = coalesce(${about}::uuid, b.worker_id)) desc nulls last
     limit 1`)
   if (!row) return null
 

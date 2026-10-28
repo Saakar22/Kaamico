@@ -1,12 +1,12 @@
 import 'server-only'
-import { eq } from 'drizzle-orm'
+import { eq, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb } from '@/db/client'
 import { paymentEvents, payments, refunds } from '@/db/schema'
 import { AppError } from '@/lib/errors'
 import { logger } from '@/lib/logger'
 import { lockBooking } from '@/modules/bookings/repo'
-import { capture } from './payments'
+import { captureOrFlag } from './payments'
 import { razorpayConfig, verifyWebhookSignature } from './razorpay'
 import { failRefund } from './refunds'
 
@@ -23,7 +23,20 @@ const paymentEntity = z.object({
   amount: z.number().int(),
   error_description: z.string().nullable().optional(),
 })
-const refundEntity = z.object({ id: z.string(), payment_id: z.string(), amount: z.number().int() })
+const refundEntity = z.object({
+  id: z.string(),
+  payment_id: z.string(),
+  amount: z.number().int(),
+  // Razorpay sends an empty array when there are no notes.
+  notes: z.unknown().optional(),
+})
+
+/** Our refund id, which we pass to Razorpay in the refund's notes. */
+function refundIdFromNotes(notes: unknown): string | null {
+  if (!notes || typeof notes !== 'object' || Array.isArray(notes)) return null
+  const id = (notes as Record<string, unknown>).refundId
+  return typeof id === 'string' && z.uuid().safeParse(id).success ? id : null
+}
 
 const eventSchema = z.object({
   event: z.string(),
@@ -93,9 +106,9 @@ export async function handleRazorpayWebhook(
               { paymentId: payment.id, expected: payment.amountPaise, got: p.amount },
               'razorpay captured an unexpected amount',
             )
-          } else if (payment.status === 'PENDING' || payment.status === 'FAILED') {
-            await capture(tx, booking, payment, now, p.id)
-            applied = true
+          } else if (['PENDING', 'FAILED', 'CANCELLED'].includes(payment.status)) {
+            // Even an attempt the customer replaced (e.g. chose cash) is real money now.
+            applied = await captureOrFlag(tx, booking, payment, p.id, now)
           }
         } else if (payment.status === 'PENDING') {
           await tx
@@ -113,11 +126,19 @@ export async function handleRazorpayWebhook(
         }
       }
     } else if ((parsed.event === 'refund.processed' || parsed.event === 'refund.failed') && r) {
+      // By Razorpay's id, or by our id in the notes when the webhook beat us to saving it.
+      const ours = refundIdFromNotes(r.notes)
       const [refund] = await tx
         .select({ id: refunds.id, status: refunds.status })
         .from(refunds)
-        .where(eq(refunds.providerRefundId, r.id))
+        .where(
+          ours
+            ? or(eq(refunds.providerRefundId, r.id), eq(refunds.id, ours))
+            : eq(refunds.providerRefundId, r.id),
+        )
+        .for('update')
       if (refund && refund.status === 'REQUESTED') {
+        await tx.update(refunds).set({ providerRefundId: r.id }).where(eq(refunds.id, refund.id))
         if (parsed.event === 'refund.processed') {
           await tx.update(refunds).set({ status: 'PROCESSED' }).where(eq(refunds.id, refund.id))
         } else {

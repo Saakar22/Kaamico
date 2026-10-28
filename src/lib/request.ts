@@ -1,10 +1,26 @@
 import { AppError } from './errors'
 
-/** Best-effort client IP (first X-Forwarded-For hop set by the hosting proxy). */
-export function clientIp(request: Request): string | null {
-  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-  const ip = forwarded || request.headers.get('x-real-ip')?.trim()
-  return ip && /^[0-9a-fA-F:.]{2,45}$/.test(ip) ? ip : null
+const IP = /^[0-9a-fA-F:.]{2,45}$/
+
+/**
+ * The client's IP for rate limits and audit rows. Each proxy appends the address it saw
+ * to X-Forwarded-For, so only the entries added by our own proxies can be trusted: with
+ * `hops` proxies in front of the app, the client is the `hops`-th entry from the right.
+ * Anything further left was sent by the client and could be made up. With no proxy
+ * (`hops` = 0) the header is ignored.
+ */
+export function clientIp(
+  request: Request,
+  hops: number = Number(process.env.TRUSTED_PROXY_HOPS ?? 1),
+): string | null {
+  if (!Number.isInteger(hops) || hops < 1) return null
+  const chain = (request.headers.get('x-forwarded-for') ?? '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+  const ip =
+    chain.length > 0 ? chain[chain.length - hops] : request.headers.get('x-real-ip')?.trim()
+  return ip && IP.test(ip) ? ip : null
 }
 
 export function userAgent(request: Request): string | null {

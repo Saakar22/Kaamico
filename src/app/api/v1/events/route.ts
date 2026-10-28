@@ -23,6 +23,10 @@ export const GET = route(async (request) => {
   let forward: (event: LiveEvent) => void = () => {}
   // Listening before the stream opens: nothing after "ready" can be missed.
   const unsubscribe = await subscribe(actor.userId, (event) => forward(event))
+  if (!unsubscribe) {
+    // The browser treats this as "not live" and keeps polling.
+    throw new AppError('SERVICE_UNAVAILABLE', 'Live updates are unavailable right now')
+  }
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {

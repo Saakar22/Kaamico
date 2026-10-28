@@ -1,5 +1,5 @@
 import 'server-only'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb } from '@/db/client'
 import { users } from '@/db/schema'
@@ -33,7 +33,12 @@ export async function updateAccount(actor: Actor, raw: unknown): Promise<Account
   try {
     const [row] = await getDb()
       .update(users)
-      .set({ name: input.name, email: input.email, emailVerified: false })
+      .set({
+        name: input.name,
+        email: input.email,
+        // Only a new address needs verifying again.
+        emailVerified: sql`case when ${users.email} is distinct from ${input.email}::citext then false else ${users.emailVerified} end`,
+      })
       .where(eq(users.id, actor.userId))
       .returning({ name: users.name, phone: users.phone, email: users.email })
     return row

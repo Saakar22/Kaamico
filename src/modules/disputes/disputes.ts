@@ -446,7 +446,8 @@ export const resolveInput = z.object({
  * with its ledger entries, and the audit row.
  *
  * - REJECT: nothing changes hands and the booking returns to where it was.
- * - WORKER_FAVOUR: no refund; the job stands as completed (and can still be paid).
+ * - WORKER_FAVOUR: no refund; the job stands as completed (and can still be paid), or,
+ *   if it was reported mid-job, goes back to the professional to finish.
  * - CUSTOMER_FAVOUR: a paid job gets a refund; an unpaid one, or one refunded in full,
  *   is cancelled so nothing is owed.
  * - SPLIT: a paid job gets a partial refund and stands as completed.
@@ -508,7 +509,11 @@ export async function resolveDispute(
     if (input.decision === 'REJECT') to = dispute.previousBookingStatus as BookingStatus
     else if (input.decision === 'CUSTOMER_FAVOUR' && (!payment || refund === remaining)) {
       to = 'CANCELLED'
-    } else to = 'COMPLETED'
+    } else {
+      // A job reported while in progress was never finished: it goes back to the
+      // professional rather than being marked complete.
+      to = dispute.previousBookingStatus === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'COMPLETED'
+    }
     if (!canTransition('DISPUTED', to, 'ADMIN'))
       throw rule('This booking cannot be closed that way')
 

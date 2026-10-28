@@ -10,7 +10,7 @@ import { writeAudit, type AuditContext } from '@/modules/audit/audit'
 import type { Actor } from '@/modules/auth/types'
 import { addOutbox, lockBooking, type BookingRow, type Tx } from '@/modules/bookings/repo'
 import { refundPostingsFor } from '@/modules/ledger/postings'
-import { createRefund } from './razorpay'
+import { createRefund, isDefinitiveRejection } from './razorpay'
 
 /**
  * Refunds (IMPLEMENTATION_PLAN.md §10.15). The total refunded never exceeds what was paid
@@ -142,29 +142,44 @@ export async function issueRefund(
 export type ProviderRefund = { refundId: string; providerPaymentId: string; amountPaise: number }
 
 /**
- * Sends a recorded Razorpay refund (call after the recording transaction commits). On
- * success the refund keeps waiting for the webhook; on failure it is undone.
+ * Sends a recorded Razorpay refund (call after the recording transaction commits). It is
+ * undone only when Razorpay definitely refused it. After a timeout or a server error the
+ * outcome is unknown, so it stays REQUESTED and the refund webhook settles it (finding it
+ * by the `refundId` note even if we never learned Razorpay's id).
  */
 export async function sendProviderRefund(pending: ProviderRefund): Promise<'REQUESTED' | 'FAILED'> {
+  let sent
   try {
-    const sent = await createRefund({
+    sent = await createRefund({
       providerPaymentId: pending.providerPaymentId,
       amountPaise: pending.amountPaise,
       notes: { refundId: pending.refundId },
     })
+  } catch (error) {
+    if (!isDefinitiveRejection(error)) {
+      logger.error(
+        { err: error, refundId: pending.refundId },
+        'razorpay refund outcome unknown; waiting for the webhook',
+      )
+      return 'REQUESTED'
+    }
+    logger.warn({ err: error, refundId: pending.refundId }, 'razorpay refused the refund')
+    await getDb().transaction((tx) => failRefund(tx, pending.refundId))
+    return 'FAILED'
+  }
+  try {
     await getDb()
       .update(refunds)
       .set({
         providerRefundId: sent.id,
         ...(sent.status === 'processed' ? { status: 'PROCESSED' as const } : {}),
       })
-      .where(eq(refunds.id, pending.refundId))
-    return 'REQUESTED'
+      .where(and(eq(refunds.id, pending.refundId), eq(refunds.status, 'REQUESTED')))
   } catch (error) {
-    logger.warn({ err: error, refundId: pending.refundId }, 'razorpay refund failed')
-    await getDb().transaction((tx) => failRefund(tx, pending.refundId))
-    return 'FAILED'
+    // Razorpay has the refund; the webhook will record it.
+    logger.error({ err: error, refundId: pending.refundId }, 'could not record razorpay refund id')
   }
+  return 'REQUESTED'
 }
 
 /**

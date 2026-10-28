@@ -45,6 +45,11 @@ const envSchema = z
     CRON_SECRET: z.string().min(32).optional(),
     /** Keys OTP hashes. A fixed development value is used outside production. */
     AUTH_SECRET: z.string().min(32).optional(),
+    /**
+     * How many proxies (load balancer, CDN) sit in front of the app and append to
+     * X-Forwarded-For. Rate limits key on the address the nearest one saw. 0 = none.
+     */
+    TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
     /** Scales every rate limit (e.g. 20 in development/CI so repeated test logins are not blocked). */
     RATE_LIMIT_MULTIPLIER: z.coerce.number().int().min(1).max(1000).default(1),
     /** Set by Next.js; `phase-production-build` while running `next build`. */

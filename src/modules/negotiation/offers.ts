@@ -267,7 +267,9 @@ export async function acceptOffer(
         const { booking, offer, me } = await offerContext(tx, actor, offerId)
         if (offer.offeredBy === me.party)
           throw conflict('NOT_YOUR_OFFER', 'You cannot accept your own offer')
-        if (booking.version !== expectedBookingVersion) {
+        // In a quick match every professional's thread bumps the shared version; the
+        // offer's own status (checked below) is what must be current there.
+        if (booking.mode !== 'BROADCAST' && booking.version !== expectedBookingVersion) {
           throw conflict('STALE_VERSION', 'This request changed. Refresh to see the latest offer.')
         }
         if (offer.status === 'EXPIRED' || (offer.status === 'PENDING' && offer.expiresAt <= now)) {
@@ -395,8 +397,13 @@ export async function rejectOffer(
       .update(priceOffers)
       .set({ status: 'REJECTED', respondedAt: now, respondedByUserId: actor.userId })
       .where(eq(priceOffers.id, offer.id))
+    // A rejection shortens a one-to-one request; in a quick match it ends only that thread,
+    // and the others keep the request's full time.
     const grace = new Date(now.getTime() + config.afterRejectMinutes * 60_000)
-    const expiresAt = booking.expiresAt && booking.expiresAt < grace ? booking.expiresAt : grace
+    const expiresAt =
+      booking.mode === 'BROADCAST' || (booking.expiresAt && booking.expiresAt < grace)
+        ? booking.expiresAt
+        : grace
     if (booking.status === 'REQUESTED') {
       await appendHistory(tx, {
         bookingId: booking.id,

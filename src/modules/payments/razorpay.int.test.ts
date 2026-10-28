@@ -9,7 +9,7 @@ import { createSession } from '@/modules/auth/sessions'
 import { call, json, ORIGIN, req, userWithSession, withId } from '@/test/api'
 import { bookingWorld } from '@/test/booking-world'
 import { connectTestDb, hasTestDatabase, truncateAll } from '@/test/db'
-import { bookingPayment } from './payments'
+import { bookingPayment, confirmCash } from './payments'
 
 const secrets = vi.hoisted(() => ({
   key: 'rzp_test_kaamico',
@@ -39,11 +39,18 @@ const hmac = (secret: string, message: string) =>
 function fakeRazorpay() {
   const calls: { path: string; body: Record<string, unknown>; auth: string | null }[] = []
   let failNext = false
+  let timeoutNext = false
   let n = 0
   const fetchMock = vi.fn(async (url: string | URL, init?: RequestInit) => {
     const path = String(url).replace('https://api.razorpay.com/v1', '')
     const body = JSON.parse(String(init?.body ?? '{}'))
     calls.push({ path, body, auth: new Headers(init?.headers).get('authorization') })
+    if (timeoutNext) {
+      // Razorpay got the request, but the answer never arrived.
+      timeoutNext = false
+      ++n
+      throw new DOMException('The operation timed out.', 'TimeoutError')
+    }
     if (failNext) {
       failNext = false
       return Response.json(
@@ -64,7 +71,12 @@ function fakeRazorpay() {
     }
     return Response.json({ error: { code: 'NOT_FOUND' } }, { status: 404 })
   })
-  return { fetchMock, calls, failNext: () => (failNext = true) }
+  return {
+    fetchMock,
+    calls,
+    failNext: () => (failNext = true),
+    timeoutNext: () => (timeoutNext = true),
+  }
 }
 
 describe.skipIf(!hasTestDatabase)('Razorpay test mode', () => {
@@ -245,7 +257,77 @@ describe.skipIf(!hasTestDatabase)('Razorpay test mode', () => {
     })
   })
 
+  describe('races and second payments', () => {
+    it('two checkouts started at once share one order', async () => {
+      const job = await world.completed()
+      const [a, b] = await Promise.all([
+        pay(job.c.cookie, job.bookingId, 'RAZORPAY'),
+        pay(job.c.cookie, job.bookingId, 'RAZORPAY'),
+      ])
+      const [ja, jb] = [await json(a), await json(b)]
+      expect(ja.checkout.orderId).toBe(jb.checkout.orderId)
+      const [row] = await sql`select provider_order_id from payments where id = ${ja.payment.id}`
+      expect(row.provider_order_id).toBe(ja.checkout.orderId)
+    })
+
+    it('a checkout finished after switching to cash still counts, and cancels the cash attempt', async () => {
+      const { c, bookingId, paymentId, orderId } = await started()
+      expect((await pay(c.cookie, bookingId, 'CASH')).status).toBe(201)
+      expect(await status(paymentId)).toBe('CANCELLED')
+      await webhook(paymentEvent('payment.captured', orderId, 50_000, 'pay_late'))
+      expect(await status(paymentId)).toBe('CAPTURED')
+      const others =
+        await sql`select status from payments where booking_id = ${bookingId} and id <> ${paymentId}`
+      expect(others.map((o) => o.status)).toEqual(['CANCELLED'])
+      expect(await ledger(bookingId)).toBe(45_000)
+    })
+
+    it('money taken for an already-paid booking is flagged for a refund, not lost or retried', async () => {
+      const { c, w, bookingId, paymentId, orderId } = await started()
+      const cash = await json(await pay(c.cookie, bookingId, 'CASH'))
+      await confirmCash(w.actor, cash.payment.id)
+      const hook = await webhook(paymentEvent('payment.captured', orderId, 50_000, 'pay_twice'))
+      expect(hook.status).toBe(200)
+      const [row] =
+        await sql`select status, provider_payment_id, failure_reason from payments where id = ${paymentId}`
+      expect(row).toEqual({
+        status: 'CANCELLED',
+        provider_payment_id: 'pay_twice',
+        failure_reason: 'Paid twice: refund this Razorpay payment',
+      })
+      // The ledger counts the job once.
+      expect(await ledger(bookingId)).toBe(-5_000)
+    })
+  })
+
   describe('refunds', () => {
+    it('a refund whose answer timed out waits for the webhook instead of being undone', async () => {
+      const { bookingId, paymentId, adminCookie } = await captured()
+      razorpay.timeoutNext()
+      const res = await refund(adminCookie, paymentId, 10_000)
+      expect(res.status).toBe(201)
+      expect(await json(res)).toMatchObject({ status: 'REQUESTED' })
+      const [r] = await sql`select id, status, provider_refund_id from refunds`
+      expect(r).toMatchObject({ status: 'REQUESTED', provider_refund_id: null })
+      expect(await ledger(bookingId)).toBe(36_000)
+      // Razorpay did refund it: the webhook finds it through our id in the notes.
+      await webhook({
+        event: 'refund.processed',
+        payload: {
+          refund: {
+            entity: {
+              id: 'rfnd_late',
+              payment_id: 'pay_9',
+              amount: 10_000,
+              notes: { refundId: r.id },
+            },
+          },
+        },
+      })
+      const [after] = await sql`select status, provider_refund_id from refunds`
+      expect(after).toEqual({ status: 'PROCESSED', provider_refund_id: 'rfnd_late' })
+    })
+
     async function captured() {
       const s = await started()
       await webhook(paymentEvent('payment.captured', s.orderId, 50_000, 'pay_9'))

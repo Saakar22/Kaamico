@@ -79,9 +79,8 @@ async function call<T>(path: string, body: Record<string, unknown>): Promise<T> 
     throw new AppError(
       'PAYMENT_PROVIDER_ERROR',
       'The payment service did not respond. Please try again.',
-      {
-        status: 502,
-      },
+      // The request may or may not have reached Razorpay.
+      { status: 502, details: { providerStatus: null } },
     )
   }
   const data = (await response.json().catch(() => null)) as
@@ -91,10 +90,23 @@ async function call<T>(path: string, body: Record<string, unknown>): Promise<T> 
     throw new AppError(
       'PAYMENT_PROVIDER_ERROR',
       'The payment service could not process this. Please try again.',
-      { status: 502, details: { providerCode: data?.error?.code ?? null } },
+      {
+        status: 502,
+        details: { providerStatus: response.status, providerCode: data?.error?.code ?? null },
+      },
     )
   }
   return data
+}
+
+/**
+ * Razorpay answered and refused (4xx): nothing happened there. Timeouts and 5xx answers
+ * leave the outcome unknown, so callers must not assume the request failed.
+ */
+export function isDefinitiveRejection(error: unknown): boolean {
+  if (!(error instanceof AppError) || error.code !== 'PAYMENT_PROVIDER_ERROR') return false
+  const status = error.details?.providerStatus
+  return typeof status === 'number' && status >= 400 && status < 500
 }
 
 export type RazorpayOrder = { id: string; amount: number; currency: string; status: string }

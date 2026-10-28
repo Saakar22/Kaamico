@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { POST as createRoute } from '@/app/api/v1/bookings/route'
-import { acceptOffer, makeOffer } from '@/modules/negotiation/offers'
+import { acceptOffer, makeOffer, rejectOffer } from '@/modules/negotiation/offers'
 import { dispatchOutbox } from '@/modules/notifications/dispatcher'
 import { call, json, req } from '@/test/api'
 import { bookingWorld } from '@/test/booking-world'
@@ -119,7 +119,13 @@ describe.skipIf(!hasTestDatabase)('quick match (broadcast)', () => {
 
     await dispatchOutbox()
     const taken = await sql`select user_id from notifications where type = 'request.taken'`
-    expect(taken).toHaveLength(4)
+    // Each professional who lost hears it once; the winner does not.
+    expect(taken.map((t) => t.user_id).sort()).toEqual(
+      pros
+        .filter((p) => p.workerId !== b.worker_id)
+        .map((p) => p.userId)
+        .sort(),
+    )
 
     // A professional who lost sees it is taken, and never the address.
     const loser = pros.find((p) => p.workerId !== b.worker_id)!
@@ -172,6 +178,23 @@ describe.skipIf(!hasTestDatabase)('quick match (broadcast)', () => {
       worker_id: pros[2].workerId,
       agreed_price_paise: 54_000,
     })
+  })
+
+  it('rejecting one professional’s counteroffer leaves the others their full time', async () => {
+    const pros = await workers(2)
+    const c = await world.customer()
+    const { bookingId } = await quick(c)
+    const [before] = await sql`select expires_at, version from bookings where id = ${bookingId}`
+    const firstOffer = await offerFor(bookingId, pros[1].workerId)
+    await makeOffer(pros[0].actor, bookingId, { amountPaise: 55_000, note: 'Parts included' })
+    const counter = await offerFor(bookingId, pros[0].workerId)
+    await rejectOffer(c.actor, counter, {})
+    const [after] = await sql`select expires_at from bookings where id = ${bookingId}`
+    expect(after.expires_at).toEqual(before.expires_at)
+    // The other professional accepts with the version they loaded before all that.
+    await acceptOffer(pros[1].actor, firstOffer, { expectedBookingVersion: before.version })
+    const [b] = await sql`select status, worker_id from bookings where id = ${bookingId}`
+    expect(b).toEqual({ status: 'CONFIRMED', worker_id: pros[1].workerId })
   })
 
   it('counts as one open request, and skips professionals already asked', async () => {

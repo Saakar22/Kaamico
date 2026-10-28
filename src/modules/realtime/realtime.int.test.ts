@@ -67,6 +67,18 @@ describe.skipIf(!hasTestDatabase)('live updates', () => {
     offB()
   })
 
+  it('a stale unsubscribe never drops a newer stream for the same person', () => {
+    const user = randomUUID()
+    const off1 = subscribeLocal(user, () => {})
+    off1()
+    const got: LiveEvent[] = []
+    const off2 = subscribeLocal(user, (e) => got.push(e))
+    off1() // the old stream's late cleanup
+    expect(deliver(JSON.stringify({ type: 'notification', users: [user] }))).toBe(1)
+    expect(got).toHaveLength(1)
+    off2()
+  })
+
   it('streams only to a signed-in person, starting with a ready event', async () => {
     const anonymous = await eventsRoute(new Request(`${ORIGIN}/api/v1/events`), {})
     expect(anonymous.status).toBe(401)

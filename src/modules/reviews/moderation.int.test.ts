@@ -277,6 +277,19 @@ describe.skipIf(!hasTestDatabase)('review replies, reports, moderation and favor
         req('/', { method: 'PATCH', cookie: c.cookie, body: { name: 'Priya S', email: '' } }),
       )
       expect((await json(cleared)).account.email).toBeNull()
+
+      // Renaming keeps a verified address verified.
+      await sql`update users set email = 'priya@example.com', email_verified = true where id = ${c.userId}`
+      await call(
+        accountRoute,
+        req('/', {
+          method: 'PATCH',
+          cookie: c.cookie,
+          body: { name: 'Priya Sharma', email: 'priya@example.com' },
+        }),
+      )
+      const [u] = await sql`select email_verified from users where id = ${c.userId}`
+      expect(u.email_verified).toBe(true)
     })
   })
 })

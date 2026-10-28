@@ -65,17 +65,23 @@ export function subscribeLocal(userId: string, listener: Listener): () => void {
   let set = subscribers.get(userId)
   if (!set) subscribers.set(userId, (set = new Set()))
   set.add(listener)
+  const mine = set
+  let done = false
+  // Safe to call more than once, and never touches a newer stream's listeners.
   return () => {
-    set.delete(listener)
-    if (set.size === 0) subscribers.delete(userId)
+    if (done) return
+    done = true
+    mine.delete(listener)
+    if (mine.size === 0 && subscribers.get(userId) === mine) subscribers.delete(userId)
   }
 }
 
 /**
  * Subscribes `listener` to events for `userId` once the LISTEN connection is up, so
- * nothing committed after the stream says "ready" is missed. Returns the unsubscribe.
+ * nothing committed after the stream says "ready" is missed. Null when LISTEN is not
+ * available: the caller must not claim to be live (the browser keeps polling).
  */
-export async function subscribe(userId: string, listener: Listener): Promise<() => void> {
-  await ensureListening()
+export async function subscribe(userId: string, listener: Listener): Promise<(() => void) | null> {
+  if (!(await ensureListening())) return null
   return subscribeLocal(userId, listener)
 }

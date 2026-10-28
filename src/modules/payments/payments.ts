@@ -1,10 +1,11 @@
 import 'server-only'
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { getEnv } from '@/config/env'
 import { getDb } from '@/db/client'
 import { bookingCharges, payments, services, workerLedgerEntries } from '@/db/schema'
 import { businessRule, conflict, forbidden, notFound, pgErrorCode } from '@/lib/errors'
+import { logger } from '@/lib/logger'
 import type { Actor } from '@/modules/auth/types'
 import { addOutbox, lockBooking, type BookingRow, type Tx } from '@/modules/bookings/repo'
 import { commissionOf, postingsFor, type PaymentMethod } from '@/modules/ledger/postings'
@@ -104,11 +105,16 @@ async function razorpayCheckout(
         .where(and(eq(payments.id, payment.id), eq(payments.status, 'PENDING')))
       throw error
     }
-    ;[current] = await getDb()
+    // Two tabs may race here: the first order saved wins and both checkouts use it.
+    const [saved] = await getDb()
       .update(payments)
       .set({ providerOrderId: orderId })
-      .where(eq(payments.id, payment.id))
+      .where(and(eq(payments.id, payment.id), isNull(payments.providerOrderId)))
       .returning()
+    ;[current] = saved
+      ? [saved]
+      : await getDb().select().from(payments).where(eq(payments.id, payment.id))
+    orderId = current.providerOrderId!
   }
   return {
     payment: toView(current),
@@ -290,15 +296,54 @@ export async function confirmRazorpay(
     if (!genuine)
       throw businessRule('PAYMENT_SIGNATURE_INVALID', 'We could not verify this payment')
     if (isPaid(payment.status)) return { payment: toView(payment) }
-    if (payment.status !== 'PENDING' && payment.status !== 'FAILED') {
-      throw conflict('PAYMENT_NOT_PENDING', 'This payment has already finished', {
-        status: payment.status,
-      })
-    }
-    return {
-      payment: toView(await capture(tx, booking, payment, now, input.razorpay_payment_id)),
-    }
+    await captureOrFlag(tx, booking, payment, input.razorpay_payment_id, now)
+    const [after] = await tx.select().from(payments).where(eq(payments.id, payment.id))
+    return { payment: toView(after) }
   })
+}
+
+/**
+ * Records money Razorpay has taken for `payment` (from the checkout callback or the
+ * webhook). Normally that captures it. If the booking was meanwhile paid another way, it
+ * cannot count twice: the payment is flagged for a refund and logged for a person to act
+ * on, instead of failing (a failing webhook would be retried forever). Returns whether
+ * anything changed.
+ */
+export async function captureOrFlag(
+  tx: Tx,
+  booking: BookingRow,
+  payment: PaymentRow,
+  providerPaymentId: string,
+  now: Date,
+): Promise<boolean> {
+  const [other] = await tx
+    .select({ id: payments.id })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.bookingId, booking.id),
+        inArray(payments.status, [...PAID]),
+        ne(payments.id, payment.id),
+      ),
+    )
+  if (!other) {
+    await capture(tx, booking, payment, now, providerPaymentId)
+    return true
+  }
+  if (payment.providerPaymentId === providerPaymentId) return false
+  logger.error(
+    { bookingId: booking.id, paymentId: payment.id, providerPaymentId },
+    'razorpay took a second payment for an already-paid booking: refund it in Razorpay',
+  )
+  await tx
+    .update(payments)
+    .set({
+      providerPaymentId,
+      failureReason: 'Paid twice: refund this Razorpay payment',
+      version: payment.version + 1,
+    })
+    .where(eq(payments.id, payment.id))
+  return true
 }
 
 /**
@@ -331,6 +376,17 @@ export async function capture(
       throw conflict('ALREADY_PAID', 'This booking is already paid')
     throw error
   }
+  // Any other unfinished attempt (e.g. cash still awaiting confirmation) is now moot.
+  await tx
+    .update(payments)
+    .set({ status: 'CANCELLED' })
+    .where(
+      and(
+        eq(payments.bookingId, booking.id),
+        inArray(payments.status, [...OPEN]),
+        ne(payments.id, payment.id),
+      ),
+    )
   const gross = payment.amountPaise
   const [service] = await tx
     .select({ name: services.name })

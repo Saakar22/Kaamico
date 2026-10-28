@@ -249,6 +249,21 @@ describe.skipIf(!hasTestDatabase)('disputes, refunds and support', () => {
       expect(await bookingStatus(live.bookingId)).toBe('COMPLETED')
     })
 
+    it('a mid-job report decided for the professional hands the job back unfinished', async () => {
+      const w = await world.worker()
+      const c = await world.customer()
+      const live = await world.completed(w, c)
+      await sql`update bookings set status = 'IN_PROGRESS', completed_at = null where id = ${live.bookingId}`
+      const res = await raise(c.cookie, live.bookingId, {
+        reason: 'SAFETY',
+        description: 'The ladder looked unsafe, so I asked them to stop.',
+      })
+      const a = await admin()
+      await resolve(a.cookie, (await json(res)).disputeId, { decision: 'WORKER_FAVOUR' })
+      const [b] = await sql`select status, completed_at from bookings where id = ${live.bookingId}`
+      expect(b).toEqual({ status: 'IN_PROGRESS', completed_at: null })
+    })
+
     it('refuses inconsistent or stale decisions', async () => {
       const j = await job()
       const id = await disputed(j)
