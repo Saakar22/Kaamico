@@ -39,7 +39,7 @@ export function SearchBar({
       <button
         type="submit"
         className={cn(
-          'inline-flex shrink-0 items-center rounded-md bg-brand-600 px-4 font-medium text-white hover:bg-brand-700',
+          'inline-flex shrink-0 items-center rounded-md bg-fill-brand px-4 font-medium text-on-fill hover:bg-fill-brand-hover',
           size === 'lg' ? 'h-12 px-5' : 'h-11',
         )}
       >

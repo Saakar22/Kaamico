@@ -28,7 +28,7 @@ export function LinkTabs({
             >
               {t.label}
               {t.count ? (
-                <span className="rounded-full bg-brand-600 px-1.5 text-xs text-white">
+                <span className="rounded-full bg-fill-brand px-1.5 text-xs text-on-fill">
                   {t.count}
                 </span>
               ) : null}

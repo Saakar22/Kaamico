@@ -1392,6 +1392,7 @@ Road routing and travel time; real-time GPS sharing; masked calling; Hindi and r
 - [x] Payout requests (simulated): ₹100 minimum, 72 h hold, held during open reports, admin settlement audited.
 - [x] Worker earnings analytics (weekly trend, by service, request outcomes) and admin analytics (search → request → booking → completion funnel, negotiation outcomes, supply by locality).
 - [x] SEO city pages: prerendered `/in/[city]` and `/in/[city]/[category]` with local prices, top professionals, canonical URLs and JSON-LD; sitemap and robots (no crawling on a public demo).
+- [x] Dark mode (device setting or a saved choice; axe-checked in dark) and an installable PWA (manifest, icons, offline page; no data cached).
 
 ---
 

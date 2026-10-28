@@ -13,7 +13,7 @@ export function Switch({ className, ...props }: ComponentProps<typeof SwitchPrim
       )}
       {...props}
     >
-      <SwitchPrimitive.Thumb className="block size-6 translate-x-0.5 rounded-full bg-white shadow-sm transition-transform data-[state=checked]:translate-x-[1.375rem] motion-reduce:transition-none" />
+      <SwitchPrimitive.Thumb className="block size-6 translate-x-0.5 rounded-full bg-surface shadow-sm transition-transform data-[state=checked]:translate-x-[1.375rem] motion-reduce:transition-none" />
     </SwitchPrimitive.Root>
   )
 }

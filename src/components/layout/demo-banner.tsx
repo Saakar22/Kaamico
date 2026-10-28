@@ -14,7 +14,7 @@ export async function DemoBanner() {
   return (
     <div
       role="note"
-      className="flex items-center justify-center gap-2 bg-accent-500 px-4 py-1.5 text-center text-sm font-medium text-ink-900"
+      className="flex items-center justify-center gap-2 bg-accent-500 px-4 py-1.5 text-center text-sm font-medium text-on-accent"
     >
       <FlaskConical aria-hidden="true" className="size-4 shrink-0" />
       Demo: sign-in codes, online payments and payouts are simulated. No real money moves.

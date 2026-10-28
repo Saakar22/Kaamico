@@ -200,7 +200,9 @@ export function NegotiationThread({
               <p
                 className={cn(
                   'max-w-sm rounded-lg px-3 py-2 text-sm',
-                  item.message.fromMe ? 'bg-brand-600 text-white' : 'bg-surface-muted text-ink-900',
+                  item.message.fromMe
+                    ? 'bg-fill-brand text-on-fill'
+                    : 'bg-surface-muted text-ink-900',
                 )}
               >
                 <span className="sr-only">{item.message.fromMe ? 'You' : counterpartName}: </span>
@@ -208,7 +210,7 @@ export function NegotiationThread({
                 <span
                   className={cn(
                     'ml-2 text-xs',
-                    item.message.fromMe ? 'text-white/80' : 'text-ink-600',
+                    item.message.fromMe ? 'text-on-fill/80' : 'text-ink-600',
                   )}
                 >
                   {formatIstTime(new Date(item.message.createdAt))}

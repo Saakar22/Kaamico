@@ -117,11 +117,11 @@ export function BookingTimeline({
               aria-hidden="true"
               className={cn(
                 'relative flex size-6 shrink-0 items-center justify-center rounded-full border',
-                e.state === 'done' && 'border-success-700 bg-success-700 text-white',
-                e.state === 'current' && 'border-brand-600 bg-brand-600 text-white',
+                e.state === 'done' && 'border-fill-success bg-fill-success text-on-fill',
+                e.state === 'current' && 'border-fill-brand bg-fill-brand text-on-fill',
                 e.state === 'todo' && 'border-border bg-surface',
                 e.state === 'event' && 'ml-1.5 size-3 border-ink-600/40 bg-surface-muted',
-                e.state === 'ended' && 'border-danger-700 bg-danger-700 text-white',
+                e.state === 'ended' && 'border-fill-danger bg-fill-danger text-on-fill',
               )}
             >
               {e.state === 'done' && <Check className="size-3.5" />}

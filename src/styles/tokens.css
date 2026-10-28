@@ -24,6 +24,21 @@
   --color-warning-800: #92400e;
   --color-danger-700: #b91c1c;
 
+  /*
+   * Solid fills behind white text (primary buttons, step numbers, own messages). Kept
+   * separate from the text colours above because in dark mode those turn light, while a
+   * fill under white text must stay dark enough for 4.5:1.
+   */
+  --color-fill-brand: #0b6e4f;
+  --color-fill-brand-hover: #08573f;
+  --color-fill-danger: #b91c1c;
+  --color-fill-success: #15803d;
+  --color-on-fill: #ffffff;
+  /* Marigold always carries dark ink, in both themes. */
+  --color-on-accent: #1b1f24;
+  /* Behind dialogs and sheets. */
+  --color-overlay: #1b1f24;
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
@@ -61,6 +76,60 @@
       transform: translateX(-100%);
     }
   }
+}
+
+/*
+ * Dark theme (P1): the same semantic tokens with dark values. It follows the device
+ * setting unless the person picked Light or Dark (stored on <html data-theme>). The two
+ * blocks hold the same values; keep them in step. Contrast pairs were checked at ≥ 4.5:1
+ * for text and ≥ 3:1 for graphics.
+ */
+:root {
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-brand-50: #0f2b22;
+    --color-brand-600: #3dbb88;
+    --color-brand-700: #62d3a4;
+    --color-ink-900: #eceef1;
+    --color-ink-600: #a7afba;
+    --color-surface: #121417;
+    --color-surface-muted: #1b1e23;
+    --color-border: #2f343b;
+    --color-info-600: #8ab4ff;
+    --color-success-700: #4cc777;
+    --color-warning-700: #e8a33d;
+    --color-success-800: #74d896;
+    --color-warning-800: #f3bd6a;
+    --color-danger-700: #f47c7c;
+    --color-fill-brand: #0b7a56;
+    --color-fill-brand-hover: #0b6e4f;
+    --color-fill-danger: #c03030;
+    --color-overlay: #000000;
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-brand-50: #0f2b22;
+  --color-brand-600: #3dbb88;
+  --color-brand-700: #62d3a4;
+  --color-ink-900: #eceef1;
+  --color-ink-600: #a7afba;
+  --color-surface: #121417;
+  --color-surface-muted: #1b1e23;
+  --color-border: #2f343b;
+  --color-info-600: #8ab4ff;
+  --color-success-700: #4cc777;
+  --color-warning-700: #e8a33d;
+  --color-success-800: #74d896;
+  --color-warning-800: #f3bd6a;
+  --color-danger-700: #f47c7c;
+  --color-fill-brand: #0b7a56;
+  --color-fill-brand-hover: #0b6e4f;
+  --color-fill-danger: #c03030;
+  --color-overlay: #000000;
 }
 
 @theme inline {

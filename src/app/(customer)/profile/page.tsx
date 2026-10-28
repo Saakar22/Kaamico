@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { SignOutButton } from '@/components/auth/sign-out-button'
 import { AccountForm } from '@/components/domain/account/account-form'
 import { PageHeader } from '@/components/patterns/page-header'
+import { AppSettings } from '@/components/pwa/app-settings'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { getAccount } from '@/modules/auth/account'
 import { requirePageActor } from '@/modules/auth/page-guards'
@@ -37,6 +38,7 @@ export default async function ProfilePage() {
           />
         </CardContent>
       </Card>
+      <AppSettings />
       <nav aria-label="Account">
         <ul className="flex flex-col gap-3">
           {LINKS.map((l) => (

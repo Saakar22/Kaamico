@@ -12,7 +12,7 @@ export const DialogClose = DialogPrimitive.Close
 
 function Overlay() {
   return (
-    <DialogPrimitive.Overlay className="fixed inset-0 z-50 animate-fade-in bg-ink-900/50 motion-reduce:animate-none" />
+    <DialogPrimitive.Overlay className="fixed inset-0 z-50 animate-fade-in bg-overlay/50 motion-reduce:animate-none" />
   )
 }
 

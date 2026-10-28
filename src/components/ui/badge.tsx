@@ -14,7 +14,7 @@ export const badgeVariants = cva(
         danger: 'border-danger-700/20 bg-danger-700/10 text-danger-700',
         info: 'border-info-600/20 bg-info-600/10 text-info-600',
         // Marigold always carries ink text; white on marigold fails contrast.
-        accent: 'border-accent-500 bg-accent-500 text-ink-900',
+        accent: 'border-accent-500 bg-accent-500 text-on-accent',
       },
     },
     defaultVariants: { tone: 'neutral' },

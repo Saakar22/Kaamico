@@ -31,7 +31,7 @@ export function Stepper({
               <span
                 className={cn(
                   'flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-semibold',
-                  done && 'border-brand-600 bg-brand-600 text-white',
+                  done && 'border-fill-brand bg-fill-brand text-on-fill',
                   active && 'border-brand-600 text-brand-700',
                   !done && !active && 'border-border text-ink-600',
                 )}

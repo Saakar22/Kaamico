@@ -75,7 +75,7 @@ export default async function HomePage() {
         <ol className="grid gap-5 md:grid-cols-3">
           {STEPS.map((step, i) => (
             <li key={step.title} className="flex gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-600 font-semibold text-white">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-fill-brand font-semibold text-on-fill">
                 {i + 1}
               </span>
               <div className="flex flex-col gap-1">

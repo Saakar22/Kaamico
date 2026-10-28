@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { Baloo_2, Inter } from 'next/font/google'
 import { Suspense } from 'react'
 import { DemoBanner } from '@/components/layout/demo-banner'
+import { PwaSetup } from '@/components/pwa/pwa-setup'
+import { THEME_SCRIPT } from '@/components/pwa/theme'
 import { Toaster } from '@/components/ui/toaster'
 import { brand } from '@/config/brand'
 import './globals.css'
@@ -30,18 +32,32 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0b6e4f',
+  // The browser bar matches the page: brand green in light, the dark surface in dark.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#0b6e4f' },
+    { media: '(prefers-color-scheme: dark)', color: '#121417' },
+  ],
 }
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en-IN" className={`${inter.variable} ${baloo.variable} h-full antialiased`}>
+    // data-theme is set by THEME_SCRIPT before React hydrates, so the server's <html> differs.
+    <html
+      lang="en-IN"
+      className={`${inter.variable} ${baloo.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Applies a chosen Light/Dark theme before the first paint (no flash). */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">
         <Suspense fallback={null}>
           <DemoBanner />
         </Suspense>
         {children}
         <Toaster />
+        <PwaSetup />
       </body>
     </html>
   )

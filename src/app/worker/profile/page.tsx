@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ProfileForm } from '@/components/domain/worker/profile-form'
 import { SkillsForm } from '@/components/domain/worker/skills-form'
 import { PageHeader } from '@/components/patterns/page-header'
+import { AppSettings } from '@/components/pwa/app-settings'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { listCategories } from '@/modules/catalog/catalog'
 import { requireWorkerPage } from '@/modules/workers/page-guard'
@@ -58,6 +59,7 @@ export default async function WorkerProfilePage() {
           />
         </CardContent>
       </Card>
+      <AppSettings />
     </div>
   )
 }

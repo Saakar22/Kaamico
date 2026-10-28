@@ -9,14 +9,14 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-700',
+        primary: 'bg-fill-brand text-on-fill hover:bg-fill-brand-hover active:bg-fill-brand-hover',
         secondary:
           'border border-brand-600 bg-surface text-brand-700 hover:bg-brand-50 active:bg-brand-50',
         tertiary: 'text-brand-700 hover:bg-brand-50 active:bg-brand-50',
         destructive:
           'border border-danger-700 bg-surface text-danger-700 hover:bg-danger-700/5 active:bg-danger-700/10',
         // Filled red is reserved for the confirm button inside confirmation dialogs.
-        'destructive-solid': 'bg-danger-700 text-white hover:bg-danger-700/90',
+        'destructive-solid': 'bg-fill-danger text-on-fill hover:bg-fill-danger/90',
       },
       size: {
         sm: 'h-9 px-3 text-sm',

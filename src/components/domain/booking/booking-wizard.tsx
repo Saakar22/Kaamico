@@ -258,7 +258,7 @@ export function BookingWizard(props: Props) {
                         className={cn(
                           'h-11 rounded-full border px-4 text-sm tabular-nums',
                           start === s.start
-                            ? 'border-brand-600 bg-brand-600 text-white'
+                            ? 'border-fill-brand bg-fill-brand text-on-fill'
                             : 'border-border hover:border-brand-600',
                         )}
                       >

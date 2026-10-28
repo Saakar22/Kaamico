@@ -114,8 +114,15 @@ test.describe('discovery', () => {
 
   test('robots.txt and the sitemap point crawlers at the public pages', async ({ request }) => {
     const robots = await (await request.get('/robots.txt')).text()
-    expect(robots).toContain('Disallow: /admin')
-    expect(robots).toMatch(/Sitemap: .+\/sitemap\.xml/)
+    // A production demo (as local production runs are) keeps crawlers out entirely.
+    const demo = process.env.E2E_DEV_SERVER !== '1' && !process.env.E2E_NOT_DEMO
+    if (demo) {
+      expect(robots).toMatch(/Disallow: \/\s*$/m)
+      expect(robots).not.toContain('Allow: /')
+    } else {
+      expect(robots).toContain('Disallow: /admin')
+      expect(robots).toMatch(/Sitemap: .+\/sitemap\.xml/)
+    }
     const sitemap = await (await request.get('/sitemap.xml')).text()
     expect(sitemap).toContain('/in/pune/plumbing</loc>')
     expect(sitemap).toContain('/professionals/')
