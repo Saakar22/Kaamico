@@ -8,6 +8,7 @@ import type { Tx } from '@/modules/bookings/repo'
 import {
   BOOKING_TOPICS,
   draftNotifications,
+  draftPayoutNotification,
   draftVerificationNotification,
   type BookingContext,
 } from './templates'
@@ -102,10 +103,32 @@ async function verificationDraft(tx: Tx, payload: Record<string, unknown>) {
     : null
 }
 
+async function payoutDraft(tx: Tx, topic: string, payload: Record<string, unknown>) {
+  if (!isUuid(payload.payoutId)) return null
+  const [row] = await tx.execute<{
+    user_id: string
+    amount_paise: number
+    failure_reason: string | null
+  }>(sql`
+    select w.user_id, p.amount_paise, p.failure_reason from payouts p
+    join worker_profiles w on w.id = p.worker_id where p.id = ${payload.payoutId}`)
+  return row
+    ? draftPayoutNotification(topic, {
+        workerUserId: row.user_id,
+        amountPaise: row.amount_paise,
+        failureReason: row.failure_reason,
+      })
+    : null
+}
+
 async function deliver(tx: Tx, topic: string, payload: Record<string, unknown>): Promise<number> {
-  if (topic === 'verification.decided') {
-    const draft = await verificationDraft(tx, payload)
-    if (draft) await tx.insert(notifications).values(draft)
+  if (topic === 'verification.decided' || topic.startsWith('payout.')) {
+    const draft =
+      topic === 'verification.decided'
+        ? await verificationDraft(tx, payload)
+        : await payoutDraft(tx, topic, payload)
+    if (draft)
+      await tx.insert(notifications).values({ ...draft, body: clip(draft.body ?? '', 500) || null })
     return draft ? 1 : 0
   }
   if (!BOOKING_TOPICS.has(topic)) return 0

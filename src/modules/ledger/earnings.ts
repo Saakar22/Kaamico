@@ -2,7 +2,7 @@ import 'server-only'
 import { and, desc, eq, lt, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb } from '@/db/client'
-import { payouts, workerLedgerEntries } from '@/db/schema'
+import { workerLedgerEntries } from '@/db/schema'
 import { fromIst, toIstParts } from '@/lib/time'
 
 export const PERIODS = ['week', 'month', 'all'] as const
@@ -58,8 +58,9 @@ export async function earningsSummary(
       coalesce(sum(amount_paise) filter (where type = 'JOB_EARNING' ${since}), 0)::int as gross,
       coalesce(-sum(amount_paise) filter (where type = 'COMMISSION' ${since}), 0)::int as commission,
       coalesce(-sum(amount_paise) filter (where type = 'CASH_COLLECTED' ${since}), 0)::int as cash,
-      coalesce(sum(amount_paise) filter (where type in ('ADJUSTMENT', 'REFUND_CLAWBACK') ${since}), 0)::int as adjustments,
-      coalesce(-sum(amount_paise) filter (where type = 'PAYOUT' ${since}), 0)::int as paid_out,
+      coalesce(sum(amount_paise) filter (where type in ('ADJUSTMENT', 'REFUND_CLAWBACK') and payout_id is null ${since}), 0)::int as adjustments,
+      -- A failed payout's amount comes back as an adjustment tied to the payout.
+      coalesce(-sum(amount_paise) filter (where (type = 'PAYOUT' or payout_id is not null) ${since}), 0)::int as paid_out,
       (count(*) filter (where type = 'JOB_EARNING' ${since}))::int as jobs,
       coalesce(sum(amount_paise), 0)::int as balance
     from worker_ledger_entries where worker_id = ${workerId}`)
@@ -118,23 +119,4 @@ export async function listLedger(
     })),
     nextCursor: rows.length > PAGE ? String(page.at(-1)!.id) : null,
   }
-}
-
-/** Payouts so far (all simulated in this release; requesting one comes later). */
-export async function listPayouts(workerId: string) {
-  const rows = await getDb()
-    .select()
-    .from(payouts)
-    .where(eq(payouts.workerId, workerId))
-    .orderBy(desc(payouts.requestedAt))
-    .limit(50)
-  return rows.map((p) => ({
-    id: p.id,
-    amountPaise: p.amountPaise,
-    status: p.status,
-    mode: p.mode,
-    reference: p.reference,
-    requestedAt: p.requestedAt.toISOString(),
-    paidAt: p.paidAt?.toISOString() ?? null,
-  }))
 }

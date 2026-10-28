@@ -2,6 +2,7 @@ import { Wallet } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SimulationBadge } from '@/components/domain/trust-badges'
+import { PayoutRequest } from '@/components/domain/worker/payout-request'
 import { LinkTabs } from '@/components/patterns/link-tabs'
 import { PageHeader } from '@/components/patterns/page-header'
 import { StatTile } from '@/components/patterns/stat-tile'
@@ -13,13 +14,8 @@ import { Money } from '@/components/ui/money'
 import { Table, TD, TH, THead, TR } from '@/components/ui/table'
 import { cn } from '@/lib/cn'
 import { formatIstDateTime } from '@/lib/time'
-import {
-  earningsSummary,
-  listLedger,
-  listPayouts,
-  PERIODS,
-  type Period,
-} from '@/modules/ledger/earnings'
+import { earningsSummary, listLedger, PERIODS, type Period } from '@/modules/ledger/earnings'
+import { listPayouts, payoutAvailability, type PayoutView } from '@/modules/ledger/payouts'
 import { requireWorkerPage } from '@/modules/workers/page-guard'
 
 export const instant = false
@@ -39,6 +35,15 @@ const TYPE_LABEL: Record<string, string> = {
   REFUND_CLAWBACK: 'Refund',
   PAYOUT: 'Payout',
 }
+const PAYOUT_STATUS: Record<
+  PayoutView['status'],
+  { label: string; tone: 'success' | 'info' | 'danger' }
+> = {
+  REQUESTED: { label: 'Requested', tone: 'info' },
+  PROCESSING: { label: 'On its way', tone: 'info' },
+  PAID: { label: 'Paid', tone: 'success' },
+  FAILED: { label: 'Failed', tone: 'danger' },
+}
 
 /** Gross, fee, net and balance straight from the ledger (§5 `/worker/earnings`). */
 export default async function EarningsPage({ searchParams }: PageProps<'/worker/earnings'>) {
@@ -46,10 +51,11 @@ export default async function EarningsPage({ searchParams }: PageProps<'/worker/
   const { period: rawPeriod, cursor: rawCursor } = await searchParams
   const period = PERIODS.find((p) => p === rawPeriod) ?? 'week'
   const cursor = typeof rawCursor === 'string' ? rawCursor : null
-  const [summary, ledger, payouts] = await Promise.all([
+  const [summary, ledger, payouts, ready] = await Promise.all([
     earningsSummary(actor.workerId, period),
     listLedger(actor.workerId, cursor),
     listPayouts(actor.workerId),
+    payoutAvailability(actor.workerId),
   ])
   const owed = summary.balancePaise < 0
 
@@ -80,6 +86,12 @@ export default async function EarningsPage({ searchParams }: PageProps<'/worker/
                 ? 'Kaamico owes you this from online payments. Payouts are simulated in this demo.'
                 : 'You are all settled up.'}
           </p>
+          {ready.onHoldPaise > 0 && (
+            <p className="text-sm text-ink-600">
+              <Money paise={ready.onHoldPaise} /> is on hold: a job&apos;s earnings can be paid out
+              72 hours after it is paid, once the customer can no longer report a problem.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -179,10 +191,32 @@ export default async function EarningsPage({ searchParams }: PageProps<'/worker/
         <h2 id="payouts-title" className="font-display text-xl font-bold">
           Payouts
         </h2>
+        <Card>
+          <CardContent className="flex flex-col gap-3">
+            <p className="text-sm text-ink-600">
+              Ready to pay out:{' '}
+              <span className="font-semibold text-ink-900">
+                <Money paise={ready.availablePaise} />
+              </span>
+            </p>
+            {ready.openPayoutId ? (
+              <p className="text-sm text-ink-600">
+                Your last payout is on its way. You can ask for the next one once it arrives.
+              </p>
+            ) : ready.availablePaise >= ready.minimumPaise ? (
+              <PayoutRequest
+                availablePaise={ready.availablePaise}
+                minimumPaise={ready.minimumPaise}
+              />
+            ) : (
+              <p className="text-sm text-ink-600">
+                You can ask for a payout once <Money paise={ready.minimumPaise} /> or more is ready.
+              </p>
+            )}
+          </CardContent>
+        </Card>
         {payouts.length === 0 ? (
-          <p className="text-ink-600">
-            No payouts yet. Requesting a payout arrives in a later update.
-          </p>
+          <p className="text-ink-600">No payouts yet.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {payouts.map((p) => (
@@ -198,11 +232,14 @@ export default async function EarningsPage({ searchParams }: PageProps<'/worker/
                     {formatIstDateTime(new Date(p.paidAt ?? p.requestedAt))}
                     {p.reference ? ` · ${p.reference}` : ''}
                   </span>
+                  {p.failureReason && (
+                    <span className="text-xs text-danger-700">
+                      {p.failureReason} The amount is back in your balance.
+                    </span>
+                  )}
                 </span>
                 <span className="flex items-center gap-2">
-                  <Badge tone={p.status === 'PAID' ? 'success' : 'neutral'}>
-                    {p.status.toLowerCase()}
-                  </Badge>
+                  <Badge tone={PAYOUT_STATUS[p.status].tone}>{PAYOUT_STATUS[p.status].label}</Badge>
                   {p.mode === 'SIMULATED' && (
                     <SimulationBadge label="Simulated: no money transferred" />
                   )}

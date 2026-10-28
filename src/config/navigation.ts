@@ -1,4 +1,5 @@
 import {
+  Banknote,
   BriefcaseBusiness,
   CalendarCheck,
   ClipboardList,
@@ -49,6 +50,7 @@ export const adminNav: NavItem[] = [
   { href: '/admin/bookings', label: 'Bookings', icon: ClipboardList },
   { href: '/admin/disputes', label: 'Reported problems', icon: ShieldAlert },
   { href: '/admin/payments', label: 'Payments', icon: IndianRupee },
+  { href: '/admin/payouts', label: 'Payouts', icon: Banknote },
   { href: '/admin/support', label: 'Support', icon: LifeBuoy },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/reviews', label: 'Reviews', icon: MessageSquareWarning },

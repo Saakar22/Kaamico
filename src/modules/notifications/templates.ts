@@ -276,6 +276,31 @@ export const BOOKING_TOPICS = new Set([
   'payment.refunded',
 ])
 
+/** The professional hears when a payout they asked for is paid or fails. */
+export function draftPayoutNotification(
+  topic: string,
+  payout: { workerUserId: string; amountPaise: number; failureReason: string | null },
+): NotificationDraft | null {
+  const base = { userId: payout.workerUserId, type: topic, link: '/worker/earnings' }
+  const amount = formatINR(payout.amountPaise)
+  switch (topic) {
+    case 'payout.paid':
+      return {
+        ...base,
+        title: `Payout of ${amount} sent`,
+        body: 'This is a demo, so no money was actually transferred.',
+      }
+    case 'payout.failed':
+      return {
+        ...base,
+        title: `Your payout of ${amount} did not go through`,
+        body: `${payout.failureReason ?? 'It failed.'} The amount is back in your balance.`,
+      }
+    default:
+      return null
+  }
+}
+
 /** The professional hears about the review of their ID verification. */
 export function draftVerificationNotification(
   decision: unknown,

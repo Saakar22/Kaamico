@@ -143,13 +143,22 @@ export const payouts = pgTable(
     status: payoutStatus().notNull().default('REQUESTED'),
     mode: payoutMode().notNull().default('SIMULATED'),
     reference: varchar({ length: 80 }),
+    /** Why a payout failed; its amount went back to the balance. */
+    failureReason: varchar({ length: 300 }),
     requestedAt: createdAt(),
     paidAt: timestamptz(),
     updatedAt: updatedAt(),
   },
   (t) => [
     index('payouts_worker_idx').on(t.workerId, t.requestedAt),
+    // One payout in flight per professional; the next waits until it is paid or fails.
+    uniqueIndex('payouts_one_open_per_worker')
+      .on(t.workerId)
+      .where(sql`${t.status} in ('REQUESTED', 'PROCESSING')`),
+    index('payouts_queue_idx').on(t.status, t.requestedAt),
     check('payouts_amount_positive', sql`${t.amountPaise} > 0`),
+    check('payouts_paid_at', sql`${t.status} <> 'PAID' or ${t.paidAt} is not null`),
+    check('payouts_failure_reason', sql`${t.status} <> 'FAILED' or ${t.failureReason} is not null`),
   ],
 )
 

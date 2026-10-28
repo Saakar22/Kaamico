@@ -1043,6 +1043,26 @@ createBooking({
   }
 }
 
+// Another professional's payout request waits in the admin payout queue.
+{
+  const [id, balance] =
+    [...ledgerBalance].find(([workerId, b]) => workerId !== rakesh.id && b > rupees(500)) ?? []
+  if (id && balance) {
+    const payoutId = randomUUID()
+    const amount = Math.floor((balance * 0.5) / 100) * 100
+    const requestedAt = at(NOW, -DAY)
+    rows.payouts.push({ id: payoutId, workerId: id, amountPaise: amount, requestedAt })
+    postLedger({
+      workerId: id,
+      payoutId,
+      type: 'PAYOUT',
+      amountPaise: -amount,
+      description: 'Payout requested (simulated)',
+      createdAt: requestedAt,
+    })
+  }
+}
+
 rows.favorites.push({ customerId: priya.userId, workerId: rakesh.id })
 
 // Rakesh has replied to his best review and reported his worst, which waits in the admin queue.
