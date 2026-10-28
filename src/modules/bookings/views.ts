@@ -417,7 +417,7 @@ export async function listWorkerRequests(
   now: Date = new Date(),
 ): Promise<RequestListItem[]> {
   if (!actor.workerId) return []
-  await expireDue(now)
+  await expireDue(now, { workerId: actor.workerId })
   const rows = await getDb().execute<{
     invitation_id: string
     booking_id: string

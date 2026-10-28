@@ -167,7 +167,7 @@ export async function listCustomerBookings(
   options: { tab?: CustomerTab; cursor?: string | null } = {},
   now: Date = new Date(),
 ): Promise<{ bookings: CustomerBookingItem[]; nextCursor: string | null }> {
-  await expireDue(now)
+  await expireDue(now, { customerId: actor.userId })
   const tab = CUSTOMER_TAB[options.tab ?? 'active']
   const { after, by } = keyset(tab.order, decodeCursor(options.cursor))
   const rows = await customerRows(actor, {
@@ -220,7 +220,7 @@ export async function getCustomerDashboard(
   actor: Actor,
   now: Date = new Date(),
 ): Promise<CustomerDashboard> {
-  await expireDue(now)
+  await expireDue(now, { customerId: actor.userId })
   const db = getDb()
   const [offers, charges, active, waiting, rebook, unpaid] = await Promise.all([
     db.execute<{
@@ -470,7 +470,7 @@ export async function getWorkerJobSummary(
   actor: Actor,
   now: Date = new Date(),
 ): Promise<WorkerJobSummary> {
-  await expireDue(now)
+  if (actor.workerId) await expireDue(now, { workerId: actor.workerId })
   const weekStart = startOfIstWeek(now).toISOString()
   const [{ jobs }, [counts]] = await Promise.all([
     listWorkerJobs(actor, { tab: 'today' }, now),

@@ -53,21 +53,50 @@ export async function addOutbox(
   await tx.insert(outboxEvents).values({ topic, payload })
 }
 
+/** Whose requests to expire: one booking, one person's, or (sweeper) everyone's. */
+export type ExpiryScope = string | { customerId: string } | { workerId: string } | undefined
+
+function bookingsIn(scope: ExpiryScope) {
+  if (scope === undefined) return undefined
+  if (typeof scope === 'string') return eq(bookings.id, scope)
+  if ('customerId' in scope) return eq(bookings.customerId, scope.customerId)
+  return sql`exists (select 1 from ${bookingInvitations} i
+    where i.booking_id = ${bookings.id} and i.worker_id = ${scope.workerId})`
+}
+
 /**
- * Lazy expiry: marks lapsed PENDING offers EXPIRED and lapsed open requests EXPIRED,
- * for one booking or (sweeper) all of them. Runs in its own transaction so the result
- * is kept even when the caller's request then fails.
+ * Lazy expiry: marks lapsed PENDING offers EXPIRED and lapsed open requests EXPIRED, for
+ * one booking, one person's bookings (pages listing them), or all of them (the sweeper).
+ * Rows another transaction holds are skipped (the next read or sweep gets them), so page
+ * loads never queue behind each other. Runs in its own transaction so the result is kept
+ * even when the caller's request then fails.
  */
 export async function expireDue(
   now: Date,
-  bookingId?: string,
+  scope?: ExpiryScope,
 ): Promise<{ offers: number; bookings: number }> {
   return getDb().transaction(async (tx) => {
-    const offerScope = bookingId ? eq(priceOffers.bookingId, bookingId) : undefined
+    const mine = bookingsIn(scope)
+    const lapsed = tx
+      .select({ id: priceOffers.id })
+      .from(priceOffers)
+      .where(
+        and(
+          eq(priceOffers.status, 'PENDING'),
+          lte(priceOffers.expiresAt, now),
+          mine
+            ? inArray(
+                priceOffers.bookingId,
+                tx.select({ id: bookings.id }).from(bookings).where(mine),
+              )
+            : undefined,
+        ),
+      )
+      .for('update', { skipLocked: true })
     const expiredOffers = await tx
       .update(priceOffers)
       .set({ status: 'EXPIRED', respondedAt: now })
-      .where(and(eq(priceOffers.status, 'PENDING'), lte(priceOffers.expiresAt, now), offerScope))
+      .where(inArray(priceOffers.id, lapsed))
       .returning({ id: priceOffers.id })
 
     const due = await tx
@@ -77,7 +106,7 @@ export async function expireDue(
         and(
           inArray(bookings.status, ['REQUESTED', 'NEGOTIATING']),
           lte(bookings.expiresAt, now),
-          bookingId ? eq(bookings.id, bookingId) : undefined,
+          mine,
         ),
       )
       .for('update', { skipLocked: true })

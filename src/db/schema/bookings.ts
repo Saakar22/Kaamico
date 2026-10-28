@@ -208,6 +208,10 @@ export const priceOffers = pgTable(
     uniqueIndex('price_offers_one_pending_per_thread')
       .on(t.bookingId, t.workerId)
       .where(sql`${t.status} = 'PENDING'`),
+    // The sweeper's "pending offers past their expiry" lookup.
+    index('price_offers_pending_expiry_idx')
+      .on(t.expiresAt)
+      .where(sql`${t.status} = 'PENDING'`),
     uniqueIndex('price_offers_one_accepted_per_booking')
       .on(t.bookingId)
       .where(sql`${t.status} = 'ACCEPTED'`),
