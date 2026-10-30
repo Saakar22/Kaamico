@@ -64,6 +64,13 @@
       "when": 1793212129241,
       "tag": "0008_search_daily_counts",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793248774197,
+      "tag": "0009_visit_fee",
+      "breakpoints": true
     }
   ]
 }

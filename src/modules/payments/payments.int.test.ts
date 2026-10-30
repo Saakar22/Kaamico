@@ -7,6 +7,8 @@ import { POST as simulateRoute } from '@/app/api/v1/payments/[id]/simulate/route
 import { GET as summaryRoute } from '@/app/api/v1/worker/earnings/summary/route'
 import { GET as ledgerRoute } from '@/app/api/v1/worker/ledger/route'
 import { createBooking } from '@/modules/bookings/create'
+import { cancelBooking, transition } from '@/modules/bookings/lifecycle'
+import { acceptOffer } from '@/modules/negotiation/offers'
 import { commissionOf } from '@/modules/ledger/postings'
 import { earningsSummary, listLedger } from '@/modules/ledger/earnings'
 import { dispatchOutbox } from '@/modules/notifications/dispatcher'
@@ -192,6 +194,78 @@ describe.skipIf(!hasTestDatabase)('payments, ledger, receipts and reviews', () =
       expect(results.map((r) => r.status).sort()).toEqual([200, 409, 409, 409, 409])
       expect(await ledger(w.workerId)).toHaveLength(3)
       expect(await sql`select count(*)::int as n from invoices`).toEqual([{ n: 1 }])
+    })
+  })
+
+  describe('visit fee', () => {
+    /** A ₹500 job the customer cancels once the professional has set off (or before, if `free`). */
+    async function cancelled(free = false) {
+      const w = await world.worker()
+      const c = await world.customer()
+      const { bookingId } = await createBooking(c.actor, world.request(c, w), world.key())
+      const [offer] = await sql`select id from price_offers where booking_id = ${bookingId}`
+      await acceptOffer(w.actor, offer.id, {
+        expectedBookingVersion: await world.version(bookingId),
+      })
+      if (!free) {
+        // Setting off is only allowed close to the slot, so start it now.
+        await sql`update bookings set slot = tstzrange(now(), now() + interval '2 hours') where id = ${bookingId}`
+        await transition(w.actor, bookingId, {
+          to: 'EN_ROUTE',
+          expectedVersion: await world.version(bookingId),
+        })
+      }
+      await cancelBooking(c.actor, bookingId, { expectedVersion: await world.version(bookingId) })
+      return { w, c, bookingId }
+    }
+
+    it('is charged on a late cancellation, paid like a job and posted to the ledger', async () => {
+      const { w, c, bookingId } = await cancelled()
+      expect((await sql`select visit_fee_paise from bookings where id = ${bookingId}`)[0]).toEqual({
+        visit_fee_paise: 9_900,
+      })
+      const { payment } = await json(await pay(c.cookie, bookingId, { method: 'CASH' }))
+      expect(payment).toMatchObject({ amountPaise: 9_900, status: 'PENDING' })
+      const res = await call(
+        confirmCashRoute,
+        req('/', { cookie: w.cookie, body: {} }),
+        withId(payment.id),
+      )
+      expect((await json(res)).payment.status).toBe('CAPTURED')
+      expect(await ledger(w.workerId)).toEqual([
+        { type: 'JOB_EARNING', amount_paise: 9_900 },
+        { type: 'COMMISSION', amount_paise: -990 },
+        { type: 'CASH_COLLECTED', amount_paise: -9_900 },
+      ])
+      const receipt = (
+        await json(await call(invoiceRoute, req('/', { cookie: c.cookie }), withId(bookingId)))
+      ).receipt
+      expect(receipt).toMatchObject({
+        totalPaise: 9_900,
+        lineItems: [
+          { label: 'Tap repair: visit fee (cancelled after set-off)', amountPaise: 9_900 },
+        ],
+      })
+      await dispatchOutbox()
+      expect(
+        await sql`select title, body, link from notifications where user_id = ${w.userId} and type = 'booking.cancelled'`,
+      ).toEqual([
+        {
+          title: 'Priya cancelled after you set off',
+          body: expect.stringMatching(/owe a ₹99 visit fee$/),
+          link: `/worker/bookings/${bookingId}`,
+        },
+      ])
+    })
+
+    it('is not owed when the customer cancels before the professional sets off', async () => {
+      const { c, bookingId } = await cancelled(true)
+      expect((await sql`select visit_fee_paise from bookings where id = ${bookingId}`)[0]).toEqual({
+        visit_fee_paise: null,
+      })
+      expect((await json(await pay(c.cookie, bookingId, { method: 'CASH' }))).error.code).toBe(
+        'NOT_PAYABLE',
+      )
     })
   })
 

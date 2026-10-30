@@ -7,6 +7,7 @@ import { logger } from '@/lib/logger'
 import type { Tx } from '@/modules/bookings/repo'
 import {
   BOOKING_TOPICS,
+  draftAdminVerificationNotifications,
   draftNotifications,
   draftPayoutNotification,
   draftVerificationNotification,
@@ -103,6 +104,24 @@ async function verificationDraft(tx: Tx, payload: Record<string, unknown>) {
     : null
 }
 
+async function adminVerificationDrafts(tx: Tx, payload: Record<string, unknown>) {
+  if (!isUuid(payload.applicationId)) return []
+  const [row] = await tx.execute<{ display_name: string }>(sql`
+    select w.display_name from verification_applications a
+    join worker_profiles w on w.id = a.worker_id where a.id = ${payload.applicationId}`)
+  if (!row) return []
+  const admins = await tx.execute<{ id: string }>(sql`
+    select id from users where roles @> '{ADMIN}' and status = 'ACTIVE'`)
+  return draftAdminVerificationNotifications(
+    admins.map((a) => a.id),
+    {
+      id: payload.applicationId,
+      workerName: firstName(row.display_name, 'A professional'),
+      resubmission: payload.resubmission === true,
+    },
+  )
+}
+
 async function payoutDraft(tx: Tx, topic: string, payload: Record<string, unknown>) {
   if (!isUuid(payload.payoutId)) return null
   const [row] = await tx.execute<{
@@ -122,6 +141,14 @@ async function payoutDraft(tx: Tx, topic: string, payload: Record<string, unknow
 }
 
 async function deliver(tx: Tx, topic: string, payload: Record<string, unknown>): Promise<number> {
+  if (topic === 'verification.submitted') {
+    const drafts = await adminVerificationDrafts(tx, payload)
+    if (drafts.length > 0)
+      await tx
+        .insert(notifications)
+        .values(drafts.map((d) => ({ ...d, title: clip(d.title, 120) })))
+    return drafts.length
+  }
   if (topic === 'verification.decided' || topic.startsWith('payout.')) {
     const draft =
       topic === 'verification.decided'

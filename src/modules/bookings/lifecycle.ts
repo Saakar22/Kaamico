@@ -181,7 +181,7 @@ async function arrivedAt(tx: Tx, bookingId: string): Promise<Date | null> {
 
 /**
  * Cancels per the policy in §11.3. Customers cancel free until the professional sets off;
- * afterwards a visit fee is recorded. Workers can cancel a confirmed job (it counts
+ * afterwards a visit fee is owed and payable on the booking. Workers can cancel a confirmed job (it counts
  * against their reliability) or a no-show 20 minutes after arriving.
  */
 export async function cancelBooking(
@@ -213,15 +213,14 @@ export async function cancelBooking(
     }
 
     const metadata: Record<string, unknown> = {}
+    let visitFeePaise: number | null = null
     if (isCustomer && (booking.status === 'EN_ROUTE' || booking.status === 'ARRIVED')) {
       const [p] = await tx.execute<{ min_charge_paise: number }>(sql`
         select min_charge_paise from worker_service_pricing
         where worker_id = ${booking.workerId} and service_id = ${booking.serviceId}`)
-      // Collected with payments (Phase 10); recorded now so the policy is auditable.
-      metadata.visitFeePaise = Math.min(
-        config.visitFeePaise,
-        p?.min_charge_paise ?? config.visitFeePaise,
-      )
+      // Stored on the booking, which the customer then pays like a job.
+      visitFeePaise = Math.min(config.visitFeePaise, p?.min_charge_paise ?? config.visitFeePaise)
+      metadata.visitFeePaise = visitFeePaise
     }
     if (isWorker) {
       if (!input.reason)
@@ -257,6 +256,7 @@ export async function cancelBooking(
         cancelledBy: by,
         cancellationReason: input.reason,
         cancelledAt: now,
+        visitFeePaise,
         version: booking.version + 1,
       })
       .where(eq(bookings.id, booking.id))
@@ -269,7 +269,11 @@ export async function cancelBooking(
       reason: input.reason,
       metadata,
     })
-    await addOutbox(tx, 'booking.cancelled', { bookingId: booking.id, by })
+    await addOutbox(tx, 'booking.cancelled', {
+      bookingId: booking.id,
+      by,
+      ...(visitFeePaise ? { visitFeePaise } : {}),
+    })
     return { bookingId: booking.id, status: 'CANCELLED' as BookingStatus, ...metadata }
   })
 }

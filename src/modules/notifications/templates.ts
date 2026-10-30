@@ -150,7 +150,15 @@ export function draftNotifications(
       if (payload.by === 'WORKER')
         return [toCustomer(`${c.workerFirstName} cancelled your booking`, ref, cust.booking)]
       if (payload.by === 'CUSTOMER')
-        return [toWorker(`${c.customerFirstName} cancelled`, ref, work.request)]
+        return [
+          Number.isInteger(payload.visitFeePaise)
+            ? toWorker(
+                `${c.customerFirstName} cancelled after you set off`,
+                `${ref} · they owe a ${formatINR(Number(payload.visitFeePaise))} visit fee`,
+                work.job,
+              )
+            : toWorker(`${c.customerFirstName} cancelled`, ref, work.request),
+        ]
       return [
         toCustomer('Your booking was cancelled', ref, cust.booking),
         toWorker('A job was cancelled', ref, work.request),
@@ -250,7 +258,7 @@ export function draftNotifications(
   }
 }
 
-/** Topics about one booking; everything else is skipped for now (e.g. verification, Phase 9). */
+/** Topics about one booking; verification and payout topics have their own drafts below. */
 export const BOOKING_TOPICS = new Set([
   'booking.requested',
   'offer.created',
@@ -299,6 +307,23 @@ export function draftPayoutNotification(
     default:
       return null
   }
+}
+
+/** Every active admin hears when a professional's documents are waiting for review. */
+export function draftAdminVerificationNotifications(
+  adminUserIds: string[],
+  application: { id: string; workerName: string; resubmission: boolean },
+): NotificationDraft[] {
+  const title = application.resubmission
+    ? `${application.workerName} re-uploaded their ID documents`
+    : `${application.workerName} submitted ID documents`
+  return adminUserIds.map((userId) => ({
+    userId,
+    type: 'verification.submitted',
+    title,
+    body: 'Waiting for review.',
+    link: `/admin/verifications/${application.id}`,
+  }))
 }
 
 /** The professional hears about the review of their ID verification. */

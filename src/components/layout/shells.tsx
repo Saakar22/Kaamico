@@ -120,7 +120,7 @@ export function WorkerShell({ children, actions }: { children: ReactNode; action
 }
 
 /** Admin console: desktop-first sidebar; a menu sheet on small screens. */
-export function AdminShell({ children }: { children: ReactNode }) {
+export function AdminShell({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1 bg-surface-muted">
       <SkipLink />
@@ -130,9 +130,21 @@ export function AdminShell({ children }: { children: ReactNode }) {
         nav={<SidebarNav nav="admin" label="Admin" />}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
-          <HomeLink href="/admin" />
-          <AdminMobileMenu />
+        <header
+          className={cn(
+            'sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-surface px-4',
+            actions ? 'md:justify-end md:px-6' : 'md:hidden',
+          )}
+        >
+          <div className="md:hidden">
+            <HomeLink href="/admin" />
+          </div>
+          <div className="flex items-center gap-1">
+            {actions}
+            <div className="md:hidden">
+              <AdminMobileMenu />
+            </div>
+          </div>
         </header>
         <main id={MAIN_ID} className="w-full flex-1 px-4 py-6 sm:px-6">
           {children}

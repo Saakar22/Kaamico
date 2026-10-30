@@ -25,7 +25,7 @@ import type { Actor } from '@/modules/auth/types'
 import { OPEN_REQUEST, TERMINAL } from '@/modules/bookings/state-machine'
 import { getCustomerBooking } from '@/modules/bookings/views'
 import { bookingDispute, canReport } from '@/modules/disputes/disputes'
-import { bookingPayment, onlineMethod } from '@/modules/payments/payments'
+import { bookingPayment, onlineMethod, owesVisitFee } from '@/modules/payments/payments'
 import { reviewState } from '@/modules/reviews/reviews'
 
 export const instant = false
@@ -52,9 +52,10 @@ export default async function BookingPage({ params, searchParams }: PageProps<'/
   // Still agreeing a price: the thread is the page for that.
   if (OPEN_REQUEST.includes(booking.status)) redirect(`/bookings/${booking.id}/negotiate`)
   const completed = booking.status === 'COMPLETED'
+  const visitFee = owesVisitFee(booking) ? booking.visitFeePaise : null
   const [payment, review] = completed
     ? await Promise.all([bookingPayment(booking.id), reviewState(actor, booking.id)])
-    : [null, null]
+    : [visitFee ? await bookingPayment(booking.id) : null, null]
   const dispute = await bookingDispute(actor, {
     id: booking.id,
     customerId: actor.userId,
@@ -69,7 +70,7 @@ export default async function BookingPage({ params, searchParams }: PageProps<'/
       ? 'As soon as possible'
       : formatIstDateTime(new Date(booking.slot?.start ?? booking.requestedStart))
   const proposed = booking.charges.find((c) => c.status === 'PROPOSED')
-  // Keep refreshing a completed job until it is paid (the professional confirms cash).
+  // Keep refreshing a completed job (or visit fee) until it is paid: the professional confirms cash.
   const live = !TERMINAL.includes(booking.status) || payment?.state === 'AWAITING_CASH'
   const justConfirmed = query.confirmed === '1' && booking.status === 'CONFIRMED'
 
@@ -83,13 +84,14 @@ export default async function BookingPage({ params, searchParams }: PageProps<'/
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
           {dispute && <DisputePanel dispute={dispute} viewer="CUSTOMER" />}
-          {payment && booking.price.totalPaise !== null && (
+          {payment && (visitFee ?? booking.price.totalPaise) !== null && (
             <PaymentPanel
               bookingId={booking.id}
-              totalPaise={booking.price.totalPaise}
+              totalPaise={(visitFee ?? booking.price.totalPaise)!}
               workerName={firstName}
               state={payment}
               online={onlineMethod()}
+              visitFee={visitFee !== null}
             />
           )}
 

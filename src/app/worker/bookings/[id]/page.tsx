@@ -28,7 +28,7 @@ import { TERMINAL } from '@/modules/bookings/state-machine'
 import { getWorkerBooking } from '@/modules/bookings/views'
 import { bookingDispute, canReport } from '@/modules/disputes/disputes'
 import { commissionOf } from '@/modules/ledger/postings'
-import { bookingPayment } from '@/modules/payments/payments'
+import { bookingPayment, owesVisitFee } from '@/modules/payments/payments'
 import { negotiationConfig } from '@/modules/negotiation/config'
 import { requireWorkerPage } from '@/modules/workers/page-guard'
 
@@ -51,7 +51,9 @@ async function load(actor: Actor, id: string) {
 export default async function WorkerJobPage({ params }: PageProps<'/worker/bookings/[id]'>) {
   const actor = await requireWorkerPage()
   const job = await load(actor, (await params).id)
-  const payment = job.status === 'COMPLETED' ? await bookingPayment(job.id) : null
+  const visitFee = owesVisitFee(job) ? job.visitFeePaise : null
+  const payment = job.status === 'COMPLETED' || visitFee ? await bookingPayment(job.id) : null
+  const payable = visitFee ?? job.price.totalPaise
   // Only the assigned professional reaches this page, so the booking is theirs.
   const dispute = await bookingDispute(actor, {
     id: job.id,
@@ -122,13 +124,14 @@ export default async function WorkerJobPage({ params }: PageProps<'/worker/booki
             </Card>
           )}
 
-          {payment && job.price.totalPaise !== null && (
+          {payment && payable !== null && (
             <WorkerPaymentPanel
               bookingId={job.id}
               customerName={name}
-              totalPaise={job.price.totalPaise}
-              feePaise={commissionOf(job.price.totalPaise, job.commissionBps)}
+              totalPaise={payable}
+              feePaise={commissionOf(payable, job.commissionBps)}
               state={payment}
+              visitFee={visitFee !== null}
             />
           )}
           <StatusActionBar

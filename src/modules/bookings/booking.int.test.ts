@@ -557,6 +557,8 @@ describe.skipIf(!hasTestDatabase)('bookings and negotiation', () => {
         expectedVersion: (await bookingRow(late.bookingId)).version,
       })
       expect(r2).toMatchObject({ visitFeePaise: 9900 })
+      expect((await bookingRow(late.bookingId)).visit_fee_paise).toBe(9900)
+      expect((await bookingRow(free.bookingId)).visit_fee_paise).toBeNull()
 
       const started = await confirmed(60)
       await sql`update bookings set status = 'IN_PROGRESS', started_at = now() where id = ${started.bookingId}`

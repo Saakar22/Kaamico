@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { BOOKING_TOPICS, draftNotifications, type BookingContext } from './templates'
+import {
+  BOOKING_TOPICS,
+  draftAdminVerificationNotifications,
+  draftNotifications,
+  type BookingContext,
+} from './templates'
 
 const ctx: BookingContext = {
   bookingId: 'b1',
@@ -109,5 +114,50 @@ describe('draftNotifications', () => {
       expect(draftNotifications(topic, payload, full).length, topic).toBeGreaterThan(0)
     }
     expect(draftNotifications('verification.submitted', {}, full)).toEqual([])
+  })
+
+  it('tells the professional about a visit fee when the customer cancels late', () => {
+    expect(draftNotifications('booking.cancelled', { by: 'CUSTOMER' }, ctx)).toEqual([
+      expect.objectContaining({ title: 'Priya cancelled', link: '/worker/requests/inv1' }),
+    ])
+    expect(
+      draftNotifications('booking.cancelled', { by: 'CUSTOMER', visitFeePaise: 9_900 }, ctx),
+    ).toEqual([
+      expect.objectContaining({
+        userId: 'work',
+        title: 'Priya cancelled after you set off',
+        body: 'Tap repair · KMC-ABC234 · they owe a ₹99 visit fee',
+        link: '/worker/bookings/b1',
+      }),
+    ])
+  })
+})
+
+describe('admin verification notifications', () => {
+  it('goes to every admin and links to the application', () => {
+    const drafts = draftAdminVerificationNotifications(['a1', 'a2'], {
+      id: 'app1',
+      workerName: 'Rakesh',
+      resubmission: false,
+    })
+    expect(drafts).toEqual(
+      ['a1', 'a2'].map((userId) => ({
+        userId,
+        type: 'verification.submitted',
+        title: 'Rakesh submitted ID documents',
+        body: 'Waiting for review.',
+        link: '/admin/verifications/app1',
+      })),
+    )
+    expect(
+      draftAdminVerificationNotifications(['a1'], {
+        id: 'app1',
+        workerName: 'Rakesh',
+        resubmission: true,
+      })[0].title,
+    ).toBe('Rakesh re-uploaded their ID documents')
+    expect(
+      draftAdminVerificationNotifications([], { id: 'x', workerName: 'R', resubmission: false }),
+    ).toEqual([])
   })
 })

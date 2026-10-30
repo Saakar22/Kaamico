@@ -26,6 +26,7 @@ import { POST as addDocument } from '@/app/api/v1/worker/verification/documents/
 import { GET as verificationRoute } from '@/app/api/v1/worker/verification/route'
 import { POST as submitRoute } from '@/app/api/v1/worker/verification/submit/route'
 import { LocalStorage, setStorageForTests } from '@/lib/storage'
+import { dispatchOutbox } from '@/modules/notifications/dispatcher'
 import { createFileToken } from '@/lib/storage/signed-url'
 import { call, json, req, uploadForm, userWithSession, withId } from '@/test/api'
 import { connectTestDb, fixtures, hasTestDatabase, truncateAll } from '@/test/db'
@@ -256,6 +257,20 @@ describe.skipIf(!hasTestDatabase)('worker supply: onboarding, uploads and verifi
       const events = await sql`select topic, payload from outbox_events`
       expect(events).toEqual([
         { topic: 'verification.submitted', payload: expect.objectContaining({ workerId }) },
+      ])
+      // Active admins (not suspended ones, not customers) are told in-app.
+      const admin = await userWithSession(sql, { role: 'ADMIN' })
+      const suspended = await userWithSession(sql, { role: 'ADMIN' })
+      await sql`update users set status = 'SUSPENDED' where id = ${suspended.userId}`
+      await dispatchOutbox()
+      expect(
+        await sql`select user_id, type, link from notifications where type = 'verification.submitted'`,
+      ).toEqual([
+        {
+          user_id: admin.userId,
+          type: 'verification.submitted',
+          link: `/admin/verifications/${state.application.id}`,
+        },
       ])
 
       // Uploads are locked while under review.

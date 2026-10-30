@@ -22,12 +22,15 @@ export function PaymentPanel({
   workerName,
   state,
   online = 'SIMULATED',
+  visitFee = false,
 }: {
   bookingId: string
   totalPaise: number
   workerName: string
   state: BookingPayment
   online?: 'SIMULATED' | 'RAZORPAY'
+  /** The amount is the visit fee for cancelling after the professional set off. */
+  visitFee?: boolean
 }) {
   const { pending, error, run } = useApiAction()
   // One key per attempt: a double tap cannot start two payments.
@@ -83,6 +86,7 @@ export function PaymentPanel({
     >
       <h2 id="payment-title" className="text-lg font-semibold">
         {state.state === 'AWAITING_CASH' ? <>Pay {amount} in cash</> : <>Pay {amount}</>}
+        {visitFee && ' visit fee'}
       </h2>
 
       {state.state === 'AWAITING_CASH' && (
@@ -164,7 +168,11 @@ export function PaymentPanel({
               {state.lastFailure}. Try again or pay in cash.
             </p>
           )}
-          <p className="text-ink-600">The price was agreed before the job and cannot change now.</p>
+          <p className="text-ink-600">
+            {visitFee
+              ? `You cancelled after ${workerName} had set off, so a visit fee covers their trip.`
+              : 'The price was agreed before the job and cannot change now.'}
+          </p>
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => start('CASH')} loading={pending} loadingText="One moment…">
               <Banknote aria-hidden="true" />

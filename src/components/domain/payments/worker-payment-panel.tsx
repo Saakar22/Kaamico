@@ -16,12 +16,15 @@ export function WorkerPaymentPanel({
   totalPaise,
   feePaise,
   state,
+  visitFee = false,
 }: {
   bookingId: string
   customerName: string
   totalPaise: number
   feePaise: number
   state: BookingPayment
+  /** The customer cancelled after you set off and owes the visit fee. */
+  visitFee?: boolean
 }) {
   const { pending, error, run } = useApiAction()
   const confirm = () =>
@@ -35,8 +38,13 @@ export function WorkerPaymentPanel({
       className="flex flex-col gap-3 rounded-lg border border-border p-4"
     >
       <h2 id="pay-title" className="font-semibold">
-        Payment
+        {visitFee ? 'Visit fee' : 'Payment'}
       </h2>
+      {visitFee && (
+        <p className="text-sm text-ink-600">
+          {customerName} cancelled after you set off, so they pay a visit fee for your trip.
+        </p>
+      )}
       {state.state === 'PAID' && state.payment ? (
         <p className="flex flex-wrap items-center gap-2">
           <CircleCheck aria-hidden="true" className="size-5 text-success-800" />
@@ -72,7 +80,7 @@ export function WorkerPaymentPanel({
         </p>
       )}
       <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 border-t border-border pt-3 text-sm">
-        <dt>Job total</dt>
+        <dt>{visitFee ? 'Visit fee' : 'Job total'}</dt>
         <dd className="text-right">
           <Money paise={totalPaise} />
         </dd>

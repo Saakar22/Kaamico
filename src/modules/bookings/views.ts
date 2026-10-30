@@ -104,6 +104,7 @@ type BaseRow = {
   is_negotiable: boolean | null
   start_code_attempts: number
   cancellation_reason: string | null
+  visit_fee_paise: number | null
   completed_at: Date | string | null
   job_lat: number
   job_lng: number
@@ -124,7 +125,7 @@ async function loadBase(where: ReturnType<typeof sql>): Promise<BaseRow | undefi
            b.service_id, s.name as service_name, s.pricing_unit, b.description, b.locality_label,
            b.address_snapshot, b.listed_price_paise, b.agreed_price_paise, b.approved_charges_paise,
            b.final_amount_paise, p.min_charge_paise, p.is_negotiable, b.start_code_attempts,
-           b.cancellation_reason, b.completed_at, b.job_lat, b.job_lng, b.commission_bps,
+           b.cancellation_reason, b.visit_fee_paise, b.completed_at, b.job_lat, b.job_lng, b.commission_bps,
            b.mode
     from bookings b
     join booking_invitations i on i.booking_id = b.id
@@ -274,6 +275,7 @@ function commonFields(row: BaseRow) {
       totalPaise: row.final_amount_paise,
     },
     cancellationReason: row.cancellation_reason,
+    visitFeePaise: row.visit_fee_paise,
     completedAt: iso(row.completed_at),
     mode: row.mode,
   }

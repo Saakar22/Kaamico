@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { NotificationSlot } from '@/components/domain/notifications/notification-slot'
 import { RequireAuth } from '@/components/auth/require-auth'
 import { AdminShell } from '@/components/layout/shells'
 import { PageSkeleton } from '@/components/patterns/page-skeleton'
@@ -9,7 +10,13 @@ export const instant = false
 /** Admin console: requires the ADMIN role and a session from the admin sign-in. */
 export default function AdminConsoleLayout({ children }: LayoutProps<'/admin'>) {
   return (
-    <AdminShell>
+    <AdminShell
+      actions={
+        <Suspense fallback={null}>
+          <NotificationSlot scope="ADMIN" />
+        </Suspense>
+      }
+    >
       <Suspense fallback={<PageSkeleton />}>
         <RequireAuth role="ADMIN">{children}</RequireAuth>
       </Suspense>

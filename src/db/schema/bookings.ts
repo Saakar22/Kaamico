@@ -91,6 +91,8 @@ export const bookings = pgTable(
     startCodeAttempts: smallint().notNull().default(0),
     cancelledBy: actorRole(),
     cancellationReason: varchar({ length: 300 }),
+    /** Owed when the customer cancels after the professional set off (§11.3); paid like a job. */
+    visitFeePaise: integer(),
     idempotencyKey: uuid().notNull(),
     /** When an unconfirmed request lapses. */
     expiresAt: timestamptz(),
@@ -123,6 +125,10 @@ export const bookings = pgTable(
     check(
       'bookings_cancellation_recorded',
       sql`${t.status} <> 'CANCELLED' or (${t.cancelledAt} is not null and ${t.cancelledBy} is not null)`,
+    ),
+    check(
+      'bookings_visit_fee_on_cancel',
+      sql`${t.visitFeePaise} is null or (${t.visitFeePaise} > 0 and ${t.status} = 'CANCELLED')`,
     ),
     check('bookings_slot_not_empty', sql`${t.slot} is null or not isempty(${t.slot})`),
   ],

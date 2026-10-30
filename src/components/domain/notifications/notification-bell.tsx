@@ -21,14 +21,16 @@ const POLL_MS = 30_000
 /**
  * Unread count in the header: updated the moment a notification arrives when live
  * updates are on (`live`), otherwise polled while the tab is visible. Opening it lists
- * the latest notifications. The same component serves customers and professionals.
+ * the latest notifications. The same component serves customers, professionals and admins.
  */
 export function NotificationBell({
   initialUnread,
   live = false,
+  emptyText = 'Nothing yet. Updates on your bookings appear here.',
 }: {
   initialUnread: number
   live?: boolean
+  emptyText?: string
 }) {
   const [unread, setUnread] = useState(initialUnread)
   const [items, setItems] = useState<NotificationView[] | null>(null)
@@ -133,9 +135,7 @@ export function NotificationBell({
                 <Spinner />
               </div>
             ) : items.length === 0 ? (
-              <p className="p-6 text-center text-sm text-ink-600">
-                Nothing yet. Updates on your bookings appear here.
-              </p>
+              <p className="p-6 text-center text-sm text-ink-600">{emptyText}</p>
             ) : (
               <ul className="divide-y divide-border">
                 {items.map((n) => (
