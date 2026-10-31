@@ -156,6 +156,7 @@ export default async function BookingPage({
                 </p>
               </div>
               <span
+                role="img"
                 className="flex gap-2"
                 aria-label={t('thread.startCodeLabel', {
                   digits: booking.startCode.split('').join(' '),

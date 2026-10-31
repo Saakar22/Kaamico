@@ -4,6 +4,18 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /*
+     * Anything scrolled into view (focus, anchors, find-in-page) clears the sticky header
+     * and, on phones, the fixed bottom tab bar (WCAG 2.4.11 Focus Not Obscured).
+     */
+    scroll-padding-top: 5rem;
+    scroll-padding-bottom: 5.5rem;
+  }
+
+  @media (min-width: 48rem) {
+    html {
+      scroll-padding-bottom: 1rem;
+    }
   }
 
   body {
