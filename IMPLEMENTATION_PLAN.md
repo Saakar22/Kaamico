@@ -858,8 +858,9 @@ Another worker's earnings are unreachable because no endpoint takes a worker ID.
 2. Active `worker_service_pricing` for the service, and a `worker_skills` row for its category.
 3. **Bounding-box prefilter** on `base_lat/base_lng` (±radius converted to degrees), then `haversine_km(job, base) <= LEAST(search_radius_km, worker.service_radius_km)`. The worker must be willing to travel that far.
 4. Availability:
-   - **On-demand:** `is_online = true` and `last_active_at > now() - 15 min`, and **no** booking with status ∈ active whose `slot` overlaps `[now, now + duration + 30 min]`.
-   - **Scheduled:** the slot fits inside a weekly rule (Asia/Kolkata), does not overlap `worker_time_off`, and does not overlap an active booking slot (the same predicate as the exclusion constraint).
+   - **On-demand:** `is_online = true` and `last_active_at > now() - 15 min`, and **no** booking with status ∈ act  ive whose `slot` overlaps `[now, now + duration + 30 min]`.
+   - **S
+   cheduled:** the slot fits inside a weekly rule (Asia/Kolkata), does not overlap `worker_time_off`, and does not overlap an active booking slot (the same predicate as the exclusion constraint).
 5. Not blocked by the customer (P2) and not already invited for this booking.
 
 **2. Ranking (recommended sort).** Score in [0, 1]:
@@ -1380,7 +1381,7 @@ Road routing and travel time; real-time GPS sharing; masked calling; Hindi and r
 
 ### Engineering
 - [x] Clean clone → `npm ci` → `db:reset` → `dev` works with the README instructions alone. *(Checked 2026-10-28 from a fresh clone on the dev machine with new databases; tests passed there too.)*
-- [ ] CI: lint, typecheck, unit/integration, E2E (or nightly), build all green. *(All green locally; GitHub Actions results not yet confirmed.)*
+- [x] CI: lint, typecheck, unit/integration, E2E (or nightly), build all green. *(Confirmed 2026-10-31 on GitHub Actions: run 41204006044 for a01f91f, check and secrets jobs green, 111 E2E passed.)*
 - [x] Migrations reproducible; seed deterministic.
 - [x] Structured logs with request IDs; `/api/health` reports DB status.
 
