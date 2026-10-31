@@ -20,6 +20,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Money } from '@/components/ui/money'
 import { Skeleton } from '@/components/ui/skeleton'
+import { htmlLang, type Locale } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
 import { AppError } from '@/lib/errors'
 import { cn } from '@/lib/cn'
 import { formatIstDay, formatIstTime, istDateKey } from '@/lib/time'
@@ -36,22 +38,26 @@ import {
 
 type Props = PageProps<'/[lang]/professionals/[id]'>
 
-export const metadata: Metadata = { title: 'Professional profile' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('profile.metaTitle') }
+}
 
 const PREVIEW_DAYS = 3
 const PREVIEW_TIMES = 4
 
-const monthYear = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' })
-const fullDate = new Intl.DateTimeFormat('en-IN', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'Asia/Kolkata',
-})
+const monthYear = (locale: Locale, date: Date) =>
+  new Intl.DateTimeFormat(htmlLang[locale], { month: 'long', year: 'numeric' }).format(date)
+const fullDate = (locale: Locale, date: Date) =>
+  new Intl.DateTimeFormat(htmlLang[locale], {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Asia/Kolkata',
+  }).format(date)
 
-async function loadProfile(id: string): Promise<PublicProfile> {
+async function loadProfile(id: string, locale: Locale): Promise<PublicProfile> {
   try {
-    return await getPublicProfile(id)
+    return await getPublicProfile(id, locale)
   } catch (error) {
     // Unverified, suspended and unknown professionals all look the same: not found.
     if (error instanceof AppError && error.status === 404) notFound()
@@ -59,7 +65,8 @@ async function loadProfile(id: string): Promise<PublicProfile> {
   }
 }
 
-function ProfileHeader({ profile }: { profile: PublicProfile }) {
+async function ProfileHeader({ profile }: { profile: PublicProfile }) {
+  const [t, locale] = await Promise.all([getT(), getLocale()])
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-start">
       <Avatar name={profile.displayName} src={profile.photoUrl} size="lg" />
@@ -72,32 +79,36 @@ function ProfileHeader({ profile }: { profile: PublicProfile }) {
           {profile.isNew && (
             <Badge tone="info">
               <Sprout aria-hidden="true" />
-              New on Kaamico
+              {t('badges.newOnKaamico')}
             </Badge>
           )}
           <RatingSummary avg={profile.rating.avg} count={profile.rating.count} />
         </div>
         {profile.verifiedOn && (
           <p className="text-sm text-ink-600">
-            ID checked by Kaamico on {fullDate.format(new Date(profile.verifiedOn))}
+            {t('profile.idCheckedOn', { date: fullDate(locale, new Date(profile.verifiedOn)) })}
           </p>
         )}
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-600">
           <li className="flex items-center gap-1.5">
             <BriefcaseBusiness aria-hidden="true" className="size-4" />
-            {profile.completedJobs} jobs done
-            {profile.yearsExperience > 0 && <> · {profile.yearsExperience} yrs experience</>}
+            {t('proCard.jobsDone', { count: profile.completedJobs })}
+            {profile.yearsExperience > 0 && (
+              <> · {t('proCard.yearsExperience', { count: profile.yearsExperience })}</>
+            )}
           </li>
           {profile.languages.length > 0 && (
             <li className="flex items-center gap-1.5">
               <Languages aria-hidden="true" className="size-4" />
-              Speaks {languageNames(profile.languages)}
+              {t('proCard.speaks', {
+                languages: languageNames(profile.languages, htmlLang[locale]),
+              })}
             </li>
           )}
           {profile.city && (
             <li className="flex items-center gap-1.5">
               <MapPin aria-hidden="true" className="size-4" />
-              Works in {profile.city}
+              {t('profile.worksIn', { city: profile.city })}
             </li>
           )}
         </ul>
@@ -109,13 +120,20 @@ function ProfileHeader({ profile }: { profile: PublicProfile }) {
   )
 }
 
-function ServicePriceList({ profile, highlight }: { profile: PublicProfile; highlight?: string }) {
+async function ServicePriceList({
+  profile,
+  highlight,
+}: {
+  profile: PublicProfile
+  highlight?: string
+}) {
+  const [t, locale] = await Promise.all([getT(), getLocale()])
   const firstName = profile.displayName.split(' ')[0]
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-lg leading-snug font-semibold">Services and prices</h2>
-        <p className="text-sm text-ink-600">Prices are set by {firstName}.</p>
+        <h2 className="text-lg leading-snug font-semibold">{t('profile.servicesAndPrices')}</h2>
+        <p className="text-sm text-ink-600">{t('profile.pricesSetBy', { name: firstName })}</p>
       </CardHeader>
       <CardContent>
         <ul className="flex flex-col divide-y divide-border">
@@ -131,22 +149,24 @@ function ServicePriceList({ profile, highlight }: { profile: PublicProfile; high
               <div className="flex flex-col">
                 <span className="font-medium">{s.name}</span>
                 <span className="text-sm text-ink-600">
-                  {s.category.name} · about {formatDuration(s.typicalDurationMin)}
+                  {s.category.name} ·{' '}
+                  {t('profile.about', { duration: formatDuration(s.typicalDurationMin, locale) })}
                 </span>
               </div>
               <div className="flex flex-col sm:items-end">
                 <span>
                   <Money paise={s.pricePaise} className="font-semibold" />{' '}
                   <span className="text-sm text-ink-600" aria-hidden="true">
-                    {unitSuffix(s.unit)}
+                    {unitSuffix(s.unit, locale)}
                   </span>
-                  <span className="sr-only">{unitSpoken(s.unit)}</span>
+                  <span className="sr-only">{unitSpoken(s.unit, locale)}</span>
                 </span>
                 <span className="text-sm text-ink-600">
-                  {s.negotiable ? 'Open to offers' : 'Fixed price'}
+                  {s.negotiable ? t('proCard.openToOffers') : t('proCard.fixedPrice')}
                   {s.minChargePaise > 0 && (
                     <>
-                      {' · '}minimum <Money paise={s.minChargePaise} />
+                      {' · '}
+                      {t('profile.minimum')} <Money paise={s.minChargePaise} />
                     </>
                   )}
                 </span>
@@ -168,6 +188,8 @@ async function AvailabilityPreview({
 }) {
   await connection()
   const now = new Date()
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const lang = htmlLang[locale]
   const days = await Promise.all(
     Array.from({ length: PREVIEW_DAYS }, (_, i) =>
       getAvailability(
@@ -181,31 +203,31 @@ async function AvailabilityPreview({
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-lg leading-snug font-semibold">Upcoming free times</h2>
+        <h2 className="text-lg leading-snug font-semibold">{t('profile.upcomingFree')}</h2>
       </CardHeader>
       <CardContent>
         {withSlots.length === 0 ? (
-          <p className="text-ink-600">No free times in the next {PREVIEW_DAYS} days.</p>
+          <p className="text-ink-600">{t('profile.noFreeTimes', { days: PREVIEW_DAYS })}</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {withSlots.map((d) => (
               <li key={d.date} className="flex flex-col gap-1.5">
                 <span className="flex items-center gap-1.5 text-sm font-medium">
                   <CalendarClock aria-hidden="true" className="size-4 text-ink-600" />
-                  {formatIstDay(new Date(d.slots[0].start), now)}
+                  {formatIstDay(new Date(d.slots[0].start), now, lang)}
                 </span>
-                <ul className="flex flex-wrap gap-2" aria-label="Start times">
+                <ul className="flex flex-wrap gap-2" aria-label={t('profile.startTimes')}>
                   {d.slots.slice(0, PREVIEW_TIMES).map((s) => (
                     <li
                       key={s.start}
                       className="rounded-full border border-border px-3 py-1 text-sm tabular-nums"
                     >
-                      {formatIstTime(new Date(s.start))}
+                      {formatIstTime(new Date(s.start), lang)}
                     </li>
                   ))}
                   {d.slots.length > PREVIEW_TIMES && (
                     <li className="px-1 py-1 text-sm text-ink-600">
-                      +{d.slots.length - PREVIEW_TIMES} more
+                      {t('profile.more', { count: d.slots.length - PREVIEW_TIMES })}
                     </li>
                   )}
                 </ul>
@@ -218,25 +240,24 @@ async function AvailabilityPreview({
   )
 }
 
-function ReviewList({ reviews, total }: { reviews: ReviewPage; total: number }) {
+async function ReviewList({ reviews, total }: { reviews: ReviewPage; total: number }) {
+  const [t, locale] = await Promise.all([getT(), getLocale()])
   const max = Math.max(1, ...Object.values(reviews.histogram))
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-lg leading-snug font-semibold">Reviews</h2>
-        <p className="text-sm text-ink-600">
-          Only customers who booked through Kaamico can review.
-        </p>
+        <h2 className="text-lg leading-snug font-semibold">{t('profile.reviews')}</h2>
+        <p className="text-sm text-ink-600">{t('profile.reviewsNote')}</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         {total === 0 ? (
-          <p className="text-ink-600">No reviews yet.</p>
+          <p className="text-ink-600">{t('profile.noReviews')}</p>
         ) : (
           <>
             <dl className="flex flex-col gap-1.5">
               {([5, 4, 3, 2, 1] as const).map((star) => (
                 <div key={star} className="flex items-center gap-3 text-sm">
-                  <dt className="w-14 shrink-0">{star} star</dt>
+                  <dt className="w-14 shrink-0">{t('profile.starRow', { star })}</dt>
                   <dd className="flex flex-1 items-center gap-3">
                     <span
                       aria-hidden="true"
@@ -259,22 +280,22 @@ function ReviewList({ reviews, total }: { reviews: ReviewPage; total: number }) 
                     <RatingStars rating={r.rating} />
                     <span className="text-sm font-medium">{r.author}</span>
                     <span className="text-sm text-ink-600">
-                      {r.serviceName} · {monthYear.format(new Date(r.createdAt))}
+                      {r.serviceName} · {monthYear(locale, new Date(r.createdAt))}
                     </span>
                   </div>
                   {r.comment && <p>{r.comment}</p>}
                   {r.tags.length > 0 && (
-                    <ul className="flex flex-wrap gap-1.5" aria-label="Tags">
-                      {r.tags.map((t) => (
-                        <li key={t}>
-                          <Badge>{reviewTagLabel(t)}</Badge>
+                    <ul className="flex flex-wrap gap-1.5" aria-label={t('profile.tags')}>
+                      {r.tags.map((tag) => (
+                        <li key={tag}>
+                          <Badge>{reviewTagLabel(tag, locale)}</Badge>
                         </li>
                       ))}
                     </ul>
                   )}
                   {r.workerReply && (
                     <p className="rounded-md bg-surface-muted px-3 py-2 text-sm">
-                      <span className="font-medium">Reply: </span>
+                      <span className="font-medium">{t('profile.reply')}</span>
                       {r.workerReply}
                     </p>
                   )}
@@ -289,7 +310,8 @@ function ReviewList({ reviews, total }: { reviews: ReviewPage; total: number }) 
 }
 
 /** Sticky on phones, a side card on desktop: starts the booking wizard for the chosen service. */
-function BookPanel({ profile, serviceId }: { profile: PublicProfile; serviceId?: string }) {
+async function BookPanel({ profile, serviceId }: { profile: PublicProfile; serviceId?: string }) {
+  const [t, locale] = await Promise.all([getT(), getLocale()])
   const service = profile.services.find((s) => s.serviceId === serviceId) ?? profile.services[0]
   return (
     <div className="fixed inset-x-0 bottom-16 z-30 border-t border-border bg-surface px-4 py-3 shadow-lg md:static md:rounded-lg md:border md:p-5 md:shadow-xs">
@@ -299,7 +321,7 @@ function BookPanel({ profile, serviceId }: { profile: PublicProfile; serviceId?:
             <span className="truncate text-sm text-ink-600">{service.name}</span>
             <span>
               <Money paise={service.pricePaise} className="text-lg font-bold" />{' '}
-              <span className="text-sm text-ink-600">{unitSuffix(service.unit)}</span>
+              <span className="text-sm text-ink-600">{unitSuffix(service.unit, locale)}</span>
             </span>
           </p>
         )}
@@ -307,10 +329,10 @@ function BookPanel({ profile, serviceId }: { profile: PublicProfile; serviceId?:
           <div className="flex flex-col items-end gap-1 md:items-stretch">
             <Button asChild>
               <Link href={`/book/${service.serviceId}?worker=${profile.workerId}`}>
-                Request booking
+                {t('profile.requestBooking')}
               </Link>
             </Button>
-            <span className="text-xs text-ink-600">No payment now. You can suggest a price.</span>
+            <span className="text-xs text-ink-600">{t('profile.noPaymentNow')}</span>
           </div>
         )}
       </div>
@@ -321,9 +343,10 @@ function BookPanel({ profile, serviceId }: { profile: PublicProfile; serviceId?:
 async function ProfileContent({ params, searchParams }: Props) {
   const [{ id }, query] = await Promise.all([params, searchParams])
   const serviceId = typeof query.service === 'string' ? query.service : undefined
-  const profile = await loadProfile(id)
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const profile = await loadProfile(id, locale)
   const offered = profile.services.some((s) => s.serviceId === serviceId) ? serviceId : undefined
-  const reviews = await getPublicReviews(profile.workerId, { limit: 10 })
+  const reviews = await getPublicReviews(profile.workerId, { limit: 10 }, locale)
   const reviewTotal = Object.values(reviews.histogram).reduce((a, b) => a + b, 0)
   const backHref = offered ? `/search?service=${offered}` : '/search'
 
@@ -334,7 +357,7 @@ async function ProfileContent({ params, searchParams }: Props) {
         className="inline-flex h-11 w-fit items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
       >
         <ChevronLeft aria-hidden="true" className="size-4" />
-        Back to results
+        {t('profile.backToResults')}
       </Link>
       <ProfileHeader profile={profile} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
@@ -342,18 +365,21 @@ async function ProfileContent({ params, searchParams }: Props) {
           {profile.bio && (
             <section aria-labelledby="about-title" className="flex flex-col gap-2">
               <h2 id="about-title" className="text-lg font-semibold">
-                About
+                {t('profile.aboutTitle')}
               </h2>
               <p className="max-w-prose text-ink-900">{profile.bio}</p>
               <p className="text-sm text-ink-600">
-                On Kaamico since {monthYear.format(new Date(profile.memberSince))}
+                {t('profile.since', { date: monthYear(locale, new Date(profile.memberSince)) })}
               </p>
             </section>
           )}
           <ServicePriceList profile={profile} highlight={offered} />
           <ReviewList reviews={reviews} total={reviewTotal} />
         </div>
-        <aside className="flex flex-col gap-6 lg:sticky lg:top-20" aria-label="Booking">
+        <aside
+          className="flex flex-col gap-6 lg:sticky lg:top-20"
+          aria-label={t('profile.booking')}
+        >
           <BookPanel profile={profile} serviceId={offered} />
           <Suspense fallback={<Skeleton className="h-40" />}>
             <AvailabilityPreview workerId={profile.workerId} serviceId={offered} />
@@ -364,13 +390,14 @@ async function ProfileContent({ params, searchParams }: Props) {
   )
 }
 
-function ProfileSkeleton() {
+async function ProfileSkeleton() {
+  const t = await getT()
   return (
     <div
       className="flex flex-col gap-6"
       role="status"
       aria-busy="true"
-      aria-label="Loading profile"
+      aria-label={t('profile.loading')}
     >
       <Skeleton className="h-6 w-32" />
       <div className="flex gap-4">

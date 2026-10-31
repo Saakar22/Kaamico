@@ -71,6 +71,13 @@
       "when": 1793248774197,
       "tag": "0009_visit_fee",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793437118252,
+      "tag": "0010_catalog_hindi",
+      "breakpoints": true
     }
   ]
 }

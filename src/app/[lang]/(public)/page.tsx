@@ -13,7 +13,7 @@ import { CategoryGrid } from '@/components/domain/catalog/category-card'
 import { SearchBar } from '@/components/domain/catalog/search-bar'
 import { Button } from '@/components/ui/button'
 import { brand } from '@/config/brand'
-import { getT } from '@/i18n/server'
+import { getLocale, getT } from '@/i18n/server'
 import type { MessageKey } from '@/i18n/translate'
 import { listCategories } from '@/modules/catalog/catalog'
 import { listCities } from '@/modules/seo/cities'
@@ -31,7 +31,8 @@ const TRUST: { icon: LucideIcon; text: MessageKey }[] = [
 ]
 
 export default async function HomePage() {
-  const [categories, cities, t] = await Promise.all([listCategories(), listCities(), getT()])
+  const locale = await getLocale()
+  const [categories, cities, t] = await Promise.all([listCategories(locale), listCities(), getT()])
   return (
     <div className="flex flex-col gap-12 sm:gap-16">
       <section className="flex flex-col gap-5 pt-2 sm:pt-8" aria-labelledby="hero-title">

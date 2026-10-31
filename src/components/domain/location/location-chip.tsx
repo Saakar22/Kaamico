@@ -12,6 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/dialog'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 import { cn } from '@/lib/cn'
 import {
@@ -58,6 +59,7 @@ export function LocationChip({
   const [filter, setFilter] = useState('')
   const [locating, setLocating] = useState(false)
   const [message, setMessage] = useState<string>()
+  const t = useT()
 
   useEffect(() => {
     const show = () => setOpen(true)
@@ -82,7 +84,7 @@ export function LocationChip({
 
   function locateDevice() {
     if (!('geolocation' in navigator)) {
-      setMessage('Your browser cannot share your location. Pick your area below.')
+      setMessage(t('location.noBrowserSupport'))
       return
     }
     setLocating(true)
@@ -97,21 +99,21 @@ export function LocationChip({
             ? await apiFetch<NearestResponse>(`/api/v1/localities?lat=${lat}&lng=${lng}`)
             : { nearest: null, inServiceArea: false }
           if (!result.inServiceArea || !result.nearest) {
-            setMessage(
-              `Kaamico isn't in your area yet. We're live in ${cities.join(' and ')}. Pick an area below to look around.`,
-            )
+            setMessage(t('location.notInArea', { cities: cities.join(t('location.and')) }))
             return
           }
           choose({
             lat,
             lng,
-            label: `Near ${result.nearest.name}, ${result.nearest.city}`,
+            label: t('location.near', {
+              place: `${result.nearest.name}, ${result.nearest.city}`,
+            }),
             city: result.nearest.city,
             localityId: null,
             source: 'device',
           })
         } catch {
-          setMessage('We could not check your location. Pick your area below.')
+          setMessage(t('location.checkFailed'))
         } finally {
           setLocating(false)
         }
@@ -120,8 +122,8 @@ export function LocationChip({
         setLocating(false)
         setMessage(
           error.code === error.PERMISSION_DENIED
-            ? 'Location access is off. Pick your area below.'
-            : 'We could not find your location. Pick your area below.',
+            ? t('location.accessOff')
+            : t('location.findFailed'),
         )
       },
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 },
@@ -153,8 +155,8 @@ export function LocationChip({
           </span>
         )}
         <span className="truncate">
-          <span className="sr-only">Location: </span>
-          {location?.label ?? 'Set your location'}
+          <span className="sr-only">{t('location.srLabel')}</span>
+          {location?.label ?? t('location.setLocation')}
         </span>
         <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-ink-600" />
       </button>
@@ -162,21 +164,18 @@ export function LocationChip({
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="md:inset-auto md:top-1/2 md:left-1/2 md:max-h-[min(40rem,calc(100dvh-4rem))] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:animate-pop-in md:rounded-lg">
           <SheetHeader>
-            <SheetTitle>Where do you need help?</SheetTitle>
-            <SheetDescription>
-              We show professionals who travel to your area. Your exact address is only asked for
-              when you book.
-            </SheetDescription>
+            <SheetTitle>{t('location.sheetTitle')}</SheetTitle>
+            <SheetDescription>{t('location.sheetBody')}</SheetDescription>
           </SheetHeader>
 
           <Button
             variant="secondary"
             onClick={locateDevice}
             loading={locating}
-            loadingText="Finding you…"
+            loadingText={t('location.finding')}
           >
             <LocateFixed aria-hidden="true" />
-            Use my current location
+            {t('location.useCurrent')}
           </Button>
           {message && (
             <p role="status" className="rounded-md bg-surface-muted px-3 py-2 text-sm text-ink-900">
@@ -185,7 +184,7 @@ export function LocationChip({
           )}
 
           <div className="flex flex-col gap-3">
-            <div role="group" aria-label="City" className="flex gap-2">
+            <div role="group" aria-label={t('location.city')} className="flex gap-2">
               {cities.map((c) => (
                 <Button
                   key={c}
@@ -199,15 +198,15 @@ export function LocationChip({
               ))}
             </div>
             <label className="flex flex-col gap-1.5 text-sm font-medium">
-              Search areas in {city}
+              {t('location.searchAreas', { city })}
               <Input
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="Area name or pincode"
+                placeholder={t('location.areaPlaceholder')}
                 autoComplete="off"
               />
             </label>
-            <ul aria-label={`Areas in ${city}`} className="grid gap-1 sm:grid-cols-2">
+            <ul aria-label={t('location.areasIn', { city })} className="grid gap-1 sm:grid-cols-2">
               {visible.map((l) => {
                 const current = location?.source === 'locality' && location.localityId === l.id
                 return (
@@ -237,7 +236,9 @@ export function LocationChip({
                 )
               })}
               {visible.length === 0 && (
-                <li className="px-3 py-2 text-sm text-ink-600">No areas match “{filter}”.</li>
+                <li className="px-3 py-2 text-sm text-ink-600">
+                  {t('location.noAreas', { filter })}
+                </li>
               )}
             </ul>
           </div>
@@ -248,11 +249,12 @@ export function LocationChip({
 }
 
 /** Opens the location sheet from anywhere on the page (e.g. an empty state). */
-export function OpenLocationButton({ children = 'Set your location' }: { children?: string }) {
+export function OpenLocationButton({ children }: { children?: string }) {
+  const t = useT()
   return (
     <Button onClick={() => window.dispatchEvent(new Event(OPEN_LOCATION_EVENT))}>
       <MapPin aria-hidden="true" />
-      {children}
+      {children ?? t('location.setLocation')}
     </Button>
   )
 }

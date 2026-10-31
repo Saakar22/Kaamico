@@ -8,7 +8,7 @@ import { GET as profileRoute } from '@/app/api/v1/professionals/[id]/route'
 import { GET as professionalsRoute } from '@/app/api/v1/search/professionals/route'
 import { GET as searchRoute } from '@/app/api/v1/search/route'
 import { fromIst } from '@/lib/time'
-import { searchServices } from '@/modules/catalog/catalog'
+import { queryTokens, searchServices } from '@/modules/catalog/catalog'
 import { connectTestDb, fixtures, hasTestDatabase, truncateAll } from '@/test/db'
 import { searchProfessionals } from './search'
 
@@ -278,6 +278,23 @@ describe.skipIf(!hasTestDatabase)('discovery: catalog, matching and profiles', (
       expect((await searchServices('lumb')).map((s) => s.name)).toEqual(['Tap repair'])
       const res = await searchRoute(get('/api/v1/search?q=x'), {})
       expect(res.status).toBe(400)
+    })
+
+    it('finds services by their Hindi names and shows Hindi text when asked', async () => {
+      await sql`update services set name_hi = 'नल की मरम्मत', search_terms = search_terms || ' नल की मरम्मत'`
+      await sql`update service_categories set name_hi = 'प्लंबिंग'`
+      // Devanagari vowel signs stay inside the word ("मरम्मत" is one token, not three).
+      expect(queryTokens('नल की मरम्मत')).toEqual(['नल', 'की', 'मरम्मत'])
+      expect(await searchServices('मरम्मत', 10, 'hi')).toEqual([
+        expect.objectContaining({
+          name: 'नल की मरम्मत',
+          category: expect.objectContaining({ name: 'प्लंबिंग' }),
+        }),
+      ])
+      // English stays the default, and a missing Hindi name falls back to English.
+      expect((await searchServices('नल')).map((s) => s.name)).toEqual(['Tap repair'])
+      await sql`update services set name_hi = null`
+      expect((await searchServices('नल', 10, 'hi')).map((s) => s.name)).toEqual(['Tap repair'])
     })
 
     it('caps public searches per IP address', async () => {

@@ -18,8 +18,16 @@ const inter = Inter({
 
 const baloo = Baloo_2({
   variable: '--font-baloo',
-  subsets: ['latin', 'devanagari'],
+  subsets: ['latin'],
   weight: ['600', '700'],
+})
+
+// Hindi headings. Not preloaded: English pages never use these glyphs.
+const balooDevanagari = Baloo_2({
+  variable: '--font-baloo-devanagari',
+  subsets: ['devanagari'],
+  weight: ['600', '700'],
+  preload: false,
 })
 
 // Hindi body text; Inter has no Devanagari. Not preloaded: English pages never use it.
@@ -67,7 +75,7 @@ export default async function RootLayout({ children }: LayoutProps<'/[lang]'>) {
     // data-theme is set by THEME_SCRIPT before React hydrates, so the server's <html> differs.
     <html
       lang={htmlLang[locale]}
-      className={`${inter.variable} ${baloo.variable} ${devanagari.variable} h-full antialiased`}
+      className={`${inter.variable} ${baloo.variable} ${balooDevanagari.variable} ${devanagari.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

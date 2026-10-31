@@ -8,6 +8,8 @@ import { CategoryIcon } from '@/components/domain/catalog/category-icon'
 import { ServiceCard } from '@/components/domain/catalog/service-card'
 import { OpenLocationButton } from '@/components/domain/location/location-chip'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getLocale, getT } from '@/i18n/server'
+import type { MessageKey } from '@/i18n/translate'
 import { getCategoryBySlug, listCategories } from '@/modules/catalog/catalog'
 import { getCategoryWithNearbyPrices } from '@/modules/catalog/nearby'
 import { getCustomerLocation } from '@/modules/location/server'
@@ -20,39 +22,28 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const category = await getCategoryBySlug((await params).category)
-  if (!category) return { title: 'Service not found' }
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const category = await getCategoryBySlug((await params).category, locale)
+  if (!category) return { title: t('category.notFound') }
   return {
-    title: `${category.name} near you`,
+    title: t('category.metaTitle', { category: category.name }),
     description: category.description ?? undefined,
   }
 }
 
-const FAQS = [
-  {
-    q: 'Who sets the price?',
-    a: 'Each professional sets their own price for every service. The ranges you see come from their prices, not from Kaamico.',
-  },
-  {
-    q: 'Can I offer a different price?',
-    a: 'Yes, if the professional is open to offers. You can accept their price or suggest yours, and they can accept or reply with a counter-offer.',
-  },
-  {
-    q: 'What if the job needs extra parts or work?',
-    a: 'The professional must add any extra charge in the app, with the amount, and it only counts if you approve it.',
-  },
-  {
-    q: 'Are professionals verified?',
-    a: 'A professional only appears after a Kaamico admin has checked their ID. We do not claim police or background checks unless they have been done.',
-  },
+const FAQS: { q: MessageKey; a: MessageKey }[] = [
+  { q: 'category.faq1q', a: 'category.faq1a' },
+  { q: 'category.faq2q', a: 'category.faq2a' },
+  { q: 'category.faq3q', a: 'category.faq3a' },
+  { q: 'category.faq4q', a: 'category.faq4a' },
 ]
 
 async function CategoryContent({ params }: { params: Props['params'] }) {
   const { category: slug } = await params
-  const location = await getCustomerLocation()
+  const [location, t, locale] = await Promise.all([getCustomerLocation(), getT(), getLocale()])
   // Nearby prices depend on who is active and unpaused right now.
   await connection()
-  const category = await getCategoryWithNearbyPrices(slug, location)
+  const category = await getCategoryWithNearbyPrices(slug, location, new Date(), locale)
   if (!category) notFound()
 
   return (
@@ -63,7 +54,7 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
           className="inline-flex h-11 w-fit items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
         >
           <ChevronLeft aria-hidden="true" className="size-4" />
-          All services
+          {t('category.allServices')}
         </Link>
         <div className="flex items-start gap-4">
           <CategoryIcon iconKey={category.iconKey} className="size-14" />
@@ -77,11 +68,11 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
         {location ? (
           <p className="flex items-center gap-1.5 text-sm text-ink-600">
             <MapPin aria-hidden="true" className="size-4 text-brand-600" />
-            Prices from professionals who travel to {location.label}
+            {t('category.pricesFrom', { place: location.label })}
           </p>
         ) : (
           <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-surface-muted p-4 sm:flex-row sm:items-center sm:justify-between">
-            <p>Set your location to see real prices from professionals near you.</p>
+            <p>{t('category.setLocation')}</p>
             <OpenLocationButton />
           </div>
         )}
@@ -97,15 +88,15 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
 
       <section aria-labelledby="faq-title" className="flex flex-col gap-3">
         <h2 id="faq-title" className="font-display text-xl font-bold">
-          Common questions
+          {t('category.faqTitle')}
         </h2>
         <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
           {FAQS.map((f) => (
             <details key={f.q} className="group px-4 py-1">
               <summary className="flex min-h-11 cursor-pointer items-center font-medium">
-                {f.q}
+                {t(f.q)}
               </summary>
-              <p className="pb-3 text-ink-600">{f.a}</p>
+              <p className="pb-3 text-ink-600">{t(f.a)}</p>
             </details>
           ))}
         </div>
@@ -114,13 +105,14 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
   )
 }
 
-function CategorySkeleton() {
+async function CategorySkeleton() {
+  const t = await getT()
   return (
     <div
       className="flex flex-col gap-6"
       role="status"
       aria-busy="true"
-      aria-label="Loading services"
+      aria-label={t('category.loading')}
     >
       <Skeleton className="h-6 w-28" />
       <div className="flex gap-4">

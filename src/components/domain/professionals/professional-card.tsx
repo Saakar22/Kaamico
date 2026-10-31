@@ -4,6 +4,8 @@ import { VerificationBadge } from '@/components/domain/trust-badges'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Money } from '@/components/ui/money'
+import { htmlLang } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
 import { formatIstDay, formatIstTime } from '@/lib/time'
 import { unitSpoken, unitSuffix } from '@/modules/catalog/units'
 import type { ProfessionalResult } from '@/modules/matching/search'
@@ -13,16 +15,16 @@ import { RatingSummary } from './rating'
 const firstName = (name: string) => name.trim().split(/\s+/)[0]
 
 /** "Next: Tomorrow, 10:00 am" */
-export function nextSlotLabel(iso: string, now: Date = new Date()): string {
+export function nextSlotLabel(iso: string, now: Date = new Date(), lang = 'en-IN'): string {
   const date = new Date(iso)
-  return `${formatIstDay(date, now)}, ${formatIstTime(date)}`
+  return `${formatIstDay(date, now, lang)}, ${formatIstTime(date, lang)}`
 }
 
 /**
  * One search result. Every trust signal lives here so all lists show the same facts:
  * verification, rating with count, distance, the worker's own price and availability.
  */
-export function ProfessionalCard({
+export async function ProfessionalCard({
   pro,
   serviceId,
   now,
@@ -31,6 +33,8 @@ export function ProfessionalCard({
   serviceId: string
   now?: Date
 }) {
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const lang = htmlLang[locale]
   const href = `/professionals/${pro.workerId}?service=${serviceId}`
   return (
     <article className="relative flex flex-col gap-4 rounded-lg border border-border bg-surface p-4 shadow-xs hover:border-brand-600 sm:flex-row sm:p-5">
@@ -48,18 +52,22 @@ export function ProfessionalCard({
             {pro.isNew && (
               <Badge tone="info">
                 <Sprout aria-hidden="true" />
-                New on Kaamico
+                {t('badges.newOnKaamico')}
               </Badge>
             )}
             <RatingSummary avg={pro.rating.avg} count={pro.rating.count} />
           </div>
           <p className="text-sm text-ink-600">
-            {pro.distanceKm.toFixed(1)} km away
-            {pro.completedJobs > 0 && <> · {pro.completedJobs} jobs done</>}
-            {pro.yearsExperience > 0 && <> · {pro.yearsExperience} yrs experience</>}
+            {t('proCard.kmAway', { km: pro.distanceKm.toFixed(1) })}
+            {pro.completedJobs > 0 && <> · {t('proCard.jobsDone', { count: pro.completedJobs })}</>}
+            {pro.yearsExperience > 0 && (
+              <> · {t('proCard.yearsExperience', { count: pro.yearsExperience })}</>
+            )}
           </p>
           {pro.languages.length > 0 && (
-            <p className="text-sm text-ink-600">Speaks {languageNames(pro.languages)}</p>
+            <p className="text-sm text-ink-600">
+              {t('proCard.speaks', { languages: languageNames(pro.languages, lang) })}
+            </p>
           )}
         </div>
       </div>
@@ -68,31 +76,34 @@ export function ProfessionalCard({
         <p data-testid="pro-price">
           <Money paise={pro.price.paise} className="text-xl font-bold" />{' '}
           <span className="text-ink-600" aria-hidden="true">
-            {unitSuffix(pro.price.unit)}
+            {unitSuffix(pro.price.unit, locale)}
           </span>
-          <span className="sr-only">{unitSpoken(pro.price.unit)}</span>
+          <span className="sr-only">{unitSpoken(pro.price.unit, locale)}</span>
         </p>
         <p className="text-sm text-ink-600">
-          Price set by {firstName(pro.displayName)}
-          {pro.price.negotiable ? ' · Open to offers' : ' · Fixed price'}
+          {t('proCard.priceSetBy', { name: firstName(pro.displayName) })} ·{' '}
+          {pro.price.negotiable ? t('proCard.openToOffers') : t('proCard.fixedPrice')}
         </p>
         {pro.availability.now ? (
           <div className="flex flex-col gap-1">
             <Badge tone="success" className="w-fit">
               <Zap aria-hidden="true" />
-              Available now
+              {t('proCard.availableNow')}
             </Badge>
             {pro.approxArrival && (
               <p className="flex items-center gap-1.5 text-sm text-ink-600">
                 <Navigation aria-hidden="true" className="size-4" />
-                About {pro.approxArrival.minMin}–{pro.approxArrival.maxMin} min away (estimate)
+                {t('proCard.arrival', {
+                  min: pro.approxArrival.minMin,
+                  max: pro.approxArrival.maxMin,
+                })}
               </p>
             )}
           </div>
         ) : pro.availability.nextSlot ? (
           <p className="flex items-center gap-1.5 text-sm text-ink-900">
             <CalendarClock aria-hidden="true" className="size-4 text-ink-600" />
-            Next: {nextSlotLabel(pro.availability.nextSlot, now)}
+            {t('proCard.next', { slot: nextSlotLabel(pro.availability.nextSlot, now, lang) })}
           </p>
         ) : null}
       </div>

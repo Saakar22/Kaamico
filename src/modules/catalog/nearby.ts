@@ -1,4 +1,5 @@
 import 'server-only'
+import type { Locale } from '@/i18n/config'
 import { nearbyPriceRanges, type PriceRange } from '@/modules/matching/repo'
 import { getCategoryBySlug, type CategoryDetail, type ServiceSummary } from './catalog'
 
@@ -14,8 +15,9 @@ export async function getCategoryWithNearbyPrices(
   slug: string,
   point: { lat: number; lng: number } | null,
   now: Date = new Date(),
+  locale: Locale = 'en',
 ): Promise<CategoryWithPrices | null> {
-  const category = await getCategoryBySlug(slug)
+  const category = await getCategoryBySlug(slug, locale)
   if (!category) return null
   const ranges = point
     ? await nearbyPriceRanges({ categoryId: category.id, ...point, now })

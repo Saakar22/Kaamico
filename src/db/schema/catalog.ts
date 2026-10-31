@@ -19,6 +19,9 @@ export const serviceCategories = pgTable('service_categories', {
   slug: varchar({ length: 60 }).notNull().unique(),
   name: varchar({ length: 80 }).notNull(),
   description: varchar({ length: 300 }),
+  /** Hindi name and description; screens fall back to English when missing. */
+  nameHi: varchar({ length: 80 }),
+  descriptionHi: varchar({ length: 300 }),
   /** Lucide icon name or custom icon key. */
   iconKey: varchar({ length: 40 }).notNull(),
   sortOrder: smallint().notNull().default(0),
@@ -37,6 +40,9 @@ export const services = pgTable(
     slug: varchar({ length: 80 }).notNull(),
     name: varchar({ length: 100 }).notNull(),
     description: varchar({ length: 500 }),
+    /** Hindi name and description; screens fall back to English when missing. */
+    nameHi: varchar({ length: 100 }),
+    descriptionHi: varchar({ length: 500 }),
     pricingUnit: pricingUnit().notNull(),
     typicalDurationMin: smallint().notNull(),
     /** Guidance shown to workers and customers; never enforced. */

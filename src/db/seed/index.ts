@@ -18,6 +18,7 @@ import {
   WORKER_LAST_NAMES,
   type ServiceSeed,
 } from './data.ts'
+import { CATEGORIES_HI, SERVICES_HI } from './hindi.ts'
 import { istDateKey } from '../../lib/time.ts'
 import { createRandom } from './random.ts'
 
@@ -157,6 +158,8 @@ CATEGORIES.forEach((c, i) => {
     slug: c.slug,
     name: c.name,
     description: c.description,
+    nameHi: CATEGORIES_HI[c.slug]?.name ?? null,
+    descriptionHi: CATEGORIES_HI[c.slug]?.description ?? null,
     iconKey: c.icon,
     sortOrder: i,
   })
@@ -169,11 +172,16 @@ CATEGORIES.forEach((c, i) => {
       slug: svc.slug,
       name: svc.name,
       description: svc.description,
+      nameHi: SERVICES_HI[svc.slug]?.name ?? null,
+      descriptionHi: SERVICES_HI[svc.slug]?.description ?? null,
       pricingUnit: svc.unit,
       typicalDurationMin: svc.durationMin,
       referenceMinPaise: rupees(svc.range[0]),
       referenceMaxPaise: rupees(svc.range[1]),
-      searchTerms: `${c.terms} ${svc.terms ?? ''}`.trim(),
+      // Hindi names are searchable too, so "नल" finds tap repair.
+      searchTerms: [c.terms, svc.terms, CATEGORIES_HI[c.slug]?.name, SERVICES_HI[svc.slug]?.name]
+        .filter(Boolean)
+        .join(' '),
     })
   }
 })

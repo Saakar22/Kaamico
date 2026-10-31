@@ -1,5 +1,8 @@
+'use client'
+
 import { BadgeCheck, Clock, FlaskConical, Lock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { useT } from '@/i18n/client'
 import { formatINR, type Paise } from '@/lib/money'
 import { cn } from '@/lib/cn'
 
@@ -14,18 +17,19 @@ export function VerificationBadge({
   status: 'VERIFIED' | 'PENDING'
   className?: string
 }) {
+  const t = useT()
   if (status === 'VERIFIED') {
     return (
       <Badge tone="success" className={className}>
         <BadgeCheck aria-hidden="true" />
-        ID verified
+        {t('badges.idVerified')}
       </Badge>
     )
   }
   return (
     <Badge tone="warning" className={className}>
       <Clock aria-hidden="true" />
-      Verification pending
+      {t('badges.verificationPending')}
     </Badge>
   )
 }

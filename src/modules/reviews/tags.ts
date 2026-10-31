@@ -11,4 +11,14 @@ export const REVIEW_TAG_LABELS = {
 export type ReviewTag = keyof typeof REVIEW_TAG_LABELS
 export const REVIEW_TAGS = Object.keys(REVIEW_TAG_LABELS) as ReviewTag[]
 
-export const reviewTagLabel = (tag: string): string => REVIEW_TAG_LABELS[tag as ReviewTag] ?? tag
+const REVIEW_TAG_LABELS_HI: Record<ReviewTag, string> = {
+  on_time: 'समय पर',
+  polite: 'विनम्र',
+  fair_price: 'सही दाम',
+  clean_work: 'साफ़ काम',
+  skilled: 'हुनरमंद',
+  explained_well: 'अच्छे से समझाया',
+}
+
+export const reviewTagLabel = (tag: string, locale: 'en' | 'hi' = 'en'): string =>
+  (locale === 'hi' ? REVIEW_TAG_LABELS_HI : REVIEW_TAG_LABELS)[tag as ReviewTag] ?? tag

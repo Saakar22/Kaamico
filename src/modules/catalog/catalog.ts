@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm'
 import { cacheLife, cacheTag } from 'next/cache'
 import { z } from 'zod'
 import { getDb } from '@/db/client'
+import type { Locale } from '@/i18n/config'
 import type { PricingUnit } from './units'
 
 /** Cache tag for categories and services; admin edits (Phase 9) revalidate it. */
@@ -47,6 +48,12 @@ export type ServiceMatch = {
 
 const isUuid = (value: string) => z.uuid().safeParse(value).success
 
+/** A name or description in the requested language, falling back to English. */
+export const localized = (locale: Locale, alias: 'c' | 's', column: 'name' | 'description') =>
+  sql.raw(
+    locale === 'hi' ? `coalesce(${alias}.${column}_hi, ${alias}.${column})` : `${alias}.${column}`,
+  )
+
 type ServiceRow = {
   id: string
   slug: string
@@ -70,7 +77,7 @@ const toService = (r: ServiceRow): ServiceSummary => ({
 })
 
 /** Active categories with at least one active service, in display order. */
-export async function listCategories(): Promise<CategorySummary[]> {
+export async function listCategories(locale: Locale = 'en'): Promise<CategorySummary[]> {
   'use cache'
   cacheLife('minutes')
   cacheTag(CATALOG_TAG)
@@ -83,7 +90,8 @@ export async function listCategories(): Promise<CategorySummary[]> {
     services_count: number
     reference_from_paise: number | null
   }>(sql`
-    select c.id, c.slug, c.name, c.description, c.icon_key,
+    select c.id, c.slug, ${localized(locale, 'c', 'name')} as name,
+           ${localized(locale, 'c', 'description')} as description, c.icon_key,
            count(s.id)::int as services_count,
            min(s.reference_min_paise)::int as reference_from_paise
     from service_categories c
@@ -102,7 +110,10 @@ export async function listCategories(): Promise<CategorySummary[]> {
   }))
 }
 
-export async function getCategoryBySlug(slug: string): Promise<CategoryDetail | null> {
+export async function getCategoryBySlug(
+  slug: string,
+  locale: Locale = 'en',
+): Promise<CategoryDetail | null> {
   'use cache'
   cacheLife('minutes')
   cacheTag(CATALOG_TAG)
@@ -115,14 +126,17 @@ export async function getCategoryBySlug(slug: string): Promise<CategoryDetail | 
     description: string | null
     icon_key: string
   }>(sql`
-    select id, slug, name, description, icon_key from service_categories
-    where slug = ${slug} and is_active`)
+    select c.id, c.slug, ${localized(locale, 'c', 'name')} as name,
+           ${localized(locale, 'c', 'description')} as description, c.icon_key
+    from service_categories c
+    where c.slug = ${slug} and c.is_active`)
   if (!category) return null
   const services = await db.execute<ServiceRow>(sql`
-    select id, slug, name, description, pricing_unit, typical_duration_min,
-           reference_min_paise, reference_max_paise
-    from services where category_id = ${category.id} and is_active
-    order by name`)
+    select s.id, s.slug, ${localized(locale, 's', 'name')} as name,
+           ${localized(locale, 's', 'description')} as description, s.pricing_unit,
+           s.typical_duration_min, s.reference_min_paise, s.reference_max_paise
+    from services s where s.category_id = ${category.id} and s.is_active
+    order by s.name`)
   return {
     id: category.id,
     slug: category.slug,
@@ -134,7 +148,7 @@ export async function getCategoryBySlug(slug: string): Promise<CategoryDetail | 
 }
 
 /** An active service in an active category, or null. */
-export async function getService(id: string): Promise<ServiceDetail | null> {
+export async function getService(id: string, locale: Locale = 'en'): Promise<ServiceDetail | null> {
   'use cache'
   cacheLife('minutes')
   cacheTag(CATALOG_TAG)
@@ -147,9 +161,11 @@ export async function getService(id: string): Promise<ServiceDetail | null> {
       icon_key: string
     }
   >(sql`
-    select s.id, s.slug, s.name, s.description, s.pricing_unit, s.typical_duration_min,
-           s.reference_min_paise, s.reference_max_paise,
-           c.id as category_id, c.slug as category_slug, c.name as category_name, c.icon_key
+    select s.id, s.slug, ${localized(locale, 's', 'name')} as name,
+           ${localized(locale, 's', 'description')} as description, s.pricing_unit,
+           s.typical_duration_min, s.reference_min_paise, s.reference_max_paise,
+           c.id as category_id, c.slug as category_slug,
+           ${localized(locale, 'c', 'name')} as category_name, c.icon_key
     from services s join service_categories c on c.id = s.category_id
     where s.id = ${id} and s.is_active and c.is_active`)
   if (!row) return null
@@ -168,18 +184,25 @@ export const searchQuerySchema = z.string().trim().min(2).max(60)
 
 /** Lower-case word tokens, safe to splice into a tsquery. */
 export function queryTokens(q: string): string[] {
-  return q
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((t) => t.length > 0)
-    .slice(0, 6)
+  return (
+    q
+      .toLowerCase()
+      // Marks too: Devanagari vowel signs (e.g. the ् in मरम्मत) are part of the word.
+      .split(/[^\p{L}\p{M}\p{N}]+/u)
+      .filter((t) => t.length > 0)
+      .slice(0, 6)
+  )
 }
 
 /**
  * Finds services by name, description and synonyms (including Hinglish, e.g. "nal").
  * Full-text with prefix matching first; a substring match as the fallback.
  */
-export async function searchServices(q: string, limit = 10): Promise<ServiceMatch[]> {
+export async function searchServices(
+  q: string,
+  limit = 10,
+  locale: Locale = 'en',
+): Promise<ServiceMatch[]> {
   'use cache'
   cacheLife('minutes')
   cacheTag(CATALOG_TAG)
@@ -195,7 +218,8 @@ export async function searchServices(q: string, limit = 10): Promise<ServiceMatc
   }
   const tsquery = tokens.map((t) => `${t}:*`).join(' & ')
   let rows = await db.execute<Row>(sql`
-    select s.id, s.name, s.pricing_unit, c.slug as category_slug, c.name as category_name
+    select s.id, ${localized(locale, 's', 'name')} as name, s.pricing_unit, c.slug as category_slug,
+           ${localized(locale, 'c', 'name')} as category_name
     from services s join service_categories c on c.id = s.category_id
     where s.is_active and c.is_active
       and s.search_vector @@ to_tsquery('english', ${tsquery})
@@ -207,7 +231,8 @@ export async function searchServices(q: string, limit = 10): Promise<ServiceMatc
       sql`, `,
     )
     rows = await db.execute<Row>(sql`
-      select s.id, s.name, s.pricing_unit, c.slug as category_slug, c.name as category_name
+      select s.id, ${localized(locale, 's', 'name')} as name, s.pricing_unit, c.slug as category_slug,
+           ${localized(locale, 'c', 'name')} as category_name
       from services s join service_categories c on c.id = s.category_id
       where s.is_active and c.is_active
         and (s.name || ' ' || s.search_terms || ' ' || c.name) ilike any (array[${patterns}]::text[])

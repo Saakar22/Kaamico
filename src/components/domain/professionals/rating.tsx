@@ -1,8 +1,9 @@
 import { Star } from 'lucide-react'
+import { getT } from '@/i18n/server'
 import { cn } from '@/lib/cn'
 
 /** "★ 4.7 (128)", or "No reviews yet". The full sentence is what screen readers hear. */
-export function RatingSummary({
+export async function RatingSummary({
   avg,
   count,
   className,
@@ -11,8 +12,9 @@ export function RatingSummary({
   count: number
   className?: string
 }) {
+  const t = await getT()
   if (avg === null || count === 0) {
-    return <span className={cn('text-sm text-ink-600', className)}>No reviews yet</span>
+    return <span className={cn('text-sm text-ink-600', className)}>{t('rating.noReviews')}</span>
   }
   return (
     <span className={cn('inline-flex items-center gap-1 text-sm', className)}>
@@ -22,20 +24,24 @@ export function RatingSummary({
         <span className="text-ink-600 tabular-nums">({count})</span>
       </span>
       <span className="sr-only">
-        Rated {avg.toFixed(1)} out of 5 from {count} {count === 1 ? 'review' : 'reviews'}
+        {t(count === 1 ? 'rating.ratedOne' : 'rating.ratedOther', {
+          avg: avg.toFixed(1),
+          count,
+        })}
       </span>
     </span>
   )
 }
 
 /** Five stars, filled to the nearest whole star. */
-export function RatingStars({ rating, className }: { rating: number; className?: string }) {
+export async function RatingStars({ rating, className }: { rating: number; className?: string }) {
+  const t = await getT()
   const filled = Math.round(rating)
   return (
     <span
       className={cn('inline-flex gap-0.5', className)}
       role="img"
-      aria-label={`${rating} out of 5 stars`}
+      aria-label={t('rating.starsLabel', { rating })}
     >
       {[1, 2, 3, 4, 5].map((i) => (
         <Star

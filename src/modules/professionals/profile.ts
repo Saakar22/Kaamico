@@ -10,6 +10,8 @@ import { matchingConfig as config } from '@/modules/matching/config'
 import { loadSchedules } from '@/modules/matching/repo'
 import { photoUrl } from '@/modules/uploads/serve'
 import { isNewWorker } from '@/modules/matching/scoring'
+import type { Locale } from '@/i18n/config'
+import { localized } from '@/modules/catalog/catalog'
 
 /**
  * Public projection of a professional. Deliberately excludes phone, base location,
@@ -78,7 +80,10 @@ export async function assertPublic(workerId: string): Promise<void> {
   if (rows.length === 0) throw notFound('Professional not found')
 }
 
-export async function getPublicProfile(workerId: string): Promise<PublicProfile> {
+export async function getPublicProfile(
+  workerId: string,
+  locale: Locale = 'en',
+): Promise<PublicProfile> {
   if (!isUuid(workerId)) throw notFound('Professional not found')
   const db = getDb()
   const [w] = await db.execute<{
@@ -107,7 +112,7 @@ export async function getPublicProfile(workerId: string): Promise<PublicProfile>
 
   const [categories, services] = await Promise.all([
     db.execute<{ slug: string; name: string }>(sql`
-      select c.slug, c.name from worker_skills ws
+      select c.slug, ${localized(locale, 'c', 'name')} as name from worker_skills ws
       join service_categories c on c.id = ws.category_id and c.is_active
       where ws.worker_id = ${workerId} order by c.sort_order`),
     db.execute<{
@@ -121,7 +126,8 @@ export async function getPublicProfile(workerId: string): Promise<PublicProfile>
       is_negotiable: boolean
       typical_duration_min: number
     }>(sql`
-      select s.id as service_id, s.name, c.slug as category_slug, c.name as category_name,
+      select s.id as service_id, ${localized(locale, 's', 'name')} as name, c.slug as category_slug,
+             ${localized(locale, 'c', 'name')} as category_name,
              p.price_paise, p.min_charge_paise, p.unit, p.is_negotiable, s.typical_duration_min
       from worker_service_pricing p
       join services s on s.id = p.service_id and s.is_active
@@ -179,6 +185,7 @@ function authorName(name: string | null): string {
 export async function getPublicReviews(
   workerId: string,
   query: z.input<typeof reviewsQuerySchema> = {},
+  locale: Locale = 'en',
 ): Promise<ReviewPage> {
   const { cursor, limit } = reviewsQuerySchema.parse(query)
   await assertPublic(workerId)
@@ -198,7 +205,8 @@ export async function getPublicReviews(
       created_at: Date | string
       worker_reply: string | null
     }>(sql`
-      select r.id, r.rating, r.tags, r.comment, u.name as author, s.name as service_name,
+      select r.id, r.rating, r.tags, r.comment, u.name as author,
+             ${localized(locale, 's', 'name')} as service_name,
              r.created_at, r.worker_reply
       from reviews r
       join users u on u.id = r.customer_id

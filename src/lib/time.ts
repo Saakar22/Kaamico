@@ -35,25 +35,35 @@ export function toIstParts(date: Date): IstParts {
   }
 }
 
-const displayOptions: Intl.DateTimeFormatOptions = {
-  timeZone: IST_TIME_ZONE,
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-  hour: 'numeric',
-  minute: '2-digit',
-  hour12: true,
-}
-const displayFormatters = new Map<string, Intl.DateTimeFormat>()
+const formatters = new Map<string, Intl.DateTimeFormat>()
 
-/** e.g. "Tue, 27 Oct, 10:30 am"; `lang` "hi-IN" gives Hindi day and month names. */
-export function formatIstDateTime(date: Date, lang = 'en-IN'): string {
-  let formatter = displayFormatters.get(lang)
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat(lang, displayOptions)
-    displayFormatters.set(lang, formatter)
+/** One formatter per language and style; `lang` "hi-IN" gives Hindi day and month names. */
+function formatter(lang: string, style: 'dateTime' | 'time' | 'day'): Intl.DateTimeFormat {
+  const key = `${lang}:${style}`
+  let f = formatters.get(key)
+  if (!f) {
+    const options: Intl.DateTimeFormatOptions =
+      style === 'time'
+        ? { hour: 'numeric', minute: '2-digit', hour12: true }
+        : style === 'day'
+          ? { weekday: 'short', day: 'numeric', month: 'short' }
+          : {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            }
+    f = new Intl.DateTimeFormat(lang, { timeZone: IST_TIME_ZONE, ...options })
+    formatters.set(key, f)
   }
-  return formatter.format(date)
+  return f
+}
+
+/** e.g. "Tue, 27 Oct, 10:30 am" */
+export function formatIstDateTime(date: Date, lang = 'en-IN'): string {
+  return formatter(lang, 'dateTime').format(date)
 }
 
 const MINUTE_MS = 60_000
@@ -71,29 +81,21 @@ export function istDateKey(date: Date): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-const timeFormatter = new Intl.DateTimeFormat('en-IN', {
-  timeZone: IST_TIME_ZONE,
-  hour: 'numeric',
-  minute: '2-digit',
-  hour12: true,
-})
-
-const dayFormatter = new Intl.DateTimeFormat('en-IN', {
-  timeZone: IST_TIME_ZONE,
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-})
-
 /** e.g. "10:30 am" */
-export function formatIstTime(date: Date): string {
-  return timeFormatter.format(date)
+export function formatIstTime(date: Date, lang = 'en-IN'): string {
+  return formatter(lang, 'time').format(date)
+}
+
+const RELATIVE_DAYS: Record<string, [today: string, tomorrow: string]> = {
+  'en-IN': ['Today', 'Tomorrow'],
+  'hi-IN': ['आज', 'कल'],
 }
 
 /** "Today", "Tomorrow" or e.g. "Thu, 29 Oct" relative to `now`. */
-export function formatIstDay(date: Date, now: Date = new Date()): string {
+export function formatIstDay(date: Date, now: Date = new Date(), lang = 'en-IN'): string {
+  const [today, tomorrow] = RELATIVE_DAYS[lang] ?? RELATIVE_DAYS['en-IN']
   const key = istDateKey(date)
-  if (key === istDateKey(now)) return 'Today'
-  if (key === istDateKey(new Date(now.getTime() + 24 * 60 * MINUTE_MS))) return 'Tomorrow'
-  return dayFormatter.format(date)
+  if (key === istDateKey(now)) return today
+  if (key === istDateKey(new Date(now.getTime() + 24 * 60 * MINUTE_MS))) return tomorrow
+  return formatter(lang, 'day').format(date)
 }

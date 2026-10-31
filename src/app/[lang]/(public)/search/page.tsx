@@ -24,6 +24,9 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Checkbox, NativeSelect } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { htmlLang } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
+import type { MessageKey } from '@/i18n/translate'
 import { cn } from '@/lib/cn'
 import {
   getCategoryBySlug,
@@ -37,15 +40,17 @@ import { matchingConfig } from '@/modules/matching/config'
 import type { SortKey } from '@/modules/matching/scoring'
 import { searchProfessionals } from '@/modules/matching/search'
 
-export const metadata: Metadata = { title: 'Find a professional' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('searchPage.metaTitle') }
+}
 
 type SearchParams = PageProps<'/[lang]/search'>['searchParams']
 
-const SORTS: { key: SortKey; label: string }[] = [
-  { key: 'recommended', label: 'Recommended' },
-  { key: 'price', label: 'Price' },
-  { key: 'rating', label: 'Rating' },
-  { key: 'distance', label: 'Distance' },
+const SORTS: { key: SortKey; label: MessageKey }[] = [
+  { key: 'recommended', label: 'searchPage.sortRecommended' },
+  { key: 'price', label: 'searchPage.sortPrice' },
+  { key: 'rating', label: 'searchPage.sortRating' },
+  { key: 'distance', label: 'searchPage.sortDistance' },
 ]
 const MAX_PRICES = [300, 500, 1000, 2000, 5000]
 const MIN_RATINGS = ['4.5', '4', '3.5']
@@ -88,9 +93,10 @@ function hrefFor(filters: Filters, changes: Partial<Filters> = {}): string {
   return `/search?${qs}`
 }
 
-function SortTabs({ filters }: { filters: Filters }) {
+async function SortTabs({ filters }: { filters: Filters }) {
+  const t = await getT()
   return (
-    <nav aria-label="Sort professionals by" className="overflow-x-auto">
+    <nav aria-label={t('searchPage.sortBy')} className="overflow-x-auto">
       <ul className="flex gap-1 border-b border-border">
         {SORTS.map((s) => {
           const active = s.key === filters.sort
@@ -107,7 +113,7 @@ function SortTabs({ filters }: { filters: Filters }) {
                     : 'border-transparent text-ink-600 hover:text-ink-900',
                 )}
               >
-                {s.label}
+                {t(s.label)}
               </Link>
             </li>
           )
@@ -118,7 +124,8 @@ function SortTabs({ filters }: { filters: Filters }) {
 }
 
 /** A plain GET form, so filters work without JavaScript; collapsible on phones. */
-function FilterPanel({ filters }: { filters: Filters }) {
+async function FilterPanel({ filters }: { filters: Filters }) {
+  const t = await getT()
   const active = [filters.now, filters.maxPrice, filters.minRating].filter(Boolean).length
   return (
     <details
@@ -127,7 +134,10 @@ function FilterPanel({ filters }: { filters: Filters }) {
     >
       <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-4 font-medium">
         <SlidersHorizontal aria-hidden="true" className="size-4" />
-        Filters{active > 0 && <span className="text-ink-600"> ({active} on)</span>}
+        {t('searchPage.filters')}
+        {active > 0 && (
+          <span className="text-ink-600">{t('searchPage.filtersOn', { count: active })}</span>
+        )}
       </summary>
       <form action="/search" className="flex flex-col gap-4 border-t border-border p-4">
         <input type="hidden" name="service" value={filters.service} />
@@ -135,17 +145,17 @@ function FilterPanel({ filters }: { filters: Filters }) {
         <label className="flex min-h-11 items-center gap-3">
           <Checkbox name="when" value="now" defaultChecked={filters.now} />
           <span>
-            Available now
-            <span className="block text-sm text-ink-600">Online and free to come today</span>
+            {t('searchPage.availableNow')}
+            <span className="block text-sm text-ink-600">{t('searchPage.availableNowHint')}</span>
           </span>
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
-          Price up to
+          {t('searchPage.priceUpTo')}
           <NativeSelect
             name="maxPrice"
             defaultValue={filters.maxPrice ? String(filters.maxPrice) : ''}
           >
-            <option value="">Any price</option>
+            <option value="">{t('searchPage.anyPrice')}</option>
             {MAX_PRICES.map((p) => (
               <option key={p} value={p}>
                 ₹{p.toLocaleString('en-IN')}
@@ -154,24 +164,24 @@ function FilterPanel({ filters }: { filters: Filters }) {
           </NativeSelect>
         </label>
         <label className="flex flex-col gap-1.5 text-sm font-medium">
-          Rating
+          {t('searchPage.rating')}
           <NativeSelect name="minRating" defaultValue={filters.minRating ?? ''}>
-            <option value="">Any rating</option>
+            <option value="">{t('searchPage.anyRating')}</option>
             {MIN_RATINGS.map((r) => (
               <option key={r} value={r}>
-                {r} stars and above
+                {t('searchPage.starsAndAbove', { rating: r })}
               </option>
             ))}
           </NativeSelect>
         </label>
         <div className="flex gap-2">
-          <Button type="submit">Apply filters</Button>
+          <Button type="submit">{t('searchPage.applyFilters')}</Button>
           {active > 0 && (
             <Button variant="tertiary" asChild>
               <Link
                 href={hrefFor(filters, { now: false, maxPrice: undefined, minRating: undefined })}
               >
-                Clear
+                {t('searchPage.clear')}
               </Link>
             </Button>
           )}
@@ -182,40 +192,44 @@ function FilterPanel({ filters }: { filters: Filters }) {
 }
 
 async function ServiceSearch({ q }: { q?: string }) {
+  const [t, locale] = await Promise.all([getT(), getLocale()])
   const query = q?.trim() ?? ''
   if (query.length < 2) {
-    const categories = await listCategories()
+    const categories = await listCategories(locale)
     return (
       <div className="flex flex-col gap-6">
         <PageHeader
-          title="Find a professional"
-          description="Search for a service or pick a category."
+          title={t('searchPage.findTitle')}
+          description={t('searchPage.findDescription')}
         />
         <SearchBar className="max-w-2xl" />
         <CategoryGrid categories={categories} />
       </div>
     )
   }
-  const matches = await searchServices(query.slice(0, 60))
+  const matches = await searchServices(query.slice(0, 60), 10, locale)
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={`Services for “${query}”`} description="Pick the service you need." />
+      <PageHeader
+        title={t('searchPage.servicesFor', { query })}
+        description={t('searchPage.pickService')}
+      />
       <SearchBar defaultValue={query} className="max-w-2xl" />
       {matches.length === 0 ? (
         <Card>
           <EmptyState
             icon={SearchX}
-            title={`No services match “${query}”`}
-            description="Try another word, like “tap”, “fan” or “cleaning”."
+            title={t('searchPage.noServicesMatch', { query })}
+            description={t('searchPage.tryAnotherWord')}
             action={
               <Button asChild variant="secondary">
-                <Link href="/services">Browse all services</Link>
+                <Link href="/services">{t('searchPage.browseAll')}</Link>
               </Button>
             }
           />
         </Card>
       ) : (
-        <ul className="grid gap-2 sm:grid-cols-2" aria-label="Matching services">
+        <ul className="grid gap-2 sm:grid-cols-2" aria-label={t('searchPage.matchingServices')}>
           {matches.map((m) => (
             <li key={m.serviceId}>
               <Link
@@ -242,6 +256,7 @@ async function ProfessionalResults({
 }) {
   // Availability is computed against the current time.
   await connection()
+  const [t, locale] = await Promise.all([getT(), getLocale()])
   const now = new Date()
   const result = await searchProfessionals(
     {
@@ -258,25 +273,28 @@ async function ProfessionalResults({
   )
 
   if (result.items.length === 0) {
-    const category = await getCategoryBySlug(result.service.category.slug)
+    const category = await getCategoryBySlug(result.service.category.slug, locale)
     const others = category?.services.filter((s) => s.id !== result.service.id).slice(0, 4) ?? []
     return (
       <Card>
         {filters.now && result.scheduledAlternatives.length > 0 ? (
           <EmptyState
             icon={CalendarClock}
-            title="No one is free right now"
+            title={t('searchPage.noOneFree')}
             description={
               <>
-                Earliest:{' '}
+                {t('searchPage.earliest')}{' '}
                 {result.scheduledAlternatives
-                  .map((a) => `${a.displayName.split(' ')[0]}, ${nextSlotLabel(a.start, now)}`)
+                  .map(
+                    (a) =>
+                      `${a.displayName.split(' ')[0]}, ${nextSlotLabel(a.start, now, htmlLang[locale])}`,
+                  )
                   .join(' · ')}
               </>
             }
             action={
               <Button asChild>
-                <Link href={hrefFor(filters, { now: false })}>Show professionals for later</Link>
+                <Link href={hrefFor(filters, { now: false })}>{t('searchPage.showForLater')}</Link>
               </Button>
             }
           />
@@ -285,13 +303,13 @@ async function ProfessionalResults({
             icon={SearchX}
             title={
               filters.maxPrice || filters.minRating || filters.now
-                ? 'No professionals match these filters'
-                : 'No professionals for this service near you yet'
+                ? t('searchPage.noMatchFilters')
+                : t('searchPage.noneNearby')
             }
             description={
               filters.maxPrice || filters.minRating || filters.now
-                ? 'Try removing a filter.'
-                : `We looked up to ${result.radiusKm} km from ${location.label}.`
+                ? t('searchPage.tryRemovingFilter')
+                : t('searchPage.lookedUpTo', { km: result.radiusKm, place: location.label })
             }
             action={
               filters.maxPrice || filters.minRating || filters.now ? (
@@ -303,7 +321,7 @@ async function ProfessionalResults({
                       minRating: undefined,
                     })}
                   >
-                    Clear filters
+                    {t('searchPage.clearFilters')}
                   </Link>
                 </Button>
               ) : (
@@ -325,31 +343,32 @@ async function ProfessionalResults({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-ink-600" aria-live="polite">
-        {result.total} {result.total === 1 ? 'professional' : 'professionals'} within{' '}
-        {result.radiusKm} km
+        {t(result.total === 1 ? 'searchPage.countOne' : 'searchPage.countOther', {
+          count: result.total,
+          km: result.radiusKm,
+        })}
       </p>
       {freeNow > 0 && (
         <div className="flex flex-col gap-3 rounded-lg border border-accent-500 bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-start gap-2">
             <Zap aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-accent-500" />
             <span>
-              <span className="font-semibold">Need it now?</span> Send one request to the nearest
-              free professionals; the first to accept is booked.
+              <span className="font-semibold">{t('searchPage.needItNow')}</span>{' '}
+              {t('searchPage.quickMatchPitch')}
             </span>
           </p>
           <Button asChild variant="secondary" className="shrink-0">
-            <Link href={`/book/${filters.service}/quick`}>Quick match</Link>
+            <Link href={`/book/${filters.service}/quick`}>{t('searchPage.quickMatch')}</Link>
           </Button>
         </div>
       )}
       {result.radiusKm > firstRadius && (
         <p className="flex items-start gap-2 rounded-md bg-info-600/10 px-3 py-2 text-sm text-ink-900">
           <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-info-600" />
-          Few professionals are very close, so we&apos;re showing professionals up to{' '}
-          {result.radiusKm} km away.
+          {t('searchPage.widerRadius', { km: result.radiusKm })}
         </p>
       )}
-      <ol className="flex flex-col gap-3" aria-label="Professionals">
+      <ol className="flex flex-col gap-3" aria-label={t('searchPage.professionals')}>
         {result.items.map((pro) => (
           <li key={pro.workerId}>
             <ProfessionalCard pro={pro} serviceId={filters.service} now={now} />
@@ -359,13 +378,11 @@ async function ProfessionalResults({
       {result.nextCursor && filters.page < MAX_PAGES && (
         <Button asChild variant="secondary" className="self-center">
           <Link href={hrefFor(filters, { page: filters.page + 1 })} scroll={false}>
-            Show more professionals
+            {t('searchPage.showMore')}
           </Link>
         </Button>
       )}
-      <p className="text-sm text-ink-600">
-        Distances are in a straight line. Arrival times are estimates based on distance.
-      </p>
+      <p className="text-sm text-ink-600">{t('searchPage.distanceNote')}</p>
     </div>
   )
 }
@@ -375,17 +392,18 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
   const serviceId = one(params.service)
   if (!serviceId) return <ServiceSearch q={one(params.q)} />
 
-  const service = await getService(serviceId)
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const service = await getService(serviceId, locale)
   if (!service) {
     return (
       <Card>
         <EmptyState
           icon={SearchX}
-          title="This service isn't available"
-          description="It may have been removed. Search for another service."
+          title={t('searchPage.unavailableTitle')}
+          description={t('searchPage.unavailableBody')}
           action={
             <Button asChild>
-              <Link href="/services">Browse services</Link>
+              <Link href="/services">{t('searchPage.browseServices')}</Link>
             </Button>
           }
         />
@@ -410,7 +428,7 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
           location ? (
             <span className="inline-flex items-center gap-1.5">
               <MapPin aria-hidden="true" className="size-4 text-brand-600" />
-              Professionals who travel to {location.label}
+              {t('searchPage.travelTo', { place: location.label })}
             </span>
           ) : undefined
         }
@@ -419,8 +437,8 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
         <Card>
           <EmptyState
             icon={MapPin}
-            title="Where do you need help?"
-            description="Set your location to see professionals who travel to you, with their prices and distance."
+            title={t('searchPage.whereTitle')}
+            description={t('searchPage.whereBody')}
             action={<OpenLocationButton />}
           />
         </Card>
@@ -439,13 +457,14 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
   )
 }
 
-function ResultsSkeleton() {
+async function ResultsSkeleton() {
+  const t = await getT()
   return (
     <div
       className="flex flex-col gap-5"
       role="status"
       aria-busy="true"
-      aria-label="Loading professionals"
+      aria-label={t('searchPage.loading')}
     >
       <Skeleton className="h-8 w-56" />
       <Skeleton className="h-11 w-full" />

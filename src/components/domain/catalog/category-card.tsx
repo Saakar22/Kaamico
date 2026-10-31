@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { Money } from '@/components/ui/money'
+import { getT } from '@/i18n/server'
 import type { CategorySummary } from '@/modules/catalog/catalog'
 import { CategoryIcon } from './category-icon'
 
@@ -30,7 +31,8 @@ export function CategoryGrid({ categories }: { categories: CategorySummary[] }) 
 }
 
 /** Wider card for /services with a description, service count and guide price. */
-export function CategoryCard({ category }: { category: CategorySummary }) {
+export async function CategoryCard({ category }: { category: CategorySummary }) {
+  const t = await getT()
   return (
     <Link
       href={`/services/${category.slug}`}
@@ -41,10 +43,13 @@ export function CategoryCard({ category }: { category: CategorySummary }) {
         <span className="text-lg font-semibold">{category.name}</span>
         {category.description && <span className="text-ink-600">{category.description}</span>}
         <span className="text-sm text-ink-600">
-          {category.servicesCount} {category.servicesCount === 1 ? 'service' : 'services'}
+          {t(category.servicesCount === 1 ? 'catalog.serviceOne' : 'catalog.serviceOther', {
+            count: category.servicesCount,
+          })}
           {category.referenceFromPaise !== null && (
             <>
-              {' · '}Typically from <Money paise={category.referenceFromPaise} />
+              {' · '}
+              {t('catalog.typicallyFrom')} <Money paise={category.referenceFromPaise} />
             </>
           )}
         </span>
