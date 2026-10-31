@@ -7,25 +7,29 @@ import { PageHeader } from '@/components/patterns/page-header'
 import { EmptyState } from '@/components/patterns/states'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { getLocale, getT } from '@/i18n/server'
+import type { MessageKey } from '@/i18n/translate'
 import { listWorkerJobs, WORKER_TABS, type WorkerTab } from '@/modules/bookings/lists'
 import { requireWorkerPage } from '@/modules/workers/page-guard'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Jobs' }
-
-const LABELS: Record<WorkerTab, string> = {
-  today: 'Today',
-  upcoming: 'Upcoming',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('wjobs.metaTitle') }
 }
 
-const EMPTY: Record<WorkerTab, string> = {
-  today: 'Jobs for today, and any you have started, appear here.',
-  upcoming: 'Confirmed jobs for later days appear here.',
-  completed: 'Finished jobs appear here.',
-  cancelled: 'Confirmed jobs that were cancelled appear here.',
+const LABELS: Record<WorkerTab, MessageKey> = {
+  today: 'wjobs.tabToday',
+  upcoming: 'wjobs.tabUpcoming',
+  completed: 'wjobs.tabCompleted',
+  cancelled: 'wjobs.tabCancelled',
+}
+
+const EMPTY: Record<WorkerTab, MessageKey> = {
+  today: 'wjobs.emptyToday',
+  upcoming: 'wjobs.emptyUpcoming',
+  completed: 'wjobs.emptyCompleted',
+  cancelled: 'wjobs.emptyCancelled',
 }
 
 export default async function WorkerJobsPage({
@@ -35,37 +39,41 @@ export default async function WorkerJobsPage({
   const { tab: rawTab, cursor: rawCursor } = await searchParams
   const tab = WORKER_TABS.find((t) => t === rawTab) ?? 'today'
   const cursor = typeof rawCursor === 'string' ? rawCursor : null
-  const { jobs, nextCursor } = await listWorkerJobs(actor, { tab, cursor })
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const { jobs, nextCursor } = await listWorkerJobs(actor, { tab, cursor }, new Date(), locale)
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Jobs" description="Confirmed work, with the price already agreed." />
+      <PageHeader title={t('wjobs.title')} description={t('wjobs.description')} />
       <LinkTabs
-        label="Job types"
+        label={t('wjobs.tabs')}
         current={tab}
-        tabs={WORKER_TABS.map((t) => ({
-          key: t,
-          label: LABELS[t],
-          href: `/worker/bookings?tab=${t}`,
+        tabs={WORKER_TABS.map((key) => ({
+          key,
+          label: t(LABELS[key]),
+          href: `/worker/bookings?tab=${key}`,
         }))}
       />
       {jobs.length === 0 ? (
         <Card>
           <EmptyState
             icon={BriefcaseBusiness}
-            title={cursor ? 'No more jobs' : 'Nothing here yet'}
-            description={EMPTY[tab]}
+            title={cursor ? t('wjobs.noMore') : t('wreq.nothing')}
+            description={t(EMPTY[tab])}
             action={
               tab === 'today' ? (
                 <Button asChild variant="secondary">
-                  <Link href="/worker/requests">See requests</Link>
+                  <Link href="/worker/requests">{t('wjobs.seeRequests')}</Link>
                 </Button>
               ) : undefined
             }
           />
         </Card>
       ) : (
-        <ul className="flex flex-col gap-3" aria-label={`${LABELS[tab]} jobs`}>
+        <ul
+          className="flex flex-col gap-3"
+          aria-label={t('wjobs.listLabel', { tab: t(LABELS[tab]) })}
+        >
           {jobs.map((j) => (
             <li key={j.id}>
               <JobCard job={j} />
@@ -75,7 +83,9 @@ export default async function WorkerJobsPage({
       )}
       {nextCursor && (
         <Button asChild variant="secondary" className="self-center">
-          <Link href={`/worker/bookings?tab=${tab}&cursor=${nextCursor}`}>Show more</Link>
+          <Link href={`/worker/bookings?tab=${tab}&cursor=${nextCursor}`}>
+            {t('wjobs.showMore')}
+          </Link>
         </Button>
       )}
     </div>

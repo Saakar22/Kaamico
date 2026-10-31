@@ -6,25 +6,32 @@ import { useApiAction } from '@/components/domain/worker/use-api-action'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
+import { useT } from '@/i18n/client'
+import type { MessageKey } from '@/i18n/translate'
 import { apiFetch } from '@/lib/api-client'
 
 type Step = 'EN_ROUTE' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED'
 
-type Action = { to: Step; label: string; icon: typeof Navigation; done: string }
+type Action = { to: Step; label: MessageKey; icon: typeof Navigation; done: MessageKey }
 
 const ACTIONS: Record<string, Action> = {
   CONFIRMED: {
     to: 'EN_ROUTE',
-    label: "I'm on my way",
+    label: 'action.onMyWay',
     icon: Navigation,
-    done: 'Customer told you are on the way',
+    done: 'action.onMyWayDone',
   },
-  EN_ROUTE: { to: 'ARRIVED', label: "I've arrived", icon: MapPinCheck, done: 'Marked as arrived' },
+  EN_ROUTE: {
+    to: 'ARRIVED',
+    label: 'action.arrived',
+    icon: MapPinCheck,
+    done: 'action.arrivedDone',
+  },
   IN_PROGRESS: {
     to: 'COMPLETED',
-    label: 'Mark job complete',
+    label: 'action.complete',
     icon: CircleCheckBig,
-    done: 'Job completed',
+    done: 'action.completeDone',
   },
 }
 
@@ -47,6 +54,7 @@ export function StatusActionBar({
   startCodeAttemptsLeft: number
   chargePending: boolean
 }) {
+  const t = useT()
   const { pending, error, run } = useApiAction()
   const [code, setCode] = useState('')
 
@@ -65,17 +73,20 @@ export function StatusActionBar({
     const locked = startCodeAttemptsLeft === 0
     const submit = (event: FormEvent) => {
       event.preventDefault()
-      if (/^\d{4}$/.test(code)) void move('IN_PROGRESS', 'Job started', code)
+      if (/^\d{4}$/.test(code)) void move('IN_PROGRESS', t('action.started'), code)
     }
     return (
       <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg border border-border p-4">
-        <h2 className="font-semibold">Start the job</h2>
+        <h2 className="font-semibold">{t('action.startTitle')}</h2>
         <FormField
-          label={`Start code from ${customerFirstName}`}
+          label={t('action.codeFrom', { name: customerFirstName })}
           hint={
             locked
-              ? 'Too many wrong codes. Contact Kaamico support.'
-              : `Ask ${customerFirstName} for the 4-digit code in their app. ${startCodeAttemptsLeft} ${startCodeAttemptsLeft === 1 ? 'try' : 'tries'} left.`
+              ? t('action.locked')
+              : t(startCodeAttemptsLeft === 1 ? 'action.askCodeOne' : 'action.askCodeOther', {
+                  name: customerFirstName,
+                  count: startCodeAttemptsLeft,
+                })
           }
           error={error}
         >
@@ -99,10 +110,10 @@ export function StatusActionBar({
           className="self-start"
           disabled={locked || code.length !== 4}
           loading={pending}
-          loadingText="Checking…"
+          loadingText={t('action.checking')}
         >
           <Play aria-hidden="true" />
-          Start job
+          {t('action.start')}
         </Button>
       </form>
     )
@@ -116,17 +127,17 @@ export function StatusActionBar({
       <Button
         size="lg"
         block
-        onClick={() => move(action.to, action.done)}
+        onClick={() => move(action.to, t(action.done))}
         disabled={blocked}
         loading={pending}
-        loadingText="Updating…"
+        loadingText={t('action.updating')}
       >
         <action.icon aria-hidden="true" />
-        {action.label}
+        {t(action.label)}
       </Button>
       {blocked && (
         <p className="text-sm text-ink-600">
-          {customerFirstName} has not answered your extra charge yet.
+          {t('action.chargeUnanswered', { name: customerFirstName })}
         </p>
       )}
       {error && (

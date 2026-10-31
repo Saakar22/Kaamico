@@ -55,16 +55,17 @@ export async function BookingListItem({ booking }: { booking: CustomerBookingIte
 }
 
 /** One assigned job in the professional's lists (no address: that is on the job page). */
-export function JobCard({ job }: { job: WorkerJobItem }) {
+export async function JobCard({ job }: { job: WorkerJobItem }) {
+  const t = await getT()
   return (
     <Link href={`/worker/bookings/${job.id}`} className={cardClasses}>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-semibold">
-            {job.serviceName} for {job.customerFirstName}
+            {t('wreq.forCustomer', { service: job.serviceName, name: job.customerFirstName })}
           </span>
-          <Badge tone={statusTone(job.status)}>{statusBadgeLabel(job.status)}</Badge>
-          {job.chargePending && <Badge tone="warning">Charge awaiting approval</Badge>}
+          <Badge tone={statusTone(job.status)}>{statusBadgeLabel(job.status, t)}</Badge>
+          {job.chargePending && <Badge tone="warning">{t('wjobs.chargeAwaiting')}</Badge>}
         </span>
         <span className="text-xs text-ink-600">{job.code}</span>
         <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-ink-600">

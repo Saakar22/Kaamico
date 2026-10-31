@@ -37,9 +37,10 @@ export function useErrorMessage(): (error: unknown) => string {
   return (error) => {
     if (!(error instanceof ApiError)) return t('errors.generic')
     if (locale !== 'en') {
-      const key = `errors.${error.code}` as MessageKey
-      const translated = t(key)
-      if (translated !== key) return translated
+      for (const key of [`errors.${error.code}`, `workerErrors.${error.code}`] as MessageKey[]) {
+        const translated = t(key)
+        if (translated !== key) return translated
+      }
     }
     return error.message
   }

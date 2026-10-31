@@ -21,6 +21,8 @@ import { StatTile } from '@/components/patterns/stat-tile'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Money } from '@/components/ui/money'
+import { getT } from '@/i18n/server'
+import type { MessageKey } from '@/i18n/translate'
 import { getWorkerJobSummary } from '@/modules/bookings/lists'
 import { earningsSummary } from '@/modules/ledger/earnings'
 import { getVerification } from '@/modules/verification/verification'
@@ -31,25 +33,28 @@ import { getStatus } from '@/modules/workers/status'
 // Session-dependent: always needs a server round trip, so opt out of instant validation.
 export const instant = false
 
-export const metadata: Metadata = { title: 'Professional dashboard' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('wdash.metaTitle') }
+}
 
-const SETTINGS: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: '/worker/profile', label: 'Profile and skills', icon: UserRound },
-  { href: '/worker/pricing', label: 'Your prices', icon: IndianRupee },
-  { href: '/worker/availability', label: 'Hours and work area', icon: CalendarClock },
-  { href: '/worker/verification', label: 'ID verification', icon: ShieldCheck },
-  { href: '/worker/reviews', label: 'Reviews and replies', icon: Star },
-  { href: '/worker/support', label: 'Help and support', icon: LifeBuoy },
+const SETTINGS: { href: string; label: MessageKey; icon: LucideIcon }[] = [
+  { href: '/worker/profile', label: 'wdash.profile', icon: UserRound },
+  { href: '/worker/pricing', label: 'wdash.prices', icon: IndianRupee },
+  { href: '/worker/availability', label: 'wdash.hours', icon: CalendarClock },
+  { href: '/worker/verification', label: 'wdash.verification', icon: ShieldCheck },
+  { href: '/worker/reviews', label: 'wdash.reviews', icon: Star },
+  { href: '/worker/support', label: 'wdash.help', icon: LifeBuoy },
 ]
 
 export default async function WorkerDashboardPage() {
   const actor = await requireWorkerPage()
-  const [onboarding, status, verification, jobs, earnings] = await Promise.all([
+  const [onboarding, status, verification, jobs, earnings, t] = await Promise.all([
     getOnboardingState(actor.workerId),
     getStatus(actor.workerId),
     getVerification(actor.workerId),
     getWorkerJobSummary(actor),
     earningsSummary(actor.workerId, 'week'),
+    getT(),
   ])
   const setupDone = onboarding.next === null
   const verified = status.verificationStatus === 'VERIFIED'
@@ -58,13 +63,18 @@ export default async function WorkerDashboardPage() {
     <div className="flex flex-col gap-6">
       <AutoRefresh intervalMs={15_000} enabled={verified} />
       <PageHeader
-        title={`Hi, ${actor.name}`}
+        title={t('dashboard.hi', { name: actor.name ?? '' })}
         description={
           !setupDone
-            ? `${onboarding.completed} of ${onboarding.steps.length} setup steps done.`
+            ? t('wdash.setupProgress', {
+                done: onboarding.completed,
+                total: onboarding.steps.length,
+              })
             : jobs.requestsAwaitingReply > 0
-              ? `${jobs.requestsAwaitingReply} ${jobs.requestsAwaitingReply === 1 ? 'request is' : 'requests are'} waiting for your reply.`
-              : 'Your requests and jobs at a glance.'
+              ? t(jobs.requestsAwaitingReply === 1 ? 'wdash.waitingOne' : 'wdash.waitingOther', {
+                  count: jobs.requestsAwaitingReply,
+                })
+              : t('wdash.glance')
         }
         actions={<SignOutButton />}
       />
@@ -80,18 +90,18 @@ export default async function WorkerDashboardPage() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Link href="/worker/requests" className="rounded-lg hover:ring-2 hover:ring-brand-600">
               <StatTile
-                label="Awaiting your reply"
+                label={t('wdash.awaiting')}
                 value={jobs.requestsAwaitingReply}
                 className={jobs.requestsAwaitingReply > 0 ? 'border-accent-500' : undefined}
               />
             </Link>
-            <StatTile label="Jobs today" value={jobs.today.length} />
-            <StatTile label="Done this week" value={jobs.week.completedJobs} />
+            <StatTile label={t('wdash.jobsToday')} value={jobs.today.length} />
+            <StatTile label={t('wdash.doneWeek')} value={jobs.week.completedJobs} />
             <Link href="/worker/earnings" className="rounded-lg hover:ring-2 hover:ring-brand-600">
               <StatTile
-                label="Earned this week"
+                label={t('wdash.earnedWeek')}
                 value={<Money paise={earnings.netPaise} />}
-                hint="After Kaamico's fee"
+                hint={t('wdash.afterFee')}
               />
             </Link>
           </div>
@@ -99,18 +109,18 @@ export default async function WorkerDashboardPage() {
           <section aria-labelledby="today-title" className="flex flex-col gap-3">
             <div className="flex items-end justify-between gap-3">
               <h2 id="today-title" className="font-display text-xl font-bold">
-                Today&apos;s jobs
+                {t('wdash.todaysJobs')}
               </h2>
               <Link
                 href="/worker/bookings?tab=upcoming"
                 className="text-sm font-medium text-brand-700 hover:underline"
               >
-                Upcoming jobs
+                {t('wdash.upcoming')}
               </Link>
             </div>
             {jobs.today.length === 0 ? (
               <p className="rounded-lg border border-dashed border-border p-4 text-ink-600">
-                No jobs today yet. Stay online to get requests from customers nearby.
+                {t('wdash.noJobs')}
               </p>
             ) : (
               <ul className="flex flex-col gap-3">
@@ -131,11 +141,13 @@ export default async function WorkerDashboardPage() {
         <section aria-labelledby="setup-title" className="flex flex-col gap-3">
           <div className="flex items-end justify-between gap-3">
             <h2 id="setup-title" className="font-display text-xl font-bold">
-              Finish setting up
+              {t('wdash.finishSetup')}
             </h2>
             {onboarding.next && (
               <Button asChild size="sm">
-                <Link href={onboarding.next.href}>Continue: {onboarding.next.title}</Link>
+                <Link href={onboarding.next.href}>
+                  {t('wdash.continueStep', { step: onboarding.next.title })}
+                </Link>
               </Button>
             )}
           </div>
@@ -145,7 +157,7 @@ export default async function WorkerDashboardPage() {
 
       <section aria-labelledby="settings-title" className="flex flex-col gap-3">
         <h2 id="settings-title" className="font-display text-xl font-bold">
-          Your setup
+          {t('wdash.yourSetup')}
         </h2>
         <ul className="grid gap-3 sm:grid-cols-2">
           {SETTINGS.map((s) => (
@@ -155,7 +167,7 @@ export default async function WorkerDashboardPage() {
                 className="flex min-h-14 items-center gap-3 rounded-lg border border-border bg-surface px-4 hover:border-brand-600"
               >
                 <s.icon aria-hidden="true" className="size-5 text-brand-700" />
-                <span className="font-medium">{s.label}</span>
+                <span className="font-medium">{t(s.label)}</span>
               </Link>
             </li>
           ))}
@@ -166,7 +178,7 @@ export default async function WorkerDashboardPage() {
                 className="flex min-h-14 items-center gap-3 rounded-lg border border-border bg-surface px-4 hover:border-brand-600"
               >
                 <MapPin aria-hidden="true" className="size-5 text-brand-700" />
-                <span className="font-medium">See your public profile</span>
+                <span className="font-medium">{t('wdash.publicProfile')}</span>
               </Link>
             </li>
           )}

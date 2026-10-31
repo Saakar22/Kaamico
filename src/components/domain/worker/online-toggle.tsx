@@ -4,15 +4,18 @@ import { Pause, Play } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { useLocale, useT } from '@/i18n/client'
+import { htmlLang } from '@/i18n/config'
+import type { MessageKey } from '@/i18n/translate'
 import { apiFetch } from '@/lib/api-client'
 import { formatIstDateTime } from '@/lib/time'
 import type { WorkerStatus } from '@/modules/workers/status'
 import { useApiAction } from './use-api-action'
 
-const PAUSES = [
-  { label: 'Pause for today', hours: 'endOfDay' as const },
-  { label: 'Pause for 3 days', hours: 72 },
-  { label: 'Pause for a week', hours: 168 },
+const PAUSES: { label: MessageKey; hours: 'endOfDay' | number }[] = [
+  { label: 'online.pauseToday', hours: 'endOfDay' },
+  { label: 'online.pause3', hours: 72 },
+  { label: 'online.pauseWeek', hours: 168 },
 ]
 
 function pauseUntil(choice: (typeof PAUSES)[number]['hours'], now = new Date()): string {
@@ -30,6 +33,8 @@ function pauseUntil(choice: (typeof PAUSES)[number]['hours'], now = new Date()):
  * keeps the professional in "available now" results; closing the app lets it lapse.
  */
 export function OnlineToggle({ status, verified }: { status: WorkerStatus; verified: boolean }) {
+  const t = useT()
+  const lang = htmlLang[useLocale()]
   const { pending, error, run } = useApiAction()
   const [online, setOnline] = useState(status.online)
 
@@ -56,7 +61,7 @@ export function OnlineToggle({ status, verified }: { status: WorkerStatus; verif
         await apiFetch('/api/v1/worker/status', { body: { online: next } })
         setOnline(next)
       },
-      { success: next ? 'You are online' : 'You are offline' },
+      { success: next ? t('online.youOnline') : t('online.youOffline') },
     )
 
   const pause = (choice: (typeof PAUSES)[number]['hours'] | null) =>
@@ -70,7 +75,7 @@ export function OnlineToggle({ status, verified }: { status: WorkerStatus; verif
         })
         if (choice) setOnline(false)
       },
-      { success: choice ? 'New requests paused' : 'Pause ended' },
+      { success: choice ? t('online.paused') : t('online.resumed') },
     )
 
   return (
@@ -78,33 +83,34 @@ export function OnlineToggle({ status, verified }: { status: WorkerStatus; verif
       <label className="flex items-center justify-between gap-4">
         <span className="flex flex-col">
           <span className="text-lg font-semibold">
-            {online ? 'You are online' : 'You are offline'}
+            {online ? t('online.youOnline') : t('online.youOffline')}
           </span>
           <span className="text-sm text-ink-600">
             {verified
               ? online
-                ? 'Customers nearby can see you as available now while this app is open.'
-                : 'Go online to get requests for jobs right now.'
-              : 'You can go online once your ID has been verified.'}
+                ? t('online.onlineHint')
+                : t('online.offlineHint')
+              : t('online.notVerified')}
           </span>
         </span>
         <Switch
           checked={online}
           disabled={!verified || pending}
           onCheckedChange={toggle}
-          aria-label="Online"
+          aria-label={t('online.label')}
         />
       </label>
       {verified &&
         (status.pausedUntil ? (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-warning-700/10 px-3 py-2">
             <span className="text-sm">
-              You&apos;re paused until {formatIstDateTime(new Date(status.pausedUntil))}. You
-              won&apos;t get new requests.
+              {t('online.pausedUntil', {
+                time: formatIstDateTime(new Date(status.pausedUntil), lang),
+              })}
             </span>
             <Button size="sm" variant="secondary" onClick={() => pause(null)} disabled={pending}>
               <Play aria-hidden="true" />
-              Resume now
+              {t('online.resume')}
             </Button>
           </div>
         ) : (
@@ -118,7 +124,7 @@ export function OnlineToggle({ status, verified }: { status: WorkerStatus; verif
                 disabled={pending}
               >
                 <Pause aria-hidden="true" />
-                {p.label}
+                {t(p.label)}
               </Button>
             ))}
           </div>

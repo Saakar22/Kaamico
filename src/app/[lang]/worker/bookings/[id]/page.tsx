@@ -21,6 +21,8 @@ import { statusLabel } from '@/components/domain/negotiation/booking-status'
 import { CancelBookingButton } from '@/components/domain/negotiation/cancel-booking-button'
 import { PageHeader } from '@/components/patterns/page-header'
 import { Card, CardContent } from '@/components/ui/card'
+import { htmlLang, type Locale } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
 import { AppError } from '@/lib/errors'
 import { formatIstDateTime } from '@/lib/time'
 import type { Actor } from '@/modules/auth/types'
@@ -34,13 +36,15 @@ import { requireWorkerPage } from '@/modules/workers/page-guard'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Job' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('wjobs.jobTitle') }
+}
 
 const POLL_MS = 10_000
 
-async function load(actor: Actor, id: string) {
+async function load(actor: Actor, id: string, locale: Locale) {
   try {
-    return await getWorkerBooking(actor, id)
+    return await getWorkerBooking(actor, id, new Date(), locale)
   } catch (error) {
     if (error instanceof AppError && error.status === 404) notFound()
     throw error
@@ -50,7 +54,8 @@ async function load(actor: Actor, id: string) {
 /** Job execution for the assigned professional: address, next step, extra charges (§5). */
 export default async function WorkerJobPage({ params }: PageProps<'/[lang]/worker/bookings/[id]'>) {
   const actor = await requireWorkerPage()
-  const job = await load(actor, (await params).id)
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const job = await load(actor, (await params).id, locale)
   const visitFee = owesVisitFee(job) ? job.visitFeePaise : null
   const payment = job.status === 'COMPLETED' || visitFee ? await bookingPayment(job.id) : null
   const payable = visitFee ?? job.price.totalPaise
@@ -65,8 +70,8 @@ export default async function WorkerJobPage({ params }: PageProps<'/[lang]/worke
   const name = job.customerFirstName
   const when =
     job.timing === 'ON_DEMAND' && !job.slot
-      ? 'As soon as possible'
-      : formatIstDateTime(new Date(job.slot?.start ?? job.requestedStart))
+      ? t('book.asap')
+      : formatIstDateTime(new Date(job.slot?.start ?? job.requestedStart), htmlLang[locale])
   const chargePending = job.charges.some((c) => c.status === 'PROPOSED')
   const onSite = job.status === 'ARRIVED' || job.status === 'IN_PROGRESS'
   const address = job.address
@@ -93,11 +98,11 @@ export default async function WorkerJobPage({ params }: PageProps<'/[lang]/worke
         className="inline-flex h-11 w-fit items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
       >
         <ChevronLeft aria-hidden="true" className="size-4" />
-        All jobs
+        {t('wjobs.all')}
       </Link>
       <PageHeader
-        title={`${job.service.name} for ${name}`}
-        description={`${statusLabel(job.status, 'worker', name)} · ${job.code}`}
+        title={t('wreq.forCustomer', { service: job.service.name, name })}
+        description={`${statusLabel(job.status, 'worker', name, t)} · ${job.code}`}
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
@@ -117,7 +122,7 @@ export default async function WorkerJobPage({ params }: PageProps<'/[lang]/worke
                     className="inline-flex h-11 w-fit items-center gap-2 text-sm font-medium text-brand-700 hover:underline"
                   >
                     <ExternalLink aria-hidden="true" className="size-4" />
-                    Directions in Google Maps
+                    {t('wjobs.directions')}
                   </a>
                 )}
               </CardContent>
@@ -156,7 +161,7 @@ export default async function WorkerJobPage({ params }: PageProps<'/[lang]/worke
           </Card>
         </div>
 
-        <aside className="flex flex-col gap-4" aria-label="Job details">
+        <aside className="flex flex-col gap-4" aria-label={t('wjobs.details')}>
           <Card>
             <CardContent className="flex flex-col gap-4 text-sm">
               <p className="flex items-start gap-2">
@@ -172,7 +177,7 @@ export default async function WorkerJobPage({ params }: PageProps<'/[lang]/worke
                 className="inline-flex h-11 items-center gap-2 font-medium text-brand-700 hover:underline"
               >
                 <MessagesSquare aria-hidden="true" className="size-4" />
-                Messages with {name}
+                {t('wjobs.messages', { name })}
               </Link>
             </CardContent>
           </Card>
@@ -184,24 +189,27 @@ export default async function WorkerJobPage({ params }: PageProps<'/[lang]/worke
             className="inline-flex h-11 items-center gap-2 text-sm font-medium text-brand-700 hover:underline"
           >
             <LifeBuoy aria-hidden="true" className="size-4" />
-            Get help with this job
+            {t('wjobs.help')}
           </Link>
           {job.status === 'CONFIRMED' && (
             <CancelBookingButton
               bookingId={job.id}
               version={job.version}
-              label="Cancel job"
+              label={t('wjobs.cancelJob')}
               reasonRequired
-              description={`${name} will be told straight away. Cancelling confirmed jobs lowers your reliability score.`}
+              description={t('wjobs.cancelJobHint', { name })}
             />
           )}
           {job.status === 'ARRIVED' && (
             <CancelBookingButton
               bookingId={job.id}
               version={job.version}
-              label="Customer didn't show up"
+              label={t('wjobs.noShow')}
               reasonRequired
-              description={`You can cancel for a no-show ${negotiationConfig.noShowMinutes} minutes after arriving. Send ${name} a message first.`}
+              description={t('wjobs.noShowHint', {
+                minutes: negotiationConfig.noShowMinutes,
+                name,
+              })}
             />
           )}
         </aside>

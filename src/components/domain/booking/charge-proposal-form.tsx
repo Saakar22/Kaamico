@@ -7,13 +7,15 @@ import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input, NativeSelect } from '@/components/ui/input'
 import { MoneyInput } from '@/components/ui/money-input'
+import { useT } from '@/i18n/client'
+import type { MessageKey } from '@/i18n/translate'
 import { apiFetch } from '@/lib/api-client'
 
 const KINDS = [
-  { value: 'MATERIALS', label: 'Materials or parts' },
-  { value: 'EXTRA_WORK', label: 'Extra work' },
-  { value: 'OTHER', label: 'Other' },
-] as const
+  { value: 'MATERIALS', label: 'extra.materials' },
+  { value: 'EXTRA_WORK', label: 'extra.work' },
+  { value: 'OTHER', label: 'extra.other' },
+] as const satisfies readonly { value: string; label: MessageKey }[]
 
 /** On site, the professional asks for an extra charge; it counts only once the customer approves. */
 export function ChargeProposalForm({
@@ -23,6 +25,7 @@ export function ChargeProposalForm({
   bookingId: string
   customerFirstName: string
 }) {
+  const t = useT()
   const { pending, error, fieldErrors, run } = useApiAction()
   const [open, setOpen] = useState(false)
   const [kind, setKind] = useState<(typeof KINDS)[number]['value']>('MATERIALS')
@@ -45,7 +48,7 @@ export function ChargeProposalForm({
         setAmount(null)
         setOpen(false)
       },
-      { success: `Sent to ${customerFirstName} for approval` },
+      { success: t('extra.sent', { name: customerFirstName }) },
     )
   }
 
@@ -53,18 +56,18 @@ export function ChargeProposalForm({
     return (
       <Button variant="secondary" className="self-start" onClick={() => setOpen(true)}>
         <Plus aria-hidden="true" />
-        Add extra charge
+        {t('extra.add')}
       </Button>
     )
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg border border-border p-4">
-      <h2 className="font-semibold">Extra charge</h2>
+      <h2 className="font-semibold">{t('extra.title')}</h2>
       <p className="text-sm text-ink-600">
-        {customerFirstName} approves it in the app before it is added to the bill.
+        {t('extra.approvesFirst', { name: customerFirstName })}
       </p>
-      <FormField label="Type">
+      <FormField label={t('extra.type')}>
         {(field) => (
           <NativeSelect
             {...field}
@@ -73,24 +76,29 @@ export function ChargeProposalForm({
           >
             {KINDS.map((k) => (
               <option key={k.value} value={k.value}>
-                {k.label}
+                {t(k.label)}
               </option>
             ))}
           </NativeSelect>
         )}
       </FormField>
-      <FormField label="What is it for?" required error={fieldErrors.description}>
+      <FormField label={t('extra.what')} required error={fieldErrors.description}>
         {(field) => (
           <Input
             {...field}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={200}
-            placeholder="e.g. New tap cartridge"
+            placeholder={t('extra.placeholder')}
           />
         )}
       </FormField>
-      <FormField label="Amount" required className="sm:w-48" error={fieldErrors.amountPaise}>
+      <FormField
+        label={t('extra.amount')}
+        required
+        className="sm:w-48"
+        error={fieldErrors.amountPaise}
+      >
         {(field) => <MoneyInput {...field} value={amount} onValueChange={setAmount} />}
       </FormField>
       {error && !Object.keys(fieldErrors).length && (
@@ -102,13 +110,13 @@ export function ChargeProposalForm({
         <Button
           type="submit"
           loading={pending}
-          loadingText="Sending…"
+          loadingText={t('extra.sending')}
           disabled={amount === null || description.trim().length < 3}
         >
-          Send for approval
+          {t('extra.send')}
         </Button>
         <Button type="button" variant="tertiary" onClick={() => setOpen(false)}>
-          Cancel
+          {t('extra.cancel')}
         </Button>
       </div>
     </form>

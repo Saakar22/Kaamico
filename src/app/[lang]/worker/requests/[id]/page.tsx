@@ -9,6 +9,8 @@ import { PageHeader } from '@/components/patterns/page-header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Money } from '@/components/ui/money'
+import { htmlLang } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
 import { AppError } from '@/lib/errors'
 import { formatIstDateTime } from '@/lib/time'
 import { getWorkerRequest } from '@/modules/bookings/views'
@@ -17,15 +19,18 @@ import { requireWorkerPage } from '@/modules/workers/page-guard'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Request' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('wreq.requestTitle') }
+}
 
 export default async function WorkerRequestPage({
   params,
 }: PageProps<'/[lang]/worker/requests/[id]'>) {
   const actor = await requireWorkerPage()
+  const [t, locale] = await Promise.all([getT(), getLocale()])
   let request
   try {
-    request = await getWorkerRequest(actor, (await params).id)
+    request = await getWorkerRequest(actor, (await params).id, new Date(), locale)
   } catch (error) {
     if (error instanceof AppError && error.status === 404) notFound()
     throw error
@@ -35,8 +40,8 @@ export default async function WorkerRequestPage({
   const lost = request.invitationStatus === 'LOST' && !request.assigned
   const when =
     request.timing === 'ON_DEMAND'
-      ? 'As soon as possible'
-      : formatIstDateTime(new Date(request.slot?.start ?? request.requestedStart))
+      ? t('book.asap')
+      : formatIstDateTime(new Date(request.slot?.start ?? request.requestedStart), htmlLang[locale])
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,23 +50,26 @@ export default async function WorkerRequestPage({
         className="inline-flex h-11 w-fit items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
       >
         <ChevronLeft aria-hidden="true" className="size-4" />
-        All requests
+        {t('wreq.all')}
       </Link>
       <PageHeader
-        title={`${request.service.name} for ${request.customerFirstName}`}
-        description={`${lost ? 'Booked by another professional' : statusLabel(request.status, 'worker', request.customerFirstName)} · ${request.code}`}
+        title={t('wreq.forCustomer', {
+          service: request.service.name,
+          name: request.customerFirstName,
+        })}
+        description={`${lost ? t('wreq.lost') : statusLabel(request.status, 'worker', request.customerFirstName, t)} · ${request.code}`}
       />
       {request.mode === 'BROADCAST' && open && (
         <p className="rounded-lg border border-accent-500 bg-surface p-3 text-sm" role="note">
-          <span className="font-semibold">Quick match:</span> {request.customerFirstName} sent this
-          to a few nearby professionals. The first to accept gets the job.
+          <span className="font-semibold">{t('wreq.quickMatch')}</span>{' '}
+          {t('wreq.quickMatchBody', { name: request.customerFirstName })}
         </p>
       )}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-4">
           {request.assigned && (
             <Button asChild size="lg" className="self-start">
-              <Link href={`/worker/bookings/${request.id}`}>Open job</Link>
+              <Link href={`/worker/bookings/${request.id}`}>{t('wreq.openJob')}</Link>
             </Button>
           )}
           <NegotiationThread
@@ -80,7 +88,7 @@ export default async function WorkerRequestPage({
             }}
           />
         </div>
-        <aside className="flex flex-col gap-4" aria-label="Request details">
+        <aside className="flex flex-col gap-4" aria-label={t('wreq.details')}>
           <Card>
             <CardContent className="flex flex-col gap-3 text-sm">
               <p className="flex items-start gap-2">
@@ -89,20 +97,16 @@ export default async function WorkerRequestPage({
               </p>
               <p className="flex items-start gap-2">
                 <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-ink-600" />
-                {request.localityLabel} · about {request.distanceKm} km away
+                {t('wreq.away', { place: request.localityLabel, km: request.distanceKm })}
               </p>
               {request.price.listedPaise !== null && (
                 <p>
-                  Your listed price: <Money paise={request.price.listedPaise} />{' '}
-                  {unitSuffix(request.service.unit)}
+                  {t('wreq.yourListed')} <Money paise={request.price.listedPaise} />{' '}
+                  {unitSuffix(request.service.unit, locale)}
                 </p>
               )}
               {request.description && <p className="text-ink-900">“{request.description}”</p>}
-              {!request.address && (
-                <p className="text-ink-600">
-                  The full address appears once the booking is confirmed.
-                </p>
-              )}
+              {!request.address && <p className="text-ink-600">{t('wreq.addressLater')}</p>}
             </CardContent>
           </Card>
           {open && <DeclineRequestButton invitationId={request.invitationId} />}

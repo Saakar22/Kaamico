@@ -29,11 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const CANCELLABLE = ['REQUESTED', 'NEGOTIATING', 'CONFIRMED', 'EN_ROUTE', 'ARRIVED']
 
-async function load(
-  actorId: Parameters<typeof getCustomerBooking>[0],
-  id: string,
-  locale: Locale,
-) {
+async function load(actorId: Parameters<typeof getCustomerBooking>[0], id: string, locale: Locale) {
   try {
     return await getCustomerBooking(actorId, id, new Date(), locale)
   } catch (error) {
