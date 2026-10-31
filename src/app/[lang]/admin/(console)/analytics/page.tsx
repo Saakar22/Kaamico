@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { BarList } from '@/components/charts/bar-list'
 import { LinkTabs } from '@/components/patterns/link-tabs'
 import { PageHeader } from '@/components/patterns/page-header'
@@ -7,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Table, TD, TH, THead, TR } from '@/components/ui/table'
 import { requirePageActor } from '@/modules/auth/page-guards'
 import { ANALYTICS_RANGES, getAdminAnalytics, type AnalyticsRange } from '@/modules/analytics/admin'
+import { repeatCancellingPairs } from '@/modules/analytics/patterns'
 import { waitlistDemand } from '@/modules/location/waitlist'
 
 export const instant = false
@@ -24,7 +26,11 @@ export default async function AdminAnalyticsPage({
   await requirePageActor('ADMIN')
   const { days: raw } = await searchParams
   const days: AnalyticsRange = ANALYTICS_RANGES.find((d) => d === raw) ?? '30'
-  const [a, waitlist] = await Promise.all([getAdminAnalytics({ days }), waitlistDemand()])
+  const [a, waitlist, pairs] = await Promise.all([
+    getAdminAnalytics({ days }),
+    waitlistDemand(),
+    repeatCancellingPairs({ days: Number(days) }),
+  ])
   const [searches, requests, booked, completed] = a.funnel
   const finished = a.outcomes.filter((o) => o.key !== 'OPEN').reduce((n, o) => n + o.count, 0)
 
@@ -147,6 +153,59 @@ export default async function AdminAnalyticsPage({
                         ({percent(l.unfilled, l.requests)})
                       </span>
                     )}
+                  </TD>
+                </TR>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </section>
+
+      <section aria-labelledby="pairs-title" className="flex flex-col gap-3">
+        <h2 id="pairs-title" className="font-display text-xl font-bold">
+          Pairs who keep cancelling
+        </h2>
+        <p className="text-sm text-ink-600">
+          The same customer and professional cancelling confirmed jobs with each other two or more
+          times in this period. This can mean they are settling the work outside Kaamico.
+        </p>
+        {pairs.length === 0 ? (
+          <p className="text-ink-600">No repeated cancellations in this period.</p>
+        ) : (
+          <Table label="Pairs who keep cancelling">
+            <THead>
+              <TR>
+                <TH scope="col">Customer</TH>
+                <TH scope="col">Professional</TH>
+                <TH scope="col" className="text-right">
+                  Cancelled
+                </TH>
+                <TH scope="col">By</TH>
+                <TH scope="col">Bookings</TH>
+              </TR>
+            </THead>
+            <tbody>
+              {pairs.map((p) => (
+                <TR key={`${p.customerId}:${p.workerId}`}>
+                  <TD>{p.customerName ?? 'Unnamed customer'}</TD>
+                  <TD>{p.workerName}</TD>
+                  <TD className="text-right tabular-nums">{p.cancellations}</TD>
+                  <TD>
+                    customer {p.byCustomer} · professional {p.byWorker}
+                  </TD>
+                  <TD>
+                    <ul className="flex flex-wrap gap-x-2">
+                      {p.bookings.slice(0, 5).map((b) => (
+                        <li key={b.id}>
+                          <Link
+                            href={`/admin/bookings/${b.id}`}
+                            className="font-medium text-brand-700 underline"
+                          >
+                            {b.code}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
                   </TD>
                 </TR>
               ))}

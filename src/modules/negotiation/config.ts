@@ -24,6 +24,8 @@ export const negotiationConfig = {
     openRequestsPerCustomer: 3,
     offers: { limit: 10, windowSeconds: 10 * 60 },
     messages: { limit: 20, windowSeconds: 10 * 60 },
+    /** Requests that lapsed with a professional's quote unanswered prompt a reminder. */
+    unansweredExpired: { count: 3, windowDays: 7 },
   },
   /** Extra charges per booking, and the largest single charge (₹50,000). */
   maxChargesPerBooking: 5,

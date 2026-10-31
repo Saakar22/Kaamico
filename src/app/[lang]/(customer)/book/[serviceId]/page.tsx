@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { BookingWizard } from '@/components/domain/booking/booking-wizard'
+import { CooldownNote } from '@/components/domain/booking/cooldown-note'
 import { PageHeader } from '@/components/patterns/page-header'
 import { EmptyState } from '@/components/patterns/states'
 import { Button } from '@/components/ui/button'
@@ -78,6 +79,7 @@ export default async function BookPage({
         title={t('book.title', { service: service.name })}
         description={t('book.description', { name: profile.displayName })}
       />
+      <CooldownNote customerId={actor.userId} />
       <BookingWizard
         service={{
           id: service.id,

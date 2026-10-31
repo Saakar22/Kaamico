@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { QuickMatchForm } from '@/components/domain/booking/quick-match-form'
+import { CooldownNote } from '@/components/domain/booking/cooldown-note'
 import { PageHeader } from '@/components/patterns/page-header'
 import { EmptyState } from '@/components/patterns/states'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,7 @@ export default async function QuickMatchPage({
         title={t('quick.title', { service: service.name })}
         description={t('quick.description')}
       />
+      <CooldownNote customerId={actor.userId} />
       <Card>
         <CardContent className="flex flex-col gap-4">
           <p className="flex items-center gap-2 text-sm text-ink-600">

@@ -294,6 +294,8 @@ export const en = {
     stepOf: 'Step {current} of {total}:',
   },
   book: {
+    cooldown:
+      "A few of your recent requests ran out of time while a professional's quote was waiting for you. Please send a request only when you're ready to reply; professionals keep time free for it.",
     metaTitle: 'Book a professional',
     notOffered: '{name} does not offer {service}',
     seeOthers: 'See other professionals',
