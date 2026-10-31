@@ -18,6 +18,9 @@ const envSchema = z
     DATABASE_URL_TEST: postgresUrl.optional(),
     OTP_MODE: z.enum(['simulated', 'msg91']).default('simulated'),
     PAYMENTS_MODE: z.enum(['simulated', 'razorpay']).default('simulated'),
+    /** console: emails are logged (and listed at /dev/mailbox) instead of sent. */
+    EMAIL_MODE: z.enum(['console', 'resend']).default('console'),
+    EMAIL_FROM: z.string().min(3).default('Kaamico <no-reply@kaamico.in>'),
     ALLOW_SIMULATION_IN_PRODUCTION: z.stringbool().default(false),
     /** Razorpay test mode (PAYMENTS_MODE=razorpay). Live keys are refused in this release. */
     RAZORPAY_KEY_ID: z
@@ -107,6 +110,14 @@ const envSchema = z
             'simulated mode is not allowed in production (set ALLOW_SIMULATION_IN_PRODUCTION=true for public demos)',
         })
       }
+    }
+    if (env.EMAIL_MODE === 'console') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['EMAIL_MODE'],
+        message:
+          'console email is not allowed in production (set ALLOW_SIMULATION_IN_PRODUCTION=true for public demos)',
+      })
     }
   })
 

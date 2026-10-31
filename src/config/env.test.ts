@@ -29,6 +29,15 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...base, ...secrets, NODE_ENV: 'production' })).toThrow(
       /OTP_MODE: simulated mode is not allowed/,
     )
+    expect(() =>
+      parseEnv({
+        ...base,
+        ...secrets,
+        NODE_ENV: 'production',
+        OTP_MODE: 'msg91',
+        PAYMENTS_MODE: 'razorpay',
+      }),
+    ).toThrow(/EMAIL_MODE: console email is not allowed/)
   })
 
   it('allows simulated modes in production for explicit demos', () => {
@@ -64,6 +73,7 @@ describe('parseEnv', () => {
         NODE_ENV: 'production',
         OTP_MODE: 'msg91',
         PAYMENTS_MODE: 'razorpay',
+        EMAIL_MODE: 'resend',
         RATE_LIMIT_MULTIPLIER: '20',
       }),
     ).toThrow(/RATE_LIMIT_MULTIPLIER: must be 1 in production/)

@@ -18,7 +18,7 @@ Simulated OTP and payments are refused in production unless `ALLOW_SIMULATION_IN
 
 All settings are environment variables, validated at start-up (`src/config/env.ts`; `.env.example` lists every one). Keep them in the host's secret store or GitHub environment secrets, never in the repo.
 
-Production needs at least: `APP_URL` (https), `DATABASE_URL`, `AUTH_SECRET` (≥ 32 random characters, e.g. `openssl rand -base64 48`), `CRON_SECRET` (≥ 32), `RATE_LIMIT_MULTIPLIER=1`, `STORAGE_DRIVER=s3` with the `S3_*` settings, and either real providers (`OTP_MODE=msg91`, `PAYMENTS_MODE=razorpay`) or `ALLOW_SIMULATION_IN_PRODUCTION=true` for a demo.
+Production needs at least: `APP_URL` (https), `DATABASE_URL`, `AUTH_SECRET` (≥ 32 random characters, e.g. `openssl rand -base64 48`), `CRON_SECRET` (≥ 32), `RATE_LIMIT_MULTIPLIER=1`, `STORAGE_DRIVER=s3` with the `S3_*` settings, and either real providers (`OTP_MODE=msg91`, `PAYMENTS_MODE=razorpay`, `EMAIL_MODE=resend`) or `ALLOW_SIMULATION_IN_PRODUCTION=true` for a demo.
 
 **`AUTH_SECRET` is not freely rotatable:** it keys OTP hashes and derives each booking's start code. Changing it invalidates codes in flight and changes the start codes of active bookings. Rotate it only in a quiet window, and tell customers with active jobs.
 
@@ -89,3 +89,7 @@ E2E_BASE_URL=http://localhost:3200 npm run test:smoke
 | Abusive user                          | Suspend them in the admin console (`/admin/users`): signs them out everywhere and cancels their open requests.                                         |
 | Payment provider problem              | Customers can still pay in cash. Refunds are recorded first and undone if the provider refuses them.                                                   |
 | Personal data exposed                 | Contain it, record what and whose, and follow the DPDP Act 2023 breach-notification duties (inform the Data Protection Board and the people affected). |
+
+## Admin password reset
+
+`/admin/login` links to `/admin/forgot-password`. An active admin's address gets a one-time link to `/admin/reset-password`, valid for 30 minutes; asking again cancels the earlier link. The form always answers the same way, so it does not reveal which addresses are admins. Using the link sets the new password (at least 12 characters), signs that admin out everywhere and writes an `admin.password_reset` audit entry. With `EMAIL_MODE=console` the email is only logged (with the link, outside production) and listed at `/dev/mailbox` in development. A real sender (Resend) still needs an account and a verified domain. Until then, a locked-out production admin needs someone with database access to store a new hash in `users.password_hash` (`hashPassword` in `src/modules/auth/password.ts` makes one). Never run the seed against production: it wipes the database.

@@ -48,3 +48,19 @@ export const otpChallenges = pgTable(
     check('otp_challenges_attempts', sql`${t.attempts} between 0 and 5`),
   ],
 )
+
+/** Admin password reset links (§5.3 `/admin/forgot-password`). Only a SHA-256 of the token is stored. */
+export const passwordResets = pgTable(
+  'password_resets',
+  {
+    id: id(),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: char({ length: 64 }).notNull().unique(),
+    expiresAt: timestamptz().notNull(),
+    usedAt: timestamptz(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('password_resets_user_idx').on(t.userId)],
+)

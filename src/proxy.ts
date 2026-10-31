@@ -17,6 +17,8 @@ const PRIVATE = [
   '/book',
   '/support',
 ]
+/** Admin pages reachable while signed out. */
+const ADMIN_PUBLIC = ['/admin/login', '/admin/forgot-password', '/admin/reset-password']
 const under = (pathname: string, prefix: string) =>
   pathname === prefix || pathname.startsWith(`${prefix}/`)
 
@@ -47,7 +49,7 @@ export function proxy(request: NextRequest) {
     return response
   }
 
-  const isPrivate = PRIVATE.some((p) => under(pathname, p)) && pathname !== '/admin/login'
+  const isPrivate = PRIVATE.some((p) => under(pathname, p)) && !ADMIN_PUBLIC.includes(pathname)
   const hasSession =
     request.cookies.has(SESSION_COOKIE_SECURE) || request.cookies.has(SESSION_COOKIE_PLAIN)
   if (isPrivate && !hasSession) {

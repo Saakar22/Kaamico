@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
@@ -65,6 +66,9 @@ export function AdminLoginForm({ next }: { next?: string }) {
       >
         Sign in
       </Button>
+      <Link href="/admin/forgot-password" className="text-sm font-medium text-brand-700 underline">
+        Forgot password?
+      </Link>
     </form>
   )
 }
