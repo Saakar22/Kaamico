@@ -35,7 +35,7 @@ export default function GlobalNotFound() {
           className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-10 text-center"
         >
           <Logo />
-          <h1 className="font-display text-2xl font-bold">We couldn&apos;t find that page</h1>
+          <h1 className="font-display text-2xl font-semibold">We couldn&apos;t find that page</h1>
           <p className="max-w-sm text-ink-600">
             The link may be broken, or the page may have moved.
           </p>

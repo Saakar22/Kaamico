@@ -82,7 +82,7 @@ export default function UiGalleryPage() {
           <Logo />
           <LogoMark className="size-12" />
           <div>
-            <p className="font-display text-2xl font-bold">{brand.tagline}</p>
+            <p className="font-display text-2xl font-semibold">{brand.tagline}</p>
             <p className="text-ink-600">{brand.campaignLine}</p>
           </div>
         </div>
@@ -102,8 +102,8 @@ export default function UiGalleryPage() {
 
       <Section title="Typography">
         <div className="flex flex-col gap-2">
-          <p className="font-display text-5xl font-bold">Display · Baloo 2</p>
-          <p className="font-display text-3xl font-bold">Heading 3xl</p>
+          <p className="font-display text-5xl font-semibold">Display · Baloo 2</p>
+          <p className="font-display text-3xl font-semibold">Heading 3xl</p>
           <p className="text-xl font-semibold">Title xl · Inter</p>
           <p>
             Body 16px. Professionals set their own prices, and you can agree a fair price together.

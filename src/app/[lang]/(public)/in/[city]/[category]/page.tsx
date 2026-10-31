@@ -109,7 +109,7 @@ async function CityCategoryContent({ params }: { params: Props['params'] }) {
         <div className="flex items-start gap-4">
           <CategoryIcon iconKey={category.iconKey} className="size-14" />
           <div className="flex flex-col gap-1">
-            <h1 className="font-display text-2xl leading-tight font-bold sm:text-3xl">
+            <h1 className="font-display text-2xl leading-tight font-semibold sm:text-3xl">
               {category.name} in {city.name}
             </h1>
             {category.description && <p className="text-ink-600">{category.description}</p>}
@@ -119,7 +119,7 @@ async function CityCategoryContent({ params }: { params: Props['params'] }) {
 
       <section aria-labelledby="prices-title" className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h2 id="prices-title" className="font-display text-xl font-bold">
+          <h2 id="prices-title" className="font-display text-xl font-semibold">
             What professionals in {city.name} charge
           </h2>
           <p className="text-sm text-ink-600">
@@ -164,7 +164,7 @@ async function CityCategoryContent({ params }: { params: Props['params'] }) {
 
       {page.professionals.length > 0 && (
         <section aria-labelledby="pros-title" className="flex flex-col gap-4">
-          <h2 id="pros-title" className="font-display text-xl font-bold">
+          <h2 id="pros-title" className="font-display text-xl font-semibold">
             Top-rated {category.name.toLowerCase()} professionals in {city.name}
           </h2>
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -206,7 +206,7 @@ async function CityCategoryContent({ params }: { params: Props['params'] }) {
 
       {page.localities.length > 0 && (
         <section aria-labelledby="areas-title" className="flex flex-col gap-3">
-          <h2 id="areas-title" className="font-display text-xl font-bold">
+          <h2 id="areas-title" className="font-display text-xl font-semibold">
             Where they are based
           </h2>
           <p className="text-ink-600">{page.localities.join(', ')}.</p>
@@ -215,7 +215,7 @@ async function CityCategoryContent({ params }: { params: Props['params'] }) {
 
       {others.length > 0 && (
         <section aria-labelledby="more-title" className="flex flex-col gap-3">
-          <h2 id="more-title" className="font-display text-xl font-bold">
+          <h2 id="more-title" className="font-display text-xl font-semibold">
             More services in {city.name}
           </h2>
           <ul className="flex flex-wrap gap-2">

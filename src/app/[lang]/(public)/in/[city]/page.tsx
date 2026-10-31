@@ -65,7 +65,7 @@ async function CityContent({ params }: { params: Props['params'] }) {
             { label: city.name, href: `/in/${city.slug}` },
           ]}
         />
-        <h1 className="font-display text-2xl leading-tight font-bold sm:text-3xl">
+        <h1 className="font-display text-2xl leading-tight font-semibold sm:text-3xl">
           Home services in {city.name}
         </h1>
         <p className="max-w-2xl text-ink-600">
@@ -75,7 +75,7 @@ async function CityContent({ params }: { params: Props['params'] }) {
       </header>
 
       <section aria-labelledby="categories-title" className="flex flex-col gap-4">
-        <h2 id="categories-title" className="font-display text-xl font-bold">
+        <h2 id="categories-title" className="font-display text-xl font-semibold">
           Services in {city.name}
         </h2>
         {categories.length === 0 ? (
@@ -111,7 +111,7 @@ async function CityContent({ params }: { params: Props['params'] }) {
       </section>
 
       <section aria-labelledby="how-title" className="flex flex-col gap-4">
-        <h2 id="how-title" className="font-display text-xl font-bold">
+        <h2 id="how-title" className="font-display text-xl font-semibold">
           How {brand.name} works
         </h2>
         <ol className="grid gap-3 md:grid-cols-3">
@@ -126,7 +126,7 @@ async function CityContent({ params }: { params: Props['params'] }) {
       </section>
 
       <section aria-labelledby="areas-title" className="flex flex-col gap-3">
-        <h2 id="areas-title" className="font-display text-xl font-bold">
+        <h2 id="areas-title" className="font-display text-xl font-semibold">
           Areas we cover in {city.name}
         </h2>
         <ul className="flex flex-wrap gap-2">

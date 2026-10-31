@@ -108,7 +108,7 @@ export default async function WorkerDashboardPage() {
 
           <section aria-labelledby="today-title" className="flex flex-col gap-3">
             <div className="flex items-end justify-between gap-3">
-              <h2 id="today-title" className="font-display text-xl font-bold">
+              <h2 id="today-title" className="font-display text-xl font-semibold">
                 {t('wdash.todaysJobs')}
               </h2>
               <Link
@@ -123,7 +123,7 @@ export default async function WorkerDashboardPage() {
                 {t('wdash.noJobs')}
               </p>
             ) : (
-              <ul className="flex flex-col gap-3">
+              <ul className="flex flex-col divide-y divide-border border-y border-border">
                 {jobs.today.map((j) => (
                   <li key={j.id}>
                     <JobCard job={j} />
@@ -140,7 +140,7 @@ export default async function WorkerDashboardPage() {
       {!setupDone && (
         <section aria-labelledby="setup-title" className="flex flex-col gap-3">
           <div className="flex items-end justify-between gap-3">
-            <h2 id="setup-title" className="font-display text-xl font-bold">
+            <h2 id="setup-title" className="font-display text-xl font-semibold">
               {t('wdash.finishSetup')}
             </h2>
             {onboarding.next && (
@@ -158,7 +158,7 @@ export default async function WorkerDashboardPage() {
       )}
 
       <section aria-labelledby="settings-title" className="flex flex-col gap-3">
-        <h2 id="settings-title" className="font-display text-xl font-bold">
+        <h2 id="settings-title" className="font-display text-xl font-semibold">
           {t('wdash.yourSetup')}
         </h2>
         <ul className="grid gap-3 sm:grid-cols-2">

@@ -148,7 +148,7 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
       </div>
 
       <section aria-labelledby="trends-title" className="flex flex-col gap-3">
-        <h2 id="trends-title" className="font-display text-xl font-bold">
+        <h2 id="trends-title" className="font-display text-xl font-semibold">
           {t('wearn.howDoing')}
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
@@ -223,7 +223,7 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
       </section>
 
       <section aria-labelledby="ledger-title" className="flex flex-col gap-3">
-        <h2 id="ledger-title" className="font-display text-xl font-bold">
+        <h2 id="ledger-title" className="font-display text-xl font-semibold">
           {t('wearn.ledger')}
         </h2>
         {ledger.entries.length === 0 ? (
@@ -287,7 +287,7 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
       </section>
 
       <section aria-labelledby="payouts-title" className="flex flex-col gap-3">
-        <h2 id="payouts-title" className="font-display text-xl font-bold">
+        <h2 id="payouts-title" className="font-display text-xl font-semibold">
           {t('wearn.payouts')}
         </h2>
         <Card>

@@ -106,7 +106,7 @@ export async function BookingTimeline({
 
   return (
     <section aria-labelledby="timeline-title" className="flex flex-col gap-3">
-      <h2 id="timeline-title" className="font-semibold">
+      <h2 id="timeline-title" className="font-display text-lg font-semibold">
         {t('timeline.title')}
       </h2>
       <ol className="flex flex-col">

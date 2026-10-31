@@ -128,7 +128,7 @@ export default async function BookingPage({
           {justConfirmed && booking.price.agreedPaise !== null && (
             <div
               role="status"
-              className="flex items-center gap-2 rounded-lg border border-success-700/30 bg-success-700/10 p-4 text-lg font-semibold"
+              className="flex items-center gap-2 rounded-md border border-success-700/30 bg-success-700/10 p-4 text-lg font-semibold"
             >
               <Lock aria-hidden="true" className="size-5 shrink-0 text-success-800" />
               <span>
@@ -138,25 +138,40 @@ export default async function BookingPage({
           )}
 
           {booking.startCode && (
-            <Card>
-              <CardContent className="flex flex-col gap-2">
-                <h2 className="flex items-center gap-2 font-semibold">
+            // A ticket stub: the one thing the customer must have ready when the pro arrives.
+            <section
+              aria-labelledby="start-code-title"
+              className="flex flex-col gap-3 rounded-md border-2 border-dashed border-brand-600/50 bg-brand-50 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+            >
+              <div className="flex flex-col gap-1">
+                <h2
+                  id="start-code-title"
+                  className="flex items-center gap-2 font-display text-xl font-semibold"
+                >
                   <KeyRound aria-hidden="true" className="size-5 text-brand-700" />
                   {t('bookingPage.startCode')}
                 </h2>
-                <span
-                  className="font-mono text-4xl font-bold tracking-[0.4em]"
-                  aria-label={t('thread.startCodeLabel', {
-                    digits: booking.startCode.split('').join(' '),
-                  })}
-                >
-                  {booking.startCode}
-                </span>
-                <p className="text-sm text-ink-600">
+                <p className="max-w-sm text-sm text-ink-600">
                   {t('bookingPage.startCodeHelp', { name: firstName })}
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+              <span
+                className="flex gap-2"
+                aria-label={t('thread.startCodeLabel', {
+                  digits: booking.startCode.split('').join(' '),
+                })}
+              >
+                {booking.startCode.split('').map((digit, i) => (
+                  <span
+                    key={i}
+                    aria-hidden="true"
+                    className="flex h-14 w-11 items-center justify-center rounded-sm border border-border bg-surface font-display text-4xl font-semibold tabular-nums"
+                  >
+                    {digit}
+                  </span>
+                ))}
+              </span>
+            </section>
           )}
 
           {proposed && booking.price.totalPaise !== null && (
@@ -168,16 +183,14 @@ export default async function BookingPage({
             />
           )}
 
-          <Card>
-            <CardContent>
-              <BookingTimeline
-                history={booking.history}
-                status={booking.status}
-                viewer="customer"
-                counterpartName={firstName}
-              />
-            </CardContent>
-          </Card>
+          <div className="border-t border-border pt-5">
+            <BookingTimeline
+              history={booking.history}
+              status={booking.status}
+              viewer="customer"
+              counterpartName={firstName}
+            />
+          </div>
 
           {['CANCELLED', 'EXPIRED'].includes(booking.status) && (
             <Card>

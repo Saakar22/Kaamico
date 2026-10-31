@@ -45,7 +45,7 @@ export default async function ReceiptPage({ params }: PageProps<'/[lang]/booking
           <div className="flex items-start justify-between gap-3">
             <Logo />
             <div className="text-right text-sm">
-              <h1 className="font-display text-xl font-bold">{t('receipt.title')}</h1>
+              <h1 className="font-display text-xl font-semibold">{t('receipt.title')}</h1>
               <p className="font-mono">{r.number}</p>
               <p className="text-ink-600">{formatIstDateTime(new Date(r.issuedAt), lang)}</p>
             </div>

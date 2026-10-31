@@ -29,7 +29,7 @@ export default function AdminLoginPage(props: PageProps<'/[lang]/admin/login'>) 
       <div className="flex w-full max-w-sm flex-col gap-6 rounded-lg border border-border bg-surface p-6 shadow-xs">
         <div className="flex flex-col gap-2">
           <Logo />
-          <h1 className="font-display text-2xl font-bold">Admin sign in</h1>
+          <h1 className="font-display text-2xl font-semibold">Admin sign in</h1>
           <p className="text-sm text-ink-600">For Kaamico operations staff only.</p>
         </div>
         <Suspense fallback={<Skeleton className="h-56 w-full" />}>

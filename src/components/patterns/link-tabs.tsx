@@ -22,13 +22,13 @@ export function LinkTabs({
               className={cn(
                 '-mb-px inline-flex h-11 items-center gap-1.5 border-b-2 px-3 text-sm font-medium whitespace-nowrap',
                 t.key === current
-                  ? 'border-brand-600 text-brand-700'
+                  ? 'border-brand-600 text-ink-900'
                   : 'border-transparent text-ink-600 hover:text-ink-900',
               )}
             >
               {t.label}
               {t.count ? (
-                <span className="rounded-full bg-fill-brand px-1.5 text-xs text-on-fill">
+                <span className="rounded-sm bg-fill-brand px-1.5 text-xs text-on-fill tabular-nums">
                   {t.count}
                 </span>
               ) : null}

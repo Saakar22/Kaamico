@@ -86,6 +86,21 @@ export function formatIstTime(date: Date, lang = 'en-IN'): string {
   return formatter(lang, 'time').format(date)
 }
 
+/** The parts of a date stub in IST, e.g. { weekday: "Sun", day: "1", month: "Nov", time: "11:00 am" }. */
+export function istDateStub(
+  date: Date,
+  lang = 'en-IN',
+): { weekday: string; day: string; month: string; time: string } {
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(lang, { timeZone: IST_TIME_ZONE, ...options }).format(date)
+  return {
+    weekday: part({ weekday: 'short' }),
+    day: part({ day: 'numeric' }),
+    month: part({ month: 'short' }),
+    time: formatIstTime(date, lang),
+  }
+}
+
 const RELATIVE_DAYS: Record<string, [today: string, tomorrow: string]> = {
   'en-IN': ['Today', 'Tomorrow'],
   'hi-IN': ['आज', 'कल'],

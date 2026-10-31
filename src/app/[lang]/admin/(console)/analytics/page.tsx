@@ -116,7 +116,7 @@ export default async function AdminAnalyticsPage({
       </div>
 
       <section aria-labelledby="supply-title" className="flex flex-col gap-3">
-        <h2 id="supply-title" className="font-display text-xl font-bold">
+        <h2 id="supply-title" className="font-display text-xl font-semibold">
           Supply and demand by locality
         </h2>
         <p className="text-sm text-ink-600">
@@ -162,7 +162,7 @@ export default async function AdminAnalyticsPage({
       </section>
 
       <section aria-labelledby="pairs-title" className="flex flex-col gap-3">
-        <h2 id="pairs-title" className="font-display text-xl font-bold">
+        <h2 id="pairs-title" className="font-display text-xl font-semibold">
           Pairs who keep cancelling
         </h2>
         <p className="text-sm text-ink-600">
@@ -215,7 +215,7 @@ export default async function AdminAnalyticsPage({
       </section>
 
       <section aria-labelledby="waitlist-title" className="flex flex-col gap-3">
-        <h2 id="waitlist-title" className="font-display text-xl font-bold">
+        <h2 id="waitlist-title" className="font-display text-xl font-semibold">
           Cities people are waiting for
         </h2>
         <p className="text-sm text-ink-600">

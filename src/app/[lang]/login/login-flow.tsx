@@ -106,7 +106,7 @@ export function LoginFlow({ initialStep, next }: { initialStep: Step; next?: str
     return (
       <form onSubmit={sendCode} className="flex flex-col gap-5" noValidate>
         <div className="flex flex-col gap-1">
-          <h1 className="font-display text-2xl font-bold">{t('login.title')}</h1>
+          <h1 className="font-display text-2xl font-semibold">{t('login.title')}</h1>
           <p className="text-ink-600">{t('login.sendIntro')}</p>
         </div>
         <FormField label={t('login.mobile')} error={error} hint={t('login.mobileHint')}>
@@ -158,7 +158,7 @@ export function LoginFlow({ initialStep, next }: { initialStep: Step; next?: str
           {t('login.changeNumber')}
         </button>
         <div className="flex flex-col gap-1">
-          <h1 className="font-display text-2xl font-bold">{t('login.enterCode')}</h1>
+          <h1 className="font-display text-2xl font-semibold">{t('login.enterCode')}</h1>
           <p className="text-ink-600">{t('login.sentTo', { phone: otp?.maskedPhone ?? '' })}</p>
         </div>
         {otp?.simulatedCode && (
@@ -215,7 +215,7 @@ export function LoginFlow({ initialStep, next }: { initialStep: Step; next?: str
   return (
     <form onSubmit={finish} className="flex flex-col gap-5" noValidate>
       <div className="flex flex-col gap-1">
-        <h1 className="font-display text-2xl font-bold">{t('login.welcome')}</h1>
+        <h1 className="font-display text-2xl font-semibold">{t('login.welcome')}</h1>
         <p className="text-ink-600">{t('login.welcomeBody')}</p>
       </div>
       <FormField label={t('login.name')} required error={error}>

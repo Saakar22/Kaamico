@@ -47,7 +47,7 @@ export async function SupportHome({
         </CardContent>
       </Card>
       <section aria-labelledby="tickets-title" className="flex flex-col gap-3">
-        <h2 id="tickets-title" className="font-display text-xl font-bold">
+        <h2 id="tickets-title" className="font-display text-xl font-semibold">
           {t('support.yourRequests')}
         </h2>
         <TicketList tickets={tickets} basePath={basePath} />

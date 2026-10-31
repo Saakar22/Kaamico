@@ -82,7 +82,7 @@ export default async function AdminOverviewPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="queue-title" className="flex flex-col gap-3">
           <div className="flex items-end justify-between gap-2">
-            <h2 id="queue-title" className="font-display text-xl font-bold">
+            <h2 id="queue-title" className="font-display text-xl font-semibold">
               Waiting for review
             </h2>
             <Link
@@ -124,7 +124,7 @@ export default async function AdminOverviewPage() {
 
         <section aria-labelledby="recent-title" className="flex flex-col gap-3">
           <div className="flex items-end justify-between gap-2">
-            <h2 id="recent-title" className="font-display text-xl font-bold">
+            <h2 id="recent-title" className="font-display text-xl font-semibold">
               Latest bookings
             </h2>
             <Link

@@ -25,20 +25,24 @@ export async function PriceBreakdown({
   const base = price.agreedPaise ?? price.listedPaise
   return (
     <section aria-labelledby="price-title" className="flex flex-col gap-2">
-      <h2 id="price-title" className="font-semibold">
+      <h2 id="price-title" className="font-display text-lg font-semibold">
         {t('price.title')}
       </h2>
       <dl className="flex flex-col gap-2 text-sm">
         {base !== null && (
-          <div className="flex justify-between gap-3">
-            <dt>{price.agreedPaise !== null ? t('price.agreed') : t('price.listed')}</dt>
-            <dd>
+          <div className="flex items-baseline gap-2">
+            {/* The dotted leader sits inside the term so the list stays valid dt/dd pairs. */}
+            <dt className="flex flex-1 items-baseline gap-2">
+              {price.agreedPaise !== null ? t('price.agreed') : t('price.listed')}
+              <span aria-hidden="true" className="leader" />
+            </dt>
+            <dd className="tabular-nums">
               <Money paise={base} />
             </dd>
           </div>
         )}
         {charges.map((c) => (
-          <div key={c.id} className="flex justify-between gap-3">
+          <div key={c.id} className="flex items-start justify-between gap-3">
             <dt className="flex flex-col items-start gap-1">
               <span className={c.status === 'REJECTED' ? 'text-ink-600 line-through' : undefined}>
                 {c.description}
@@ -53,9 +57,9 @@ export async function PriceBreakdown({
           </div>
         ))}
         {price.totalPaise !== null && (
-          <div className="flex justify-between gap-3 border-t border-border pt-2 text-base font-semibold">
-            <dt>{t('price.total')}</dt>
-            <dd>
+          <div className="mt-1 flex items-baseline justify-between gap-3 border-t-2 border-ink-900 pt-2">
+            <dt className="font-semibold">{t('price.total')}</dt>
+            <dd className="font-display text-2xl font-semibold">
               <Money paise={price.totalPaise} />
             </dd>
           </div>

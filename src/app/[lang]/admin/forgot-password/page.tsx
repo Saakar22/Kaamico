@@ -13,7 +13,7 @@ export default function AdminForgotPasswordPage() {
       <div className="flex w-full max-w-sm flex-col gap-6 rounded-lg border border-border bg-surface p-6 shadow-xs">
         <div className="flex flex-col gap-2">
           <Logo />
-          <h1 className="font-display text-2xl font-bold">Reset your password</h1>
+          <h1 className="font-display text-2xl font-semibold">Reset your password</h1>
           <p className="text-sm text-ink-600">
             Enter your admin email. If it has an admin account, we&apos;ll send a link to choose a
             new password.

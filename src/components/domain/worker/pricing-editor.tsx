@@ -91,7 +91,7 @@ export function PricingEditor({
           const id = `svc-${r.serviceId}`
           return (
             <li key={r.serviceId} className="flex flex-col gap-2">
-              {heading && <h3 className="mt-2 font-display text-lg font-bold">{heading}</h3>}
+              {heading && <h3 className="mt-2 font-display text-lg font-semibold">{heading}</h3>}
               <fieldset
                 className={cn(
                   'flex flex-col gap-3 rounded-lg border p-4',

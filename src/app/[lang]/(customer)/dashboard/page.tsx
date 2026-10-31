@@ -5,6 +5,7 @@ import { SignOutButton } from '@/components/auth/sign-out-button'
 import { AutoRefresh } from '@/components/domain/booking/auto-refresh'
 import { BookingListItem } from '@/components/domain/booking/booking-list-item'
 import { PageHeader } from '@/components/patterns/page-header'
+import { RateList, RateRow } from '@/components/patterns/rate-list'
 import { EmptyState } from '@/components/patterns/states'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -50,7 +51,10 @@ export default async function CustomerDashboardPage() {
 
       {actions > 0 && (
         <section aria-labelledby="actions-title" className="flex flex-col gap-3">
-          <h2 id="actions-title" className="flex items-center gap-2 font-display text-xl font-bold">
+          <h2
+            id="actions-title"
+            className="flex items-center gap-2 font-display text-xl font-semibold"
+          >
             <CircleAlert aria-hidden="true" className="size-5 text-warning-700" />
             {t('dashboard.needsAnswer')}
           </h2>
@@ -119,19 +123,21 @@ export default async function CustomerDashboardPage() {
 
       {dash.activeBooking && (
         <section aria-labelledby="active-title" className="flex flex-col gap-3">
-          <h2 id="active-title" className="font-display text-xl font-bold">
+          <h2 id="active-title" className="font-display text-xl font-semibold">
             {dash.activeBooking.status === 'CONFIRMED' ? t('dashboard.next') : t('dashboard.now')}
           </h2>
-          <BookingListItem booking={dash.activeBooking} />
+          <div className="border-y border-border">
+            <BookingListItem booking={dash.activeBooking} />
+          </div>
         </section>
       )}
 
       {dash.waiting.length > 0 && (
         <section aria-labelledby="waiting-title" className="flex flex-col gap-3">
-          <h2 id="waiting-title" className="font-display text-xl font-bold">
+          <h2 id="waiting-title" className="font-display text-xl font-semibold">
             {t('dashboard.open')}
           </h2>
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col divide-y divide-border border-y border-border">
             {dash.waiting.map((b) => (
               <li key={b.id}>
                 <BookingListItem booking={b} />
@@ -158,27 +164,21 @@ export default async function CustomerDashboardPage() {
 
       {dash.rebook.length > 0 && (
         <section aria-labelledby="rebook-title" className="flex flex-col gap-3">
-          <h2 id="rebook-title" className="font-display text-xl font-bold">
+          <h2 id="rebook-title" className="font-display text-xl font-semibold">
             {t('dashboard.again')}
           </h2>
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <RateList className="sm:grid sm:grid-cols-2 sm:gap-x-10 sm:border-t-0">
             {dash.rebook.map((r) => (
-              <li key={`${r.workerId}-${r.serviceId}`}>
-                <Link
-                  href={`/book/${r.serviceId}?worker=${r.workerId}`}
-                  className="flex min-h-14 items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 hover:border-brand-600"
-                >
-                  <Repeat aria-hidden="true" className="size-5 shrink-0 text-brand-700" />
-                  <span className="flex flex-col">
-                    <span className="font-medium">{r.serviceName}</span>
-                    <span className="text-sm text-ink-600">
-                      {t('dashboard.with', { name: r.workerName })}
-                    </span>
-                  </span>
-                </Link>
-              </li>
+              <RateRow
+                key={`${r.workerId}-${r.serviceId}`}
+                href={`/book/${r.serviceId}?worker=${r.workerId}`}
+                className="sm:[&:nth-child(-n+2)]:border-t"
+                leading={<Repeat aria-hidden="true" className="size-5 text-brand-700" />}
+                label={r.serviceName}
+                detail={t('dashboard.with', { name: r.workerName })}
+              />
             ))}
-          </ul>
+          </RateList>
         </section>
       )}
 
