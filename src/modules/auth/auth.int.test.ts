@@ -242,6 +242,16 @@ describe.skipIf(!hasTestDatabase)('authentication and authorisation', () => {
       await sql`update users set status = 'SUSPENDED' where phone = ${'+91' + b.phone}`
       expect((await call(me, req('/api/v1/me', { cookie: b.cookie }))).status).toBe(401)
     })
+
+    it('rolls a phone session forward when it was last used over an hour ago', async () => {
+      const { cookie } = await signIn()
+      await sql`update auth_sessions
+        set last_seen_at = now() - interval '2 hours', expires_at = now() + interval '1 day'`
+      expect((await call(me, req('/api/v1/me', { cookie }))).status).toBe(200)
+      const [s] = await sql`select now() - last_seen_at < interval '1 minute' as touched,
+        expires_at > now() + interval '29 days' as renewed from auth_sessions`
+      expect(s).toEqual({ touched: true, renewed: true })
+    })
   })
 
   describe('CSRF', () => {

@@ -33,7 +33,7 @@ type SessionRow = {
   session_id: string
   scope: SessionScope
   expires_at: Date
-  last_seen_at: Date
+  needs_touch: boolean
   user_id: string
   name: string | null
   phone: string | null
@@ -56,7 +56,8 @@ export async function resolveSession(token: string): Promise<Actor | null> {
   if (!token || token.length > 100) return null
   const db = getDb()
   const rows = await db.execute<SessionRow>(sql`
-    select s.id as session_id, s.scope, s.expires_at, s.last_seen_at,
+    select s.id as session_id, s.scope, s.expires_at,
+           s.last_seen_at < now() - ${TOUCH_INTERVAL / 1000}::int * interval '1 second' as needs_touch,
            u.id as user_id, u.name, u.phone, u.email::text as email, u.roles, u.status, u.deleted_at,
            w.id as worker_id
     from auth_sessions s
@@ -70,14 +71,18 @@ export async function resolveSession(token: string): Promise<Actor | null> {
   // An admin session is only valid while the user still holds the ADMIN role.
   if (row.scope === 'ADMIN' && !roles.includes('ADMIN')) return null
 
-  const lastSeen = new Date(row.last_seen_at).getTime()
-  if (Date.now() - lastSeen > TOUCH_INTERVAL) {
+  // The database compares times: page renders may not read the clock while Next.js
+  // prerenders or prefetches them (blocking-prerender-current-time).
+  if (row.needs_touch) {
     await db
       .update(authSessions)
       .set(
         row.scope === 'USER'
-          ? { lastSeenAt: new Date(), expiresAt: new Date(Date.now() + TTL.USER) }
-          : { lastSeenAt: new Date() },
+          ? {
+              lastSeenAt: sql`now()`,
+              expiresAt: sql`now() + ${TTL.USER / 1000}::int * interval '1 second'`,
+            }
+          : { lastSeenAt: sql`now()` },
       )
       .where(eq(authSessions.id, row.session_id))
   }

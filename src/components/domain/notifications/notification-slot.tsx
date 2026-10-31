@@ -1,3 +1,4 @@
+import { connection } from 'next/server'
 import { getEnv } from '@/config/env'
 import { getActor } from '@/modules/auth/actor'
 import type { SessionScope } from '@/modules/auth/types'
@@ -11,6 +12,8 @@ import { NotificationBell } from './notification-bell'
 export async function NotificationSlot({ scope = 'USER' }: { scope?: SessionScope }) {
   const actor = await getActor()
   if (!actor || actor.scope !== scope || actor.needsOnboarding) return null
+  // Counting first delivers pending events, which reads the clock: request time only.
+  await connection()
   return (
     <NotificationBell
       initialUnread={await countUnread(actor.userId)}
