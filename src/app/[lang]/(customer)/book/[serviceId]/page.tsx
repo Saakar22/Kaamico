@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card'
 import { htmlLang } from '@/i18n/config'
 import { getLocale, getT } from '@/i18n/server'
 import { AppError } from '@/lib/errors'
-import { formatIstDay, istDateKey } from '@/lib/time'
+import { formatIstDay, istDateKey, istDateStub } from '@/lib/time'
 import { listAddresses } from '@/modules/addresses/addresses'
 import { requirePageActor } from '@/modules/auth/page-guards'
 import { workerAvailableNow } from '@/modules/bookings/eligibility'
@@ -70,7 +70,14 @@ export default async function BookPage({
   ])
   const days = Array.from({ length: DAYS_AHEAD }, (_, i) => {
     const d = new Date(now.getTime() + i * 86_400_000)
-    return { date: istDateKey(d), label: formatIstDay(d, now, htmlLang[locale]) }
+    const { weekday, day, month } = istDateStub(d, htmlLang[locale])
+    return {
+      date: istDateKey(d),
+      label: formatIstDay(d, now, htmlLang[locale]),
+      weekday,
+      day,
+      month,
+    }
   })
 
   return (

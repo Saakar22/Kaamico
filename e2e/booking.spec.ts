@@ -81,11 +81,11 @@ test('a customer books and negotiates; the professional does the job; both track
   await customer.getByRole('button', { name: 'Continue' }).click()
 
   await customer.getByText('Choose a time').click()
-  const day = customer.getByLabel('Day')
-  const options = await day.locator('option').all()
+  const day = customer.getByRole('radiogroup', { name: 'Day' })
+  const options = await day.getByRole('radio').all()
   // Skip today; use the first later day with free times.
   for (const option of options.slice(1)) {
-    await day.selectOption(await option.getAttribute('value'))
+    await option.click()
     const firstSlot = customer
       .getByRole('group', { name: 'Start time (IST)' })
       .getByRole('button')
@@ -274,9 +274,9 @@ test('a customer can cancel a request for free', async ({ browser, isMobile }, i
   await customer.getByRole('button', { name: 'Save address' }).click()
   await customer.getByRole('button', { name: 'Continue' }).click()
   await customer.getByText('Choose a time').click()
-  const day = customer.getByLabel('Day')
-  for (const option of (await day.locator('option').all()).slice(2)) {
-    await day.selectOption(await option.getAttribute('value'))
+  const day = customer.getByRole('radiogroup', { name: 'Day' })
+  for (const option of (await day.getByRole('radio').all()).slice(2)) {
+    await option.click()
     const firstSlot = customer
       .getByRole('group', { name: 'Start time (IST)' })
       .getByRole('button')

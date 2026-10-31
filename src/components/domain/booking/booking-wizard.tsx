@@ -2,6 +2,7 @@
 
 import { ArrowLeft, CalendarClock, Check, MapPin, Plus, Zap } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { RadioGroup as RadioGroupPrimitive } from 'radix-ui'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Stepper } from '@/components/patterns/stepper'
 import { Avatar } from '@/components/ui/avatar'
@@ -30,7 +31,8 @@ type Props = {
   addresses: SavedAddress[]
   localities: { id: string; city: string; name: string; pincode: string | null }[]
   availableNow: boolean
-  days: { date: string; label: string }[]
+  /** The next days to choose from; `label` is "Today", "Tomorrow" or e.g. "Thu, 29 Oct". */
+  days: { date: string; label: string; weekday: string; day: string; month: string }[]
 }
 
 const STEPS: MessageKey[] = [
@@ -237,25 +239,36 @@ export function BookingWizard(props: Props) {
           </RadioGroup>
           {timing === 'SCHEDULED' && (
             <div className="flex flex-col gap-3">
-              <FormField label={t('book.day')}>
-                {(field) => (
-                  <NativeSelect
-                    {...field}
-                    value={date}
-                    onChange={(e) => {
-                      setDate(e.target.value)
-                      setStart('')
-                    }}
-                    className="sm:w-64"
-                  >
-                    {props.days.map((d) => (
-                      <option key={d.date} value={d.date}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                )}
-              </FormField>
+              {/* Date chips: one tap per day; arrow keys move between them (radio group). */}
+              <div className="flex flex-col gap-2">
+                <span id="day-label" className="text-sm font-medium">
+                  {t('book.day')}
+                </span>
+                <RadioGroupPrimitive.Root
+                  aria-labelledby="day-label"
+                  value={date}
+                  onValueChange={(v) => {
+                    setDate(v)
+                    setStart('')
+                  }}
+                  className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pt-1 pb-2"
+                >
+                  {props.days.map((d) => (
+                    <RadioGroupPrimitive.Item
+                      key={d.date}
+                      value={d.date}
+                      aria-label={d.label}
+                      className="flex w-16 shrink-0 snap-start flex-col items-center gap-0.5 rounded-lg border border-border bg-surface py-2.5 transition-colors hover:border-ink-600/40 data-[state=checked]:border-fill-brand data-[state=checked]:bg-fill-brand data-[state=checked]:text-on-fill motion-reduce:transition-none"
+                    >
+                      <span className="text-xs opacity-80">{d.weekday}</span>
+                      <span className="font-display text-2xl leading-none font-semibold tabular-nums">
+                        {d.day}
+                      </span>
+                      <span className="text-xs opacity-80">{d.month}</span>
+                    </RadioGroupPrimitive.Item>
+                  ))}
+                </RadioGroupPrimitive.Root>
+              </div>
               {slots === null ? (
                 <p className="text-ink-600" role="status">
                   {t('book.checkingTimes', { name: firstName })}
@@ -265,7 +278,7 @@ export function BookingWizard(props: Props) {
               ) : (
                 <fieldset>
                   <legend className="mb-2 text-sm font-medium">{t('book.startTime')}</legend>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     {slots.map((s) => (
                       <button
                         key={s.start}
@@ -273,10 +286,10 @@ export function BookingWizard(props: Props) {
                         aria-pressed={start === s.start}
                         onClick={() => setStart(s.start)}
                         className={cn(
-                          'h-11 rounded-full border px-4 text-sm tabular-nums',
+                          'h-12 rounded-md border text-sm font-medium tabular-nums transition-colors motion-reduce:transition-none',
                           start === s.start
                             ? 'border-fill-brand bg-fill-brand text-on-fill'
-                            : 'border-border hover:border-brand-600',
+                            : 'border-border bg-surface hover:border-ink-600/40',
                         )}
                       >
                         {formatIstTime(new Date(s.start), lang)}

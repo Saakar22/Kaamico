@@ -94,12 +94,12 @@ test('a customer books and accepts a counteroffer using only the keyboard', asyn
   await tabTo(page, page.getByRole('button', { name: 'Continue' }))
   await page.keyboard.press('Enter')
 
-  // Time: the radio group moves with arrow keys; days with the closed select's arrows
+  // Time: both the timing choice and the day chips are radio groups moved with arrow keys
   const when = page.getByRole('radiogroup', { name: 'When' })
   await tabTo(page, when.getByRole('radio'))
   await chooseRadio(page, when.getByRole('radio', { name: /Choose a time/ }))
-  const day = page.getByLabel('Day')
-  await tabTo(page, day)
+  const day = page.getByRole('radiogroup', { name: 'Day' })
+  await tabTo(page, day.getByRole('radio'))
   const slots = page.getByRole('group', { name: 'Start time (IST)' }).getByRole('button')
   // From tomorrow on: a slot later today can be too close for offers to stay open.
   for (let i = 0; i < 7; i++) {
