@@ -7,6 +7,8 @@ import { businessRule, conflict } from '@/lib/errors'
 import type { Actor } from '@/modules/auth/types'
 import type { PricingUnit } from '@/modules/catalog/units'
 import { workerIdOf } from './profile'
+import type { Locale } from '@/i18n/config'
+import { localized } from '@/modules/catalog/catalog'
 
 /** ₹50 to ₹1,00,000 (also a database CHECK). */
 export const MIN_PRICE_PAISE = 5_000
@@ -32,7 +34,7 @@ export type PricingRow = {
 }
 
 /** Every service in the professional's skill categories, with their price if set. */
-export async function getPricing(workerId: string): Promise<PricingRow[]> {
+export async function getPricing(workerId: string, locale: Locale = 'en'): Promise<PricingRow[]> {
   const rows = await getDb().execute<{
     service_id: string
     service_name: string
@@ -48,7 +50,8 @@ export async function getPricing(workerId: string): Promise<PricingRow[]> {
     is_active: boolean | null
     version: number | null
   }>(sql`
-    select s.id as service_id, s.name as service_name, c.id as category_id, c.name as category_name,
+    select s.id as service_id, ${localized(locale, 's', 'name')} as service_name, c.id as category_id,
+           ${localized(locale, 'c', 'name')} as category_name,
            s.pricing_unit, s.typical_duration_min, s.reference_min_paise, s.reference_max_paise,
            p.price_paise, p.min_charge_paise, p.is_negotiable, p.is_active, p.version
     from worker_skills ws

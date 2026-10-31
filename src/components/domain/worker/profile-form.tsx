@@ -6,8 +6,10 @@ import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Checkbox, Input, Textarea } from '@/components/ui/input'
 import { FormField } from '@/components/ui/form-field'
+import { useLocale, useT } from '@/i18n/client'
+import { htmlLang } from '@/i18n/config'
 import { apiFetch } from '@/lib/api-client'
-import { LANGUAGES, type LanguageCode } from '@/modules/professionals/languages'
+import { LANGUAGES, languageNames, type LanguageCode } from '@/modules/professionals/languages'
 import { uploadFile, useApiAction } from './use-api-action'
 
 export type ProfileFormValues = {
@@ -21,6 +23,8 @@ export type ProfileFormValues = {
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 
 export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
+  const t = useT()
+  const lang = htmlLang[useLocale()]
   const { pending, error, fieldErrors, run, setError } = useApiAction()
   const [displayName, setDisplayName] = useState(initial.displayName)
   const [bio, setBio] = useState(initial.bio ?? '')
@@ -34,7 +38,7 @@ export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
   function choosePhoto(file: File | undefined) {
     if (!file) return
     if (file.size > MAX_PHOTO_BYTES) {
-      setError('Photos can be at most 5 MB.')
+      setError(t('wprofile.photoTooBig'))
       return
     }
     setPhoto(file)
@@ -52,17 +56,17 @@ export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
         })
         setPhoto(null)
       },
-      { success: 'Profile saved' },
+      { success: t('wprofile.saved') },
     )
   }
 
   return (
     <form onSubmit={save} className="flex flex-col gap-5" noValidate>
       <div className="flex items-center gap-4">
-        <Avatar name={displayName || 'You'} src={preview} size="lg" />
+        <Avatar name={displayName || t('wprofile.you')} src={preview} size="lg" />
         <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-brand-600 px-4 font-medium text-brand-700 focus-within:ring-2 focus-within:ring-brand-600 hover:bg-brand-50">
           <Camera aria-hidden="true" className="size-4" />
-          {preview ? 'Change photo' : 'Add a photo'}
+          {preview ? t('wprofile.changePhoto') : t('wprofile.addPhoto')}
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -71,11 +75,9 @@ export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
           />
         </label>
       </div>
-      <p className="-mt-3 text-sm text-ink-600">
-        A clear photo of your face helps customers trust you. Location data is removed from photos.
-      </p>
+      <p className="-mt-3 text-sm text-ink-600">{t('wprofile.photoHint')}</p>
 
-      <FormField label="Name customers will see" required error={fieldErrors.displayName}>
+      <FormField label={t('wprofile.displayName')} required error={fieldErrors.displayName}>
         {(field) => (
           <Input
             {...field}
@@ -87,9 +89,9 @@ export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
         )}
       </FormField>
       <FormField
-        label="About you"
+        label={t('wprofile.bio')}
         required
-        hint="What you do best, and how you work. Up to 600 characters."
+        hint={t('wprofile.bioHint')}
         error={fieldErrors.bio}
       >
         {(field) => (
@@ -101,7 +103,7 @@ export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
           />
         )}
       </FormField>
-      <FormField label="Years of experience" required error={fieldErrors.yearsExperience}>
+      <FormField label={t('wprofile.years')} required error={fieldErrors.yearsExperience}>
         {(field) => (
           <Input
             {...field}
@@ -117,13 +119,13 @@ export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
       </FormField>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">
-          Languages you speak{' '}
+          {t('wprofile.languages')}{' '}
           <span className="text-danger-700" aria-hidden="true">
             *
           </span>
         </legend>
         <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
-          {(Object.entries(LANGUAGES) as [LanguageCode, string][]).map(([code, name]) => (
+          {(Object.keys(LANGUAGES) as LanguageCode[]).map((code) => (
             <label key={code} className="flex min-h-11 items-center gap-2">
               <Checkbox
                 checked={languages.includes(code)}
@@ -133,7 +135,7 @@ export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
                   )
                 }
               />
-              {name}
+              {languageNames([code], lang)}
             </label>
           ))}
         </div>
@@ -149,8 +151,13 @@ export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
           {error}
         </p>
       )}
-      <Button type="submit" loading={pending} loadingText="Saving…" className="self-start">
-        Save profile
+      <Button
+        type="submit"
+        loading={pending}
+        loadingText={t('wprofile.saving')}
+        className="self-start"
+      >
+        {t('wprofile.save')}
       </Button>
     </form>
   )

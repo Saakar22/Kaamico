@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { Textarea } from '@/components/ui/input'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 
 const MIN_REASON = 10
@@ -50,6 +51,7 @@ export function ReasonActionDialog({
 }) {
   const { pending, error, fieldErrors, run } = useApiAction()
   const [open, setOpen] = useState(false)
+  const t = useT()
   const [reason, setReason] = useState('')
 
   const confirm = () =>
@@ -97,13 +99,13 @@ export function ReasonActionDialog({
         )}
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="secondary">Back</Button>
+            <Button variant="secondary">{t('wreviews.back')}</Button>
           </DialogClose>
           <Button
             variant={variant === 'destructive' ? 'destructive-solid' : 'primary'}
             onClick={confirm}
             loading={pending}
-            loadingText="Saving…"
+            loadingText={t('wreviews.saving')}
             disabled={reason.trim().length < MIN_REASON}
           >
             {label}

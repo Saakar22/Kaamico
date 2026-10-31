@@ -5,16 +5,20 @@ import { WeeklyHoursEditor } from '@/components/domain/worker/weekly-hours-edito
 import { PageHeader } from '@/components/patterns/page-header'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { getWeeklyRules, listTimeOff } from '@/modules/availability/schedule'
+import { getT } from '@/i18n/server'
 import { listLocalities } from '@/modules/location/localities'
 import { requireWorkerPage } from '@/modules/workers/page-guard'
 import { getOwnProfile } from '@/modules/workers/profile'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Hours and work area' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('whours.metaTitle') }
+}
 
 export default async function WorkerAvailabilityPage() {
   const actor = await requireWorkerPage()
+  const t = await getT()
   const [profile, localities, rules, timeOff] = await Promise.all([
     getOwnProfile(actor.workerId),
     listLocalities(),
@@ -23,13 +27,10 @@ export default async function WorkerAvailabilityPage() {
   ])
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Hours and work area"
-        description="Customers can only book you inside your hours and within your travel distance. Times are in IST."
-      />
+      <PageHeader title={t('whours.title')} description={t('whours.description')} />
       <Card id="area" className="scroll-mt-20">
         <CardHeader>
-          <h2 className="text-lg font-semibold">Where you work</h2>
+          <h2 className="text-lg font-semibold">{t('whours.whereTitle')}</h2>
         </CardHeader>
         <CardContent>
           <ServiceAreaForm
@@ -47,10 +48,8 @@ export default async function WorkerAvailabilityPage() {
       </Card>
       <Card id="hours" className="scroll-mt-20">
         <CardHeader>
-          <h2 className="text-lg font-semibold">Weekly hours</h2>
-          <p className="text-sm text-ink-600">
-            Up to 3 time windows a day, for example a lunch break.
-          </p>
+          <h2 className="text-lg font-semibold">{t('whours.hoursTitle')}</h2>
+          <p className="text-sm text-ink-600">{t('whours.hoursHint')}</p>
         </CardHeader>
         <CardContent>
           <WeeklyHoursEditor initial={rules} />
@@ -58,11 +57,8 @@ export default async function WorkerAvailabilityPage() {
       </Card>
       <Card id="time-off" className="scroll-mt-20">
         <CardHeader>
-          <h2 className="text-lg font-semibold">Time off</h2>
-          <p className="text-sm text-ink-600">
-            Block days you can&apos;t work. Time off can&apos;t overlap a job you have already
-            confirmed.
-          </p>
+          <h2 className="text-lg font-semibold">{t('whours.timeOffTitle')}</h2>
+          <p className="text-sm text-ink-600">{t('whours.timeOffHint')}</p>
         </CardHeader>
         <CardContent>
           <TimeOffManager initial={timeOff} />

@@ -146,7 +146,9 @@ export default async function WorkerDashboardPage() {
             {onboarding.next && (
               <Button asChild size="sm">
                 <Link href={onboarding.next.href}>
-                  {t('wdash.continueStep', { step: onboarding.next.title })}
+                  {t('wdash.continueStep', {
+                    step: t(`onboard.${onboarding.next.key}Title` as MessageKey),
+                  })}
                 </Link>
               </Button>
             )}

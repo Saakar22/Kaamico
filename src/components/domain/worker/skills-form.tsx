@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react'
 import { CategoryIcon } from '@/components/domain/catalog/category-icon'
 import { Button } from '@/components/ui/button'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 import { cn } from '@/lib/cn'
 import { useApiAction } from './use-api-action'
@@ -16,6 +17,7 @@ export function SkillsForm({
   categories: { id: string; name: string; iconKey: string }[]
   initial: string[]
 }) {
+  const t = useT()
   const { pending, error, run } = useApiAction()
   const [selected, setSelected] = useState<string[]>(initial)
   const full = selected.length >= MAX_SKILLS
@@ -24,7 +26,7 @@ export function SkillsForm({
     event.preventDefault()
     return run(
       () => apiFetch('/api/v1/worker/skills', { method: 'PUT', body: { categoryIds: selected } }),
-      { success: 'Skills saved' },
+      { success: t('wprofile.skillsSaved') },
     )
   }
 
@@ -34,7 +36,7 @@ export function SkillsForm({
     <form onSubmit={save} className="flex flex-col gap-4">
       <fieldset>
         <legend className="mb-3 text-sm text-ink-600">
-          Choose up to {MAX_SKILLS}. You will set a price for each service in these.
+          {t('wprofile.chooseUpTo', { count: MAX_SKILLS })}
         </legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {categories.map((c) => {
@@ -68,7 +70,7 @@ export function SkillsForm({
       </fieldset>
       {removed > 0 && (
         <p className="rounded-md bg-warning-700/10 px-3 py-2 text-sm text-ink-900" role="status">
-          Prices for services in removed skills will be switched off.
+          {t('wprofile.removedSkills')}
         </p>
       )}
       {error && (
@@ -79,11 +81,11 @@ export function SkillsForm({
       <Button
         type="submit"
         loading={pending}
-        loadingText="Saving…"
+        loadingText={t('wprofile.saving')}
         disabled={selected.length === 0}
         className="self-start"
       >
-        Save skills
+        {t('wprofile.saveSkills')}
       </Button>
     </form>
   )

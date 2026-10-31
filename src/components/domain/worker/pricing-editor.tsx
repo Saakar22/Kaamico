@@ -6,6 +6,8 @@ import { Checkbox } from '@/components/ui/input'
 import { Money } from '@/components/ui/money'
 import { MoneyInput } from '@/components/ui/money-input'
 import { Switch } from '@/components/ui/switch'
+import { useLocale, useT } from '@/i18n/client'
+import type { MessageKey } from '@/i18n/translate'
 import { apiFetch } from '@/lib/api-client'
 import { cn } from '@/lib/cn'
 import { formatDuration, unitSuffix } from '@/modules/catalog/units'
@@ -28,13 +30,13 @@ function draftOf(row: PricingRow): Draft {
     : { pricePaise: null, minChargePaise: null, negotiable: true, active: false }
 }
 
-function problem(d: Draft): string | null {
+function problem(d: Draft): MessageKey | null {
   if (!d.active && d.pricePaise === null) return null
-  if (d.pricePaise === null) return 'Enter a price'
-  if (d.pricePaise < MIN) return 'At least ₹50'
-  if (d.pricePaise > MAX) return 'At most ₹1,00,000'
+  if (d.pricePaise === null) return 'wpricing.enterPrice'
+  if (d.pricePaise < MIN) return 'wpricing.atLeast'
+  if (d.pricePaise > MAX) return 'wpricing.atMost'
   if (d.minChargePaise !== null && d.minChargePaise > d.pricePaise * 3) {
-    return 'Minimum charge can be at most 3 times the price'
+    return 'wpricing.minTooHigh'
   }
   return null
 }
@@ -47,6 +49,8 @@ export function PricingEditor({
   rows: PricingRow[]
   commissionPercent: number
 }) {
+  const t = useT()
+  const locale = useLocale()
   const { pending, error, run } = useApiAction()
   const [drafts, setDrafts] = useState<Record<string, Draft>>(() =>
     Object.fromEntries(rows.map((r) => [r.serviceId, draftOf(r)])),
@@ -73,7 +77,7 @@ export function PricingEditor({
         }
       })
     return run(() => apiFetch('/api/v1/worker/pricing', { method: 'PUT', body: { items } }), {
-      success: 'Prices saved',
+      success: t('wpricing.saved'),
     })
   }
 
@@ -99,10 +103,14 @@ export function PricingEditor({
                   <div>
                     <p className="font-semibold">{r.serviceName}</p>
                     <p className="text-sm text-ink-600">
-                      About {formatDuration(r.typicalDurationMin)} · priced {unitSuffix(r.unit)}
+                      {t('wpricing.about', {
+                        duration: formatDuration(r.typicalDurationMin, locale),
+                      })}{' '}
+                      · {t('wpricing.priced', { unit: unitSuffix(r.unit, locale) })}
                       {r.referenceMinPaise !== null && r.referenceMaxPaise !== null && (
                         <>
-                          {' · '}guide <Money paise={r.referenceMinPaise} />–
+                          {' · '}
+                          {t('wpricing.guide')} <Money paise={r.referenceMinPaise} />–
                           <Money paise={r.referenceMaxPaise} />
                         </>
                       )}
@@ -112,9 +120,9 @@ export function PricingEditor({
                     <Switch
                       checked={d.active}
                       onCheckedChange={(active) => change(r.serviceId, { active })}
-                      aria-label={`Offer ${r.serviceName}`}
+                      aria-label={t('wpricing.offer', { service: r.serviceName })}
                     />
-                    {d.active ? 'Offered' : 'Off'}
+                    {d.active ? t('wpricing.offered') : t('wpricing.off')}
                   </label>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
@@ -122,7 +130,7 @@ export function PricingEditor({
                     className="flex flex-col gap-1.5 text-sm font-medium"
                     htmlFor={`${id}-price`}
                   >
-                    Your price {unitSuffix(r.unit)}
+                    {t('wpricing.yourPrice', { unit: unitSuffix(r.unit, locale) })}
                     <MoneyInput
                       id={`${id}-price`}
                       value={d.pricePaise}
@@ -134,7 +142,7 @@ export function PricingEditor({
                     className="flex flex-col gap-1.5 text-sm font-medium"
                     htmlFor={`${id}-min`}
                   >
-                    Minimum charge
+                    {t('wpricing.minimum')}
                     <MoneyInput
                       id={`${id}-min`}
                       value={d.minChargePaise}
@@ -146,12 +154,12 @@ export function PricingEditor({
                       checked={d.negotiable}
                       onChange={(e) => change(r.serviceId, { negotiable: e.target.checked })}
                     />
-                    Open to offers
+                    {t('wpricing.openToOffers')}
                   </label>
                 </div>
                 {problems[r.serviceId] && (
                   <p className="text-sm text-danger-700" role="alert">
-                    {problems[r.serviceId]}
+                    {t(problems[r.serviceId]!)}
                   </p>
                 )}
               </fieldset>
@@ -160,8 +168,7 @@ export function PricingEditor({
         })}
       </ul>
       <p className="text-sm text-ink-600">
-        Kaamico keeps a {commissionPercent}% platform fee from each job. Price changes apply to new
-        requests only; existing bookings keep their agreed price.
+        {t('wpricing.feeNote', { percent: commissionPercent })}
       </p>
       {error && (
         <p className="text-sm text-danger-700" role="alert">
@@ -171,11 +178,11 @@ export function PricingEditor({
       <Button
         type="submit"
         loading={pending}
-        loadingText="Saving…"
+        loadingText={t('wpricing.saving')}
         disabled={invalid}
         className="self-start"
       >
-        Save prices
+        {t('wpricing.save')}
       </Button>
     </form>
   )

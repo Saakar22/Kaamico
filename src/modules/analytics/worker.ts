@@ -2,6 +2,8 @@ import 'server-only'
 import { sql } from 'drizzle-orm'
 import { getDb } from '@/db/client'
 import { periodStart, type Period } from '@/modules/ledger/earnings'
+import type { Locale } from '@/i18n/config'
+import { localized } from '@/modules/catalog/catalog'
 
 const WEEK_MS = 7 * 86_400_000
 
@@ -40,6 +42,7 @@ export async function workerAnalytics(
   period: Period,
   now: Date = new Date(),
   weekCount = 8,
+  locale: Locale = 'en',
 ): Promise<WorkerAnalytics> {
   const thisWeek = periodStart('week', now)!
   const first = new Date(thisWeek.getTime() - (weekCount - 1) * WEEK_MS)
@@ -59,15 +62,15 @@ export async function workerAnalytics(
         and created_at >= ${first.toISOString()}::timestamptz
       group by 1`),
     db.execute<{ service_id: string; name: string; net: number; jobs: number }>(sql`
-      select s.id as service_id, s.name, sum(e.amount_paise)::int as net,
+      select s.id as service_id, ${localized(locale, 's', 'name')} as name, sum(e.amount_paise)::int as net,
         (count(*) filter (where e.type = 'JOB_EARNING'))::int as jobs
       from worker_ledger_entries e
       join bookings b on b.id = e.booking_id
       join services s on s.id = b.service_id
       where e.worker_id = ${workerId} and e.type in ('JOB_EARNING', 'COMMISSION') ${since}
-      group by s.id, s.name
+      group by s.id
       having sum(e.amount_paise) <> 0
-      order by net desc, s.name
+      order by net desc, name
       limit 8`),
     db.execute<{ received: number; won: number; declined: number; missed: number }>(sql`
       select count(*)::int as received,

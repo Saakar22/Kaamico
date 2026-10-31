@@ -5,10 +5,12 @@ import { useApiAction } from '@/components/domain/worker/use-api-action'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Textarea } from '@/components/ui/input'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 
 /** One public reply to a review; collapsed behind a button until needed. */
 export function ReplyForm({ reviewId, author }: { reviewId: string; author: string }) {
+  const t = useT()
   const { pending, error, fieldErrors, run } = useApiAction()
   const [open, setOpen] = useState(false)
   const [reply, setReply] = useState('')
@@ -16,7 +18,7 @@ export function ReplyForm({ reviewId, author }: { reviewId: string; author: stri
   if (!open) {
     return (
       <Button variant="secondary" size="sm" className="self-start" onClick={() => setOpen(true)}>
-        Reply
+        {t('wreviews.reply')}
       </Button>
     )
   }
@@ -24,15 +26,15 @@ export function ReplyForm({ reviewId, author }: { reviewId: string; author: stri
   const submit = (event: FormEvent) => {
     event.preventDefault()
     return run(() => apiFetch(`/api/v1/reviews/${reviewId}/reply`, { body: { reply } }), {
-      success: 'Reply posted',
+      success: t('wreviews.replyPosted'),
     })
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
       <FormField
-        label={`Your reply to ${author}`}
-        hint="Shown under the review on your profile. You can reply once."
+        label={t('wreviews.replyTo', { name: author })}
+        hint={t('wreviews.replyHint')}
         error={fieldErrors.reply}
       >
         {(field) => (
@@ -51,11 +53,11 @@ export function ReplyForm({ reviewId, author }: { reviewId: string; author: stri
         </p>
       )}
       <div className="flex gap-2">
-        <Button type="submit" size="sm" loading={pending} loadingText="Posting…">
-          Post reply
+        <Button type="submit" size="sm" loading={pending} loadingText={t('wreviews.posting')}>
+          {t('wreviews.post')}
         </Button>
         <Button type="button" size="sm" variant="tertiary" onClick={() => setOpen(false)}>
-          Cancel
+          {t('wreviews.cancel')}
         </Button>
       </div>
     </form>

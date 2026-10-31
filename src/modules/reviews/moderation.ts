@@ -8,6 +8,8 @@ import { enforceRateLimit } from '@/lib/rate-limit'
 import { writeAudit, type AuditContext } from '@/modules/audit/audit'
 import type { Actor } from '@/modules/auth/types'
 import { addOutbox, type Tx } from '@/modules/bookings/repo'
+import type { Locale } from '@/i18n/config'
+import { localized } from '@/modules/catalog/catalog'
 
 /**
  * Review replies, reports and moderation (IMPLEMENTATION_PLAN.md §10.10, §10.15).
@@ -122,7 +124,11 @@ export type WorkerReviewView = {
 }
 
 /** Every review of the signed-in professional, newest first (hidden ones say so). */
-export async function listWorkerReviews(actor: Actor, limit = 50): Promise<WorkerReviewView[]> {
+export async function listWorkerReviews(
+  actor: Actor,
+  limit = 50,
+  locale: Locale = 'en',
+): Promise<WorkerReviewView[]> {
   if (!actor.workerId) throw forbidden('Only professionals have reviews')
   const rows = await getDb().execute<{
     id: string
@@ -137,7 +143,8 @@ export async function listWorkerReviews(actor: Actor, limit = 50): Promise<Worke
     worker_reply: string | null
     created_at: Date | string
   }>(sql`
-    select r.id, r.rating, r.tags, r.comment, u.name as author, s.name as service_name, b.code,
+    select r.id, r.rating, r.tags, r.comment, u.name as author,
+           ${localized(locale, 's', 'name')} as service_name, b.code,
            r.status, r.hidden_reason, r.worker_reply, r.created_at
     from reviews r
     join users u on u.id = r.customer_id

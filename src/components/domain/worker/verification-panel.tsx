@@ -6,33 +6,39 @@ import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input, NativeSelect } from '@/components/ui/input'
+import { useLocale, useT } from '@/i18n/client'
+import { htmlLang } from '@/i18n/config'
+import type { MessageKey } from '@/i18n/translate'
 import { apiFetch } from '@/lib/api-client'
 import { formatIstDateTime } from '@/lib/time'
 import type { VerificationState } from '@/modules/verification/verification'
 import { uploadFile, useApiAction } from './use-api-action'
 
-const DOC_LABELS: Record<string, string> = {
-  AADHAAR_MASKED: 'Masked Aadhaar',
-  PAN: 'PAN card',
-  VOTER_ID: 'Voter ID',
-  DRIVING_LICENCE: 'Driving licence',
-  SELFIE: 'Selfie',
-  SKILL_CERTIFICATE: 'Skill certificate',
-  POLICE_VERIFICATION: 'Police verification',
+const DOC_LABELS: Record<string, MessageKey> = {
+  AADHAAR_MASKED: 'wverify.docAadhaar',
+  PAN: 'wverify.docPan',
+  VOTER_ID: 'wverify.docVoter',
+  DRIVING_LICENCE: 'wverify.docLicence',
+  SELFIE: 'wverify.docSelfie',
+  SKILL_CERTIFICATE: 'wverify.docSkill',
+  POLICE_VERIFICATION: 'wverify.docPolice',
 }
 const ID_TYPES = ['AADHAAR_MASKED', 'PAN', 'VOTER_ID', 'DRIVING_LICENCE']
 
-const REQUIREMENT_LABELS: Record<string, { label: string; href?: string }> = {
-  profile: { label: 'Profile with a short introduction and languages', href: '/worker/profile' },
-  skills: { label: 'At least one skill', href: '/worker/profile#skills' },
-  area: { label: 'Your work area', href: '/worker/availability#area' },
-  idDocument: { label: 'An ID document' },
-  selfie: { label: 'A selfie' },
+const REQUIREMENT_LABELS: Record<string, { label: MessageKey; href?: string }> = {
+  profile: { label: 'wverify.reqProfile', href: '/worker/profile' },
+  skills: { label: 'wverify.reqSkills', href: '/worker/profile#skills' },
+  area: { label: 'wverify.reqArea', href: '/worker/availability#area' },
+  idDocument: { label: 'wverify.reqId' },
+  selfie: { label: 'wverify.reqSelfie' },
 }
 
 const MAX_BYTES = { image: 5 * 1024 * 1024, pdf: 8 * 1024 * 1024 }
 
 export function VerificationPanel({ state }: { state: VerificationState }) {
+  const t = useT()
+  const lang = htmlLang[useLocale()]
+  const docLabel = (type: string) => (DOC_LABELS[type] ? t(DOC_LABELS[type]) : type)
   const { pending, error, fieldErrors, run, setError } = useApiAction()
   const [docType, setDocType] = useState('AADHAAR_MASKED')
   const [last4, setLast4] = useState('')
@@ -47,7 +53,7 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
     if (!file) return
     const limit = file.type === 'application/pdf' ? MAX_BYTES.pdf : MAX_BYTES.image
     if (file.size > limit) {
-      setError(`This file is too large (max ${limit / 1024 / 1024} MB).`)
+      setError(t('wverify.tooLarge', { mb: limit / 1024 / 1024 }))
       return
     }
     return run(
@@ -60,19 +66,19 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
         setLast4('')
         setFileKey((k) => k + 1)
       },
-      { success: `${DOC_LABELS[docType]} added` },
+      { success: t('wverify.added', { doc: docLabel(docType) }) },
     )
   }
 
   const remove = (id: string) =>
     run(() => apiFetch(`/api/v1/worker/verification/documents/${id}`, { method: 'DELETE' }), {
-      success: 'Document removed',
+      success: t('wverify.removed'),
     })
 
   const submit = () =>
     run(
       () => apiFetch('/api/v1/worker/verification/submit', { body: {}, idempotencyKey: submitKey }),
-      { success: 'Sent for review' },
+      { success: t('wverify.sent') },
     )
 
   return (
@@ -80,7 +86,7 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
       {state.documents.length > 0 && (
         <section aria-labelledby="docs-title" className="flex flex-col gap-3">
           <h2 id="docs-title" className="text-lg font-semibold">
-            Your documents
+            {t('wverify.yourDocs')}
           </h2>
           <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
             {state.documents.map((d) => (
@@ -93,11 +99,17 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
                   )}
                   <span>
                     <span className="block font-medium">
-                      {DOC_LABELS[d.docType]}
-                      {d.idLast4 && <span className="text-ink-600"> ending {d.idLast4}</span>}
+                      {docLabel(d.docType)}
+                      {d.idLast4 && (
+                        <span className="text-ink-600">
+                          {t('wverify.ending', { last4: d.idLast4 })}
+                        </span>
+                      )}
                     </span>
                     <span className="text-sm text-ink-600">
-                      Added {formatIstDateTime(new Date(d.uploadedAt))}
+                      {t('wverify.addedOn', {
+                        date: formatIstDateTime(new Date(d.uploadedAt), lang),
+                      })}
                     </span>
                   </span>
                 </span>
@@ -105,7 +117,7 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
                   <Button
                     variant="tertiary"
                     size="icon"
-                    aria-label={`Remove ${DOC_LABELS[d.docType]}`}
+                    aria-label={t('wverify.remove', { doc: docLabel(d.docType) })}
                     onClick={() => remove(d.id)}
                     disabled={pending}
                   >
@@ -124,20 +136,20 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
           className="flex flex-col gap-4 rounded-lg border border-border p-4"
         >
           <h2 id="add-title" className="text-lg font-semibold">
-            Add a document
+            {t('wverify.addDoc')}
           </h2>
           <form onSubmit={add} className="flex flex-col gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Document type" required error={fieldErrors.docType}>
+              <FormField label={t('wverify.docType')} required error={fieldErrors.docType}>
                 {(field) => (
                   <NativeSelect
                     {...field}
                     value={docType}
                     onChange={(e) => setDocType(e.target.value)}
                   >
-                    {Object.entries(DOC_LABELS).map(([value, label]) => (
+                    {Object.keys(DOC_LABELS).map((value) => (
                       <option key={value} value={value}>
-                        {label}
+                        {docLabel(value)}
                       </option>
                     ))}
                   </NativeSelect>
@@ -145,9 +157,9 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
               </FormField>
               {isId && (
                 <FormField
-                  label="Last 4 characters of the ID number"
+                  label={t('wverify.last4')}
                   required
-                  hint="Only the last 4. Never type your full Aadhaar number."
+                  hint={t('wverify.last4Hint')}
                   error={fieldErrors.idLast4}
                 >
                   {(field) => (
@@ -164,14 +176,14 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
               )}
             </div>
             <FormField
-              label={docType === 'SELFIE' ? 'Selfie photo' : 'Photo or PDF of the document'}
+              label={docType === 'SELFIE' ? t('wverify.selfiePhoto') : t('wverify.docFile')}
               required
               hint={
                 docType === 'AADHAAR_MASKED'
-                  ? 'Use the masked Aadhaar (only the last 4 digits visible), downloadable from the UIDAI website. JPEG, PNG, WebP or PDF, up to 8 MB.'
+                  ? t('wverify.aadhaarHint')
                   : docType === 'SELFIE'
-                    ? 'A clear photo of your face. JPEG, PNG or WebP, up to 5 MB.'
-                    : 'JPEG, PNG or WebP up to 5 MB, or PDF up to 8 MB.'
+                    ? t('wverify.selfieHint')
+                    : t('wverify.fileHint')
               }
             >
               {(field) => (
@@ -194,12 +206,12 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
               type="submit"
               variant="secondary"
               loading={pending}
-              loadingText="Uploading…"
+              loadingText={t('wverify.uploading')}
               disabled={!file || (isId && last4.length !== 4)}
               className="self-start"
             >
               <Upload aria-hidden="true" />
-              Upload document
+              {t('wverify.upload')}
             </Button>
           </form>
         </section>
@@ -208,7 +220,7 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
       {state.canEdit && (
         <section aria-labelledby="checklist-title" className="flex flex-col gap-3">
           <h2 id="checklist-title" className="text-lg font-semibold">
-            Before you submit
+            {t('wverify.beforeSubmit')}
           </h2>
           <ul className="flex flex-col gap-2">
             {state.requirements.map((r) => {
@@ -220,13 +232,13 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
                   ) : (
                     <Circle aria-hidden="true" className="size-5 text-ink-600" />
                   )}
-                  <span className="sr-only">{r.done ? 'Done:' : 'To do:'}</span>
+                  <span className="sr-only">{r.done ? t('wverify.done') : t('wverify.todo')}</span>
                   {meta.href && !r.done ? (
                     <Link href={meta.href} className="text-brand-700 underline">
-                      {meta.label}
+                      {t(meta.label)}
                     </Link>
                   ) : (
-                    meta.label
+                    t(meta.label)
                   )}
                 </li>
               )
@@ -240,12 +252,12 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
           <Button
             onClick={submit}
             loading={pending}
-            loadingText="Submitting…"
+            loadingText={t('wverify.submitting')}
             disabled={!state.canSubmit}
             className="self-start"
           >
             <ShieldCheck aria-hidden="true" />
-            Submit for review
+            {t('wverify.submit')}
           </Button>
         </section>
       )}

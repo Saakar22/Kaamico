@@ -5,6 +5,8 @@ import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
+import { useLocale, useT } from '@/i18n/client'
+import { htmlLang } from '@/i18n/config'
 import { apiFetch, ApiError } from '@/lib/api-client'
 import { formatIstDateTime } from '@/lib/time'
 import { useApiAction } from './use-api-action'
@@ -16,6 +18,9 @@ type Clash = { code: string; start: string; end: string }
 const fromLocalIst = (value: string) => new Date(`${value}:00+05:30`).toISOString()
 
 export function TimeOffManager({ initial }: { initial: TimeOff[] }) {
+  const t = useT()
+  const lang = htmlLang[useLocale()]
+  const when = (iso: string) => formatIstDateTime(new Date(iso), lang)
   const { pending, error, fieldErrors, run } = useApiAction()
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
@@ -41,13 +46,13 @@ export function TimeOffManager({ initial }: { initial: TimeOff[] }) {
         setEnd('')
         setReason('')
       },
-      { success: 'Time off added' },
+      { success: t('whours.timeOffAdded') },
     )
   }
 
   const remove = (id: string) =>
     run(() => apiFetch(`/api/v1/worker/time-off/${id}`, { method: 'DELETE' }), {
-      success: 'Time off removed',
+      success: t('whours.timeOffRemoved'),
     })
 
   return (
@@ -55,23 +60,23 @@ export function TimeOffManager({ initial }: { initial: TimeOff[] }) {
       {initial.length === 0 ? (
         <p className="flex items-center gap-2 text-ink-600">
           <CalendarOff aria-hidden="true" className="size-5" />
-          No time off planned.
+          {t('whours.noTimeOff')}
         </p>
       ) : (
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
-          {initial.map((t) => (
-            <li key={t.id} className="flex items-center justify-between gap-3 p-3">
+          {initial.map((item) => (
+            <li key={item.id} className="flex items-center justify-between gap-3 p-3">
               <span>
                 <span className="block font-medium">
-                  {formatIstDateTime(new Date(t.start))} – {formatIstDateTime(new Date(t.end))}
+                  {when(item.start)} – {when(item.end)}
                 </span>
-                {t.reason && <span className="text-sm text-ink-600">{t.reason}</span>}
+                {item.reason && <span className="text-sm text-ink-600">{item.reason}</span>}
               </span>
               <Button
                 variant="tertiary"
                 size="icon"
-                aria-label={`Remove time off starting ${formatIstDateTime(new Date(t.start))}`}
-                onClick={() => remove(t.id)}
+                aria-label={t('whours.removeTimeOff', { start: when(item.start) })}
+                onClick={() => remove(item.id)}
                 disabled={pending}
               >
                 <Trash2 aria-hidden="true" />
@@ -83,7 +88,7 @@ export function TimeOffManager({ initial }: { initial: TimeOff[] }) {
 
       <form onSubmit={add} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="From" required error={fieldErrors.start}>
+          <FormField label={t('whours.from')} required error={fieldErrors.start}>
             {(field) => (
               <Input
                 {...field}
@@ -93,7 +98,7 @@ export function TimeOffManager({ initial }: { initial: TimeOff[] }) {
               />
             )}
           </FormField>
-          <FormField label="Until" required error={fieldErrors.end}>
+          <FormField label={t('whours.until')} required error={fieldErrors.end}>
             {(field) => (
               <Input
                 {...field}
@@ -104,7 +109,7 @@ export function TimeOffManager({ initial }: { initial: TimeOff[] }) {
             )}
           </FormField>
         </div>
-        <FormField label="Reason (only you see this)" error={fieldErrors.reason}>
+        <FormField label={t('whours.reason')} error={fieldErrors.reason}>
           {(field) => (
             <Input
               {...field}
@@ -121,7 +126,7 @@ export function TimeOffManager({ initial }: { initial: TimeOff[] }) {
               <ul className="mt-1 list-disc pl-5">
                 {clashes.map((c) => (
                   <li key={c.code}>
-                    Booking {c.code}: {formatIstDateTime(new Date(c.start))}
+                    {t('whours.bookingClash', { code: c.code, start: when(c.start) })}
                   </li>
                 ))}
               </ul>
@@ -132,11 +137,11 @@ export function TimeOffManager({ initial }: { initial: TimeOff[] }) {
           type="submit"
           variant="secondary"
           loading={pending}
-          loadingText="Adding…"
+          loadingText={t('whours.adding')}
           disabled={!start || !end}
           className="self-start"
         >
-          Add time off
+          {t('whours.addTimeOff')}
         </Button>
       </form>
     </div>

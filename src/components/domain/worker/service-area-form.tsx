@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { NativeSelect } from '@/components/ui/input'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 import { useApiAction } from './use-api-action'
 
@@ -16,6 +17,7 @@ export function ServiceAreaForm({
   localities: { id: string; city: string; name: string }[]
   initial: { localityId: string | null; radiusKm: number } | null
 }) {
+  const t = useT()
   const { pending, error, fieldErrors, run } = useApiAction()
   const cities = useMemo(() => [...new Set(localities.map((l) => l.city))], [localities])
   const [localityId, setLocalityId] = useState(initial?.localityId ?? '')
@@ -29,7 +31,7 @@ export function ServiceAreaForm({
           method: 'PUT',
           body: { localityId, radiusKm: Number(radiusKm) },
         }),
-      { success: 'Work area saved' },
+      { success: t('whours.areaSaved') },
     )
   }
 
@@ -37,9 +39,9 @@ export function ServiceAreaForm({
     <form onSubmit={save} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField
-          label="Your base area"
+          label={t('whours.baseArea')}
           required
-          hint="Used only to work out distance. Customers never see where you live."
+          hint={t('whours.baseAreaHint')}
           error={fieldErrors.localityId}
         >
           {(field) => (
@@ -49,7 +51,7 @@ export function ServiceAreaForm({
               onChange={(e) => setLocalityId(e.target.value)}
             >
               <option value="" disabled>
-                Choose an area
+                {t('whours.chooseArea')}
               </option>
               {cities.map((city) => (
                 <optgroup key={city} label={city}>
@@ -65,12 +67,12 @@ export function ServiceAreaForm({
             </NativeSelect>
           )}
         </FormField>
-        <FormField label="How far you travel" required error={fieldErrors.radiusKm}>
+        <FormField label={t('whours.travel')} required error={fieldErrors.radiusKm}>
           {(field) => (
             <NativeSelect {...field} value={radiusKm} onChange={(e) => setRadiusKm(e.target.value)}>
               {RADII.map((r) => (
                 <option key={r} value={r}>
-                  Up to {r} km
+                  {t('whours.upTo', { km: r })}
                 </option>
               ))}
             </NativeSelect>
@@ -85,11 +87,11 @@ export function ServiceAreaForm({
       <Button
         type="submit"
         loading={pending}
-        loadingText="Saving…"
+        loadingText={t('whours.saving')}
         disabled={!localityId}
         className="self-start"
       >
-        Save work area
+        {t('whours.saveArea')}
       </Button>
     </form>
   )

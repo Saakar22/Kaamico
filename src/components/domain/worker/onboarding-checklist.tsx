@@ -1,14 +1,17 @@
 import { ChevronRight, CircleCheck } from 'lucide-react'
 import Link from 'next/link'
+import { getT } from '@/i18n/server'
+import type { MessageKey } from '@/i18n/translate'
 import { cn } from '@/lib/cn'
 import type { OnboardingState } from '@/modules/workers/onboarding'
 
 /** The six setup steps in order, each linking to where it is done. */
-export function OnboardingChecklist({ state }: { state: OnboardingState }) {
+export async function OnboardingChecklist({ state }: { state: OnboardingState }) {
+  const t = await getT()
   return (
     <ol
       className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface"
-      aria-label="Setup steps"
+      aria-label={t('onboard.steps')}
     >
       {state.steps.map((step, i) => {
         const isNext = state.next?.key === step.key
@@ -37,10 +40,14 @@ export function OnboardingChecklist({ state }: { state: OnboardingState }) {
               )}
               <span className="flex flex-1 flex-col">
                 <span className="font-medium">
-                  <span className="sr-only">{step.done ? 'Done: ' : 'To do: '}</span>
-                  {step.title}
+                  <span className="sr-only">
+                    {step.done ? t('onboard.done') : t('onboard.todo')}
+                  </span>
+                  {t(`onboard.${step.key}Title` as MessageKey)}
                 </span>
-                <span className="text-sm text-ink-600">{step.description}</span>
+                <span className="text-sm text-ink-600">
+                  {t(`onboard.${step.key}Desc` as MessageKey)}
+                </span>
               </span>
               <ChevronRight aria-hidden="true" className="size-5 shrink-0 text-ink-600" />
             </Link>

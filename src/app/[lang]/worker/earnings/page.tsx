@@ -14,6 +14,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Money } from '@/components/ui/money'
 import { Table, TD, TH, THead, TR } from '@/components/ui/table'
+import { htmlLang } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
+import type { MessageKey, Translate } from '@/i18n/translate'
 import { cn } from '@/lib/cn'
 import { formatINR } from '@/lib/money'
 import { formatIstDateTime } from '@/lib/time'
@@ -24,37 +27,35 @@ import { requireWorkerPage } from '@/modules/workers/page-guard'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Earnings' }
-
-const PERIOD_LABEL: Record<Period, string> = {
-  week: 'This week',
-  month: 'This month',
-  all: 'All time',
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('wearn.metaTitle') }
 }
-const TYPE_LABEL: Record<string, string> = {
-  JOB_EARNING: 'Job',
-  COMMISSION: 'Kaamico fee',
-  CASH_COLLECTED: 'Paid to you in cash',
-  ADJUSTMENT: 'Adjustment',
-  REFUND_CLAWBACK: 'Refund',
-  PAYOUT: 'Payout',
+
+const PERIOD_LABEL: Record<Period, MessageKey> = {
+  week: 'wearn.week',
+  month: 'wearn.month',
+  all: 'wearn.all',
+}
+const TYPE_LABEL: Record<string, MessageKey> = {
+  JOB_EARNING: 'wearn.typeJob',
+  COMMISSION: 'wearn.typeFee',
+  CASH_COLLECTED: 'wearn.typeCash',
+  ADJUSTMENT: 'wearn.typeAdjustment',
+  REFUND_CLAWBACK: 'wearn.typeRefund',
+  PAYOUT: 'wearn.typePayout',
 }
 const PAYOUT_STATUS: Record<
   PayoutView['status'],
-  { label: string; tone: 'success' | 'info' | 'danger' }
+  { label: MessageKey; tone: 'success' | 'info' | 'danger' }
 > = {
-  REQUESTED: { label: 'Requested', tone: 'info' },
-  PROCESSING: { label: 'On its way', tone: 'info' },
-  PAID: { label: 'Paid', tone: 'success' },
-  FAILED: { label: 'Failed', tone: 'danger' },
+  REQUESTED: { label: 'wearn.statusRequested', tone: 'info' },
+  PROCESSING: { label: 'wearn.statusProcessing', tone: 'info' },
+  PAID: { label: 'wearn.statusPaid', tone: 'success' },
+  FAILED: { label: 'wearn.statusFailed', tone: 'danger' },
 }
 
-const weekTick = new Intl.DateTimeFormat('en-IN', {
-  timeZone: 'Asia/Kolkata',
-  day: 'numeric',
-  month: 'short',
-})
-const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`
+const jobs = (n: number, t: Translate) =>
+  t(n === 1 ? 'wearn.jobOne' : 'wearn.jobOther', { count: n })
 
 /** Gross, fee, net and balance straight from the ledger (§5 `/worker/earnings`). */
 export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/worker/earnings'>) {
@@ -62,12 +63,20 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
   const { period: rawPeriod, cursor: rawCursor } = await searchParams
   const period = PERIODS.find((p) => p === rawPeriod) ?? 'week'
   const cursor = typeof rawCursor === 'string' ? rawCursor : null
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const lang = htmlLang[locale]
+  const weekTick = new Intl.DateTimeFormat(lang, {
+    timeZone: 'Asia/Kolkata',
+    day: 'numeric',
+    month: 'short',
+  })
+  const periodLabel = t(PERIOD_LABEL[period])
   const [summary, ledger, payouts, ready, trends] = await Promise.all([
     earningsSummary(actor.workerId, period),
     listLedger(actor.workerId, cursor),
     listPayouts(actor.workerId),
     payoutAvailability(actor.workerId),
-    workerAnalytics(actor.workerId, period),
+    workerAnalytics(actor.workerId, period, new Date(), 8, locale),
   ])
   const { requests } = trends
   const answered = requests.won + requests.declined + requests.missed
@@ -76,14 +85,14 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Earnings"
-        description="Every job, fee and payout, as recorded."
-        actions={<SimulationBadge label="Payouts are simulated: no money is transferred" />}
+        title={t('wearn.title')}
+        description={t('wearn.description')}
+        actions={<SimulationBadge label={t('wearn.simulated')} />}
       />
 
       <Card>
         <CardContent className="flex flex-col gap-2">
-          <span className="text-sm text-ink-600">Balance</span>
+          <span className="text-sm text-ink-600">{t('wearn.balance')}</span>
           <span
             className={cn(
               'font-display text-3xl font-bold tabular-nums',
@@ -95,44 +104,43 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
           </span>
           <p className="text-sm text-ink-600">
             {owed
-              ? 'You owe Kaamico this in fees from cash jobs. It is taken from your next online payments.'
+              ? t('wearn.owed')
               : summary.balancePaise > 0
-                ? 'Kaamico owes you this from online payments. Payouts are simulated in this demo.'
-                : 'You are all settled up.'}
+                ? t('wearn.owes')
+                : t('wearn.settled')}
           </p>
           {ready.onHoldPaise > 0 && (
             <p className="text-sm text-ink-600">
-              <Money paise={ready.onHoldPaise} /> is on hold: a job&apos;s earnings can be paid out
-              72 hours after it is paid, once the customer can no longer report a problem.
+              <Money paise={ready.onHoldPaise} /> {t('wearn.onHold')}
             </p>
           )}
         </CardContent>
       </Card>
 
       <LinkTabs
-        label="Period"
+        label={t('wearn.period')}
         current={period}
         tabs={PERIODS.map((p) => ({
           key: p,
-          label: PERIOD_LABEL[p],
+          label: t(PERIOD_LABEL[p]),
           href: `/worker/earnings?period=${p}`,
         }))}
       />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatTile label="Jobs paid" value={summary.jobs} />
+        <StatTile label={t('wearn.jobsPaid')} value={summary.jobs} />
         <StatTile
-          label="Job value"
+          label={t('wearn.jobValue')}
           value={<Money paise={summary.grossPaise} />}
-          hint="What customers paid"
+          hint={t('wearn.customersPaid')}
         />
-        <StatTile label="Kaamico fee" value={<Money paise={summary.commissionPaise} />} />
+        <StatTile label={t('wearn.fee')} value={<Money paise={summary.commissionPaise} />} />
         <StatTile
-          label="You earned"
+          label={t('wearn.earned')}
           value={<Money paise={summary.netPaise} />}
           hint={
             summary.cashCollectedPaise > 0 ? (
               <>
-                <Money paise={summary.cashCollectedPaise} /> of it was paid to you in cash
+                <Money paise={summary.cashCollectedPaise} /> {t('wearn.ofItCash')}
               </>
             ) : undefined
           }
@@ -141,25 +149,25 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
 
       <section aria-labelledby="trends-title" className="flex flex-col gap-3">
         <h2 id="trends-title" className="font-display text-xl font-bold">
-          How you are doing
+          {t('wearn.howDoing')}
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardContent>
               <ColumnChart
-                title="You earned, by week (after Kaamico's fee)"
+                title={t('wearn.byWeek')}
                 unit="paise"
-                valueHeader="You earned"
-                detailHeader="Jobs"
+                valueHeader={t('wearn.earned')}
+                detailHeader={t('wearn.jobs')}
                 columns={trends.weeks.map((w) => {
                   const tick = weekTick.format(new Date(w.weekStart))
                   return {
                     key: w.weekStart,
                     tick,
-                    name: `Week of ${tick}`,
+                    name: t('wearn.weekOf', { date: tick }),
                     value: w.netPaise,
                     display: formatINR(w.netPaise),
-                    detail: plural(w.jobs, 'job'),
+                    detail: jobs(w.jobs, t),
                   }
                 })}
               />
@@ -169,15 +177,17 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
             <CardContent className="flex flex-col gap-5">
               {trends.byService.length === 0 ? (
                 <p className="text-sm text-ink-600">
-                  No paid jobs {period === 'all' ? 'yet' : PERIOD_LABEL[period].toLowerCase()}.
+                  {period === 'all'
+                    ? t('wearn.noJobsYet')
+                    : t('wearn.noJobsPeriod', { period: periodLabel.toLowerCase() })}
                 </p>
               ) : (
                 <BarList
-                  title={`Your earnings by service, ${PERIOD_LABEL[period].toLowerCase()}`}
+                  title={t('wearn.byService', { period: periodLabel.toLowerCase() })}
                   rows={trends.byService.map((s) => ({
                     key: s.serviceId,
                     label: s.name,
-                    detail: plural(s.jobs, 'job'),
+                    detail: jobs(s.jobs, t),
                     value: s.netPaise,
                     display: formatINR(s.netPaise),
                   }))}
@@ -185,25 +195,25 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
               )}
               <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-3">
                 <StatTile
-                  label={`Requests, last ${requests.days} days`}
+                  label={t('wearn.requestsLast', { days: requests.days })}
                   value={requests.received}
                 />
                 <StatTile
-                  label="Booked with you"
+                  label={t('wearn.booked')}
                   value={requests.won}
                   hint={
                     answered > 0
-                      ? `${Math.round((requests.won / answered) * 100)}% of the ones that finished`
+                      ? t('wearn.bookedShare', {
+                          percent: Math.round((requests.won / answered) * 100),
+                        })
                       : undefined
                   }
                 />
                 <StatTile
-                  label="Declined or missed"
+                  label={t('wearn.declinedMissed')}
                   value={requests.declined + requests.missed}
                   hint={
-                    requests.missed > 0
-                      ? `${requests.missed} timed out or went to someone else`
-                      : undefined
+                    requests.missed > 0 ? t('wearn.missed', { count: requests.missed }) : undefined
                   }
                 />
               </div>
@@ -214,31 +224,33 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
 
       <section aria-labelledby="ledger-title" className="flex flex-col gap-3">
         <h2 id="ledger-title" className="font-display text-xl font-bold">
-          Ledger
+          {t('wearn.ledger')}
         </h2>
         {ledger.entries.length === 0 ? (
           <Card>
             <EmptyState
               icon={Wallet}
-              title="No entries yet"
-              description="When a customer pays for a job, its earnings and fee appear here."
+              title={t('wearn.noEntries')}
+              description={t('wearn.noEntriesBody')}
             />
           </Card>
         ) : (
-          <Table label="Ledger entries">
+          <Table label={t('wearn.entries')}>
             <THead>
               <tr>
-                <TH>Date</TH>
-                <TH>Type</TH>
-                <TH>Details</TH>
-                <TH className="text-right">Amount</TH>
+                <TH>{t('wearn.date')}</TH>
+                <TH>{t('wearn.type')}</TH>
+                <TH>{t('wearn.details')}</TH>
+                <TH className="text-right">{t('wearn.amount')}</TH>
               </tr>
             </THead>
             <tbody>
               {ledger.entries.map((e) => (
                 <TR key={e.id}>
-                  <TD className="whitespace-nowrap">{formatIstDateTime(new Date(e.createdAt))}</TD>
-                  <TD>{TYPE_LABEL[e.type] ?? e.type}</TD>
+                  <TD className="whitespace-nowrap">
+                    {formatIstDateTime(new Date(e.createdAt), lang)}
+                  </TD>
+                  <TD>{TYPE_LABEL[e.type] ? t(TYPE_LABEL[e.type]) : e.type}</TD>
                   <TD>
                     {e.bookingId ? (
                       <Link
@@ -268,7 +280,7 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
         {ledger.nextCursor && (
           <Button asChild variant="secondary" className="self-center">
             <Link href={`/worker/earnings?period=${period}&cursor=${ledger.nextCursor}`}>
-              Show older
+              {t('wearn.showOlder')}
             </Link>
           </Button>
         )}
@@ -276,20 +288,18 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
 
       <section aria-labelledby="payouts-title" className="flex flex-col gap-3">
         <h2 id="payouts-title" className="font-display text-xl font-bold">
-          Payouts
+          {t('wearn.payouts')}
         </h2>
         <Card>
           <CardContent className="flex flex-col gap-3">
             <p className="text-sm text-ink-600">
-              Ready to pay out:{' '}
+              {t('wearn.ready')}{' '}
               <span className="font-semibold text-ink-900">
                 <Money paise={ready.availablePaise} />
               </span>
             </p>
             {ready.openPayoutId ? (
-              <p className="text-sm text-ink-600">
-                Your last payout is on its way. You can ask for the next one once it arrives.
-              </p>
+              <p className="text-sm text-ink-600">{t('wearn.onItsWay')}</p>
             ) : ready.availablePaise >= ready.minimumPaise ? (
               <PayoutRequest
                 availablePaise={ready.availablePaise}
@@ -297,13 +307,13 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
               />
             ) : (
               <p className="text-sm text-ink-600">
-                You can ask for a payout once <Money paise={ready.minimumPaise} /> or more is ready.
+                {t('wearn.minimum', { amount: formatINR(ready.minimumPaise) })}
               </p>
             )}
           </CardContent>
         </Card>
         {payouts.length === 0 ? (
-          <p className="text-ink-600">No payouts yet.</p>
+          <p className="text-ink-600">{t('wearn.noPayouts')}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {payouts.map((p) => (
@@ -316,20 +326,20 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
                     <Money paise={p.amountPaise} />
                   </span>
                   <span className="text-xs text-ink-600">
-                    {formatIstDateTime(new Date(p.paidAt ?? p.requestedAt))}
+                    {formatIstDateTime(new Date(p.paidAt ?? p.requestedAt), lang)}
                     {p.reference ? ` · ${p.reference}` : ''}
                   </span>
                   {p.failureReason && (
                     <span className="text-xs text-danger-700">
-                      {p.failureReason} The amount is back in your balance.
+                      {t('wearn.backInBalance', { reason: p.failureReason })}
                     </span>
                   )}
                 </span>
                 <span className="flex items-center gap-2">
-                  <Badge tone={PAYOUT_STATUS[p.status].tone}>{PAYOUT_STATUS[p.status].label}</Badge>
-                  {p.mode === 'SIMULATED' && (
-                    <SimulationBadge label="Simulated: no money transferred" />
-                  )}
+                  <Badge tone={PAYOUT_STATUS[p.status].tone}>
+                    {t(PAYOUT_STATUS[p.status].label)}
+                  </Badge>
+                  {p.mode === 'SIMULATED' && <SimulationBadge label={t('wearn.simulatedPayout')} />}
                 </span>
               </li>
             ))}

@@ -7,31 +7,32 @@ import { EmptyState } from '@/components/patterns/states'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { getEnv } from '@/config/env'
+import { getLocale, getT } from '@/i18n/server'
 import { requireWorkerPage } from '@/modules/workers/page-guard'
 import { getPricing } from '@/modules/workers/pricing'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Your prices' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('wpricing.metaTitle') }
+}
 
 export default async function WorkerPricingPage() {
   const actor = await requireWorkerPage()
-  const rows = await getPricing(actor.workerId)
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const rows = await getPricing(actor.workerId, locale)
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Your prices"
-        description="You decide what to charge. Customers see your price and can accept it or, if you are open to offers, suggest another."
-      />
+      <PageHeader title={t('wpricing.title')} description={t('wpricing.description')} />
       {rows.length === 0 ? (
         <Card>
           <EmptyState
             icon={Wrench}
-            title="Add your skills first"
-            description="Choose the kinds of work you do, then set a price for each service."
+            title={t('wpricing.skillsFirst')}
+            description={t('wpricing.skillsFirstBody')}
             action={
               <Button asChild>
-                <Link href="/worker/profile#skills">Choose skills</Link>
+                <Link href="/worker/profile#skills">{t('wpricing.chooseSkills')}</Link>
               </Button>
             }
           />

@@ -5,6 +5,7 @@ import { SimulationBadge } from '@/components/domain/trust-badges'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { MoneyInput } from '@/components/ui/money-input'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 import { formatINR } from '@/lib/money'
 import { useApiAction } from './use-api-action'
@@ -17,6 +18,7 @@ export function PayoutRequest({
   availablePaise: number
   minimumPaise: number
 }) {
+  const t = useT()
   const { pending, error, fieldErrors, run } = useApiAction()
   const [amount, setAmount] = useState<number | null>(availablePaise)
   const [key, setKey] = useState(() => crypto.randomUUID())
@@ -31,15 +33,15 @@ export function PayoutRequest({
         })
         setKey(crypto.randomUUID())
       },
-      { success: 'Payout requested' },
+      { success: t('wearn.requested') },
     )
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
       <FormField
-        label="Amount to pay out"
-        hint={`Between ${formatINR(minimumPaise)} and ${formatINR(availablePaise)}`}
+        label={t('wearn.amountToPay')}
+        hint={t('wearn.between', { min: formatINR(minimumPaise), max: formatINR(availablePaise) })}
         error={fieldErrors.amountPaise ?? error}
       >
         {(field) => (
@@ -47,10 +49,15 @@ export function PayoutRequest({
         )}
       </FormField>
       <div className="flex flex-wrap items-center gap-3 sm:pb-6">
-        <Button type="submit" loading={pending} loadingText="Requesting…" disabled={!amount}>
-          Request payout
+        <Button
+          type="submit"
+          loading={pending}
+          loadingText={t('wearn.requesting')}
+          disabled={!amount}
+        >
+          {t('wearn.request')}
         </Button>
-        <SimulationBadge label="Simulated: no money transferred" />
+        <SimulationBadge label={t('wearn.simulatedPayout')} />
       </div>
     </form>
   )
