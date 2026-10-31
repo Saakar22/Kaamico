@@ -4,6 +4,7 @@ import { getDb } from '@/db/client'
 import { ACTIVE_BOOKING_STATUSES } from '@/db/schema'
 import type { PricingUnit } from '@/modules/catalog/units'
 import type { Busy, WeeklyRule } from '@/modules/availability/slots'
+import { notBlockedBy } from '@/modules/favorites/blocks'
 import { matchingConfig as config } from './config'
 
 /** When the customer needs the job done. */
@@ -120,7 +121,7 @@ type RawCandidate = {
 const parseArray = (value: string[] | string): string[] =>
   Array.isArray(value) ? value : value.replace(/[{}]/g, '').split(',').filter(Boolean)
 
-/** Eligible candidates for one service within `radiusKm` (filters 1–4 of §11.1). */
+/** Eligible candidates for one service within `radiusKm` (filters 1–5 of §11.1). */
 export async function findCandidates(params: {
   serviceId: string
   lat: number
@@ -130,6 +131,8 @@ export async function findCandidates(params: {
   timing: Timing
   now: Date
   maxPricePaise?: number
+  /** The searching customer: professionals they blocked are left out. */
+  customerId?: string
 }): Promise<CandidateRow[]> {
   const { serviceId, lat, lng, radiusKm, durationMin, timing, now } = params
   const rows = await getDb().execute<RawCandidate>(sql`
@@ -148,7 +151,8 @@ export async function findCandidates(params: {
       and exists (select 1 from worker_skills ws where ws.worker_id = w.id and ws.category_id = s.category_id)
       and ${withinReach(lat, lng, radiusKm)}
       and ${timingFilter(timing, now, durationMin)}
-      ${params.maxPricePaise ? sql`and p.price_paise <= ${params.maxPricePaise}` : sql``}`)
+      ${params.maxPricePaise ? sql`and p.price_paise <= ${params.maxPricePaise}` : sql``}
+      ${params.customerId ? sql`and ${notBlockedBy(params.customerId)}` : sql``}`)
   return rows.map((r) => ({
     workerId: r.worker_id,
     displayName: r.display_name,

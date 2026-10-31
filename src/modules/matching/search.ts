@@ -156,6 +156,8 @@ function toResult(r: Enriched): ProfessionalResult {
 export async function searchProfessionals(
   input: ProfessionalSearchQuery | Record<string, string>,
   now: Date = new Date(),
+  /** The signed-in customer searching, if any (their blocked professionals are hidden). */
+  customerId?: string,
 ): Promise<ProfessionalSearchResult> {
   const q = professionalSearchSchema.parse(input)
   const service = await getService(q.serviceId)
@@ -173,6 +175,7 @@ export async function searchProfessionals(
       timing: t,
       now,
       maxPricePaise: q.maxPricePaise,
+      customerId,
     })
     const filtered =
       q.minRating === undefined

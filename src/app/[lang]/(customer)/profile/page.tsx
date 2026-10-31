@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SignOutButton } from '@/components/auth/sign-out-button'
 import { AccountForm } from '@/components/domain/account/account-form'
+import { UnblockButton } from '@/components/domain/professionals/block-button'
 import { PageHeader } from '@/components/patterns/page-header'
 import { AppSettings } from '@/components/pwa/app-settings'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -10,6 +11,7 @@ import { getT } from '@/i18n/server'
 import type { MessageKey } from '@/i18n/translate'
 import { getAccount } from '@/modules/auth/account'
 import { requirePageActor } from '@/modules/auth/page-guards'
+import { listBlocked } from '@/modules/favorites/blocks'
 import { ownCustomerRating } from '@/modules/reviews/customer-ratings'
 
 export const instant = false
@@ -26,10 +28,11 @@ const LINKS: { href: string; label: MessageKey; icon: LucideIcon }[] = [
 
 export default async function ProfilePage() {
   const actor = await requirePageActor('CUSTOMER')
-  const [account, t, rating] = await Promise.all([
+  const [account, t, rating, blocked] = await Promise.all([
     getAccount(actor),
     getT(),
     ownCustomerRating(actor.userId),
+    listBlocked(actor),
   ])
 
   return (
@@ -57,6 +60,27 @@ export default async function ProfilePage() {
                 count: rating.count,
               })}
             </p>
+          </CardContent>
+        </Card>
+      )}
+      {blocked.length > 0 && (
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold">{t('blocks.title')}</h2>
+            <p className="text-sm text-ink-600">{t('blocks.listBody')}</p>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col divide-y divide-border">
+              {blocked.map((b) => (
+                <li
+                  key={b.workerId}
+                  className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0"
+                >
+                  <span className="font-medium">{b.displayName}</span>
+                  <UnblockButton workerId={b.workerId} name={b.displayName} />
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       )}

@@ -173,3 +173,18 @@ export const favorites = pgTable(
   },
   (t) => [primaryKey({ columns: [t.customerId, t.workerId] })],
 )
+
+/** Professionals a customer never wants to be matched with (§11.1 filter 5). Private. */
+export const customerBlocks = pgTable(
+  'customer_blocks',
+  {
+    customerId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    workerId: uuid()
+      .notNull()
+      .references(() => workerProfiles.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.customerId, t.workerId] })],
+)

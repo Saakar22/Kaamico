@@ -38,6 +38,7 @@ import type { CustomerLocation } from '@/modules/location/location'
 import { getCustomerLocation } from '@/modules/location/server'
 import { matchingConfig } from '@/modules/matching/config'
 import type { SortKey } from '@/modules/matching/scoring'
+import { getActor } from '@/modules/auth/actor'
 import { searchProfessionals } from '@/modules/matching/search'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -256,7 +257,7 @@ async function ProfessionalResults({
 }) {
   // Availability is computed against the current time.
   await connection()
-  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const [t, locale, actor] = await Promise.all([getT(), getLocale(), getActor()])
   const now = new Date()
   const result = await searchProfessionals(
     {
@@ -270,6 +271,7 @@ async function ProfessionalResults({
       limit: Math.min(50, filters.page * matchingConfig.pageSize),
     },
     now,
+    actor?.roles.includes('CUSTOMER') ? actor.userId : undefined,
   )
 
   if (result.items.length === 0) {

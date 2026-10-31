@@ -63,6 +63,7 @@ export async function createQuickMatch(
       limit: CANDIDATE_POOL,
     },
     now,
+    actor.userId,
   )
   const ranked = search.items.filter((p) => p.availability.now).map((p) => p.workerId)
   const noOne = () =>

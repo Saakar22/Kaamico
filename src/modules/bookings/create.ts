@@ -15,6 +15,7 @@ import { haversineKm } from '@/lib/geo'
 import { addressForBooking } from '@/modules/addresses/addresses'
 import { hasRole, type Actor } from '@/modules/auth/types'
 import { earliestStart } from '@/modules/availability/slots'
+import { isBlocked } from '@/modules/favorites/blocks'
 import { matchingConfig } from '@/modules/matching/config'
 import { negotiationConfig } from '@/modules/negotiation/config'
 import { assertOfferAllowed, offerExpiry, requestExpiry } from '@/modules/negotiation/rules'
@@ -63,6 +64,9 @@ export async function createBooking(
   if (!hasRole(actor, 'CUSTOMER')) throw forbidden('Only customers can book services')
   const input = createBookingInput.parse(raw)
   const address = await addressForBooking(actor.userId, input.addressId)
+  if (await isBlocked(actor.userId, input.workerId)) {
+    throw businessRule('WORKER_BLOCKED', 'You blocked this professional. Unblock them to book.')
+  }
 
   let start: Date
   if (input.timing === 'ON_DEMAND') {

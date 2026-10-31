@@ -113,7 +113,7 @@ async function ProfileHeader({ profile }: { profile: PublicProfile }) {
           )}
         </ul>
         <Suspense fallback={null}>
-          <FavoriteSlot workerId={profile.workerId} />
+          <FavoriteSlot workerId={profile.workerId} name={profile.displayName} />
         </Suspense>
       </div>
     </header>
