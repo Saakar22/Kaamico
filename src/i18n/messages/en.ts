@@ -850,6 +850,23 @@ export const en = {
     yourRatingBody:
       '{avg} out of 5 from {count} professionals. They rate how the job went for them; individual ratings stay private.',
   },
+  waitlist: {
+    metaTitle: 'Join the waitlist',
+    title: "Kaamico isn't in your city yet",
+    description:
+      'Tell us where you are and we will let you know when you can book professionals there.',
+    city: 'Your city',
+    contact: 'Mobile number or email',
+    contactHint: 'Only used to tell you when Kaamico reaches your city.',
+    service: 'What do you need most? (optional)',
+    anyService: 'Not sure yet',
+    sending: 'Sending…',
+    submit: "Tell me when you're here",
+    doneTitle: "You're on the list",
+    doneBody: "We'll get in touch when Kaamico reaches {city}. Meanwhile, you can look around.",
+    browse: 'Browse services',
+    joinLink: 'Join the waitlist',
+  },
 }
 
 type Strings<T> = { [K in keyof T]: T[K] extends string ? string : Strings<T[K]> }

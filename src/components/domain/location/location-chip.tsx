@@ -1,6 +1,7 @@
 'use client'
 
 import { ChevronDown, LocateFixed, MapPin } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -59,6 +60,8 @@ export function LocationChip({
   const [filter, setFilter] = useState('')
   const [locating, setLocating] = useState(false)
   const [message, setMessage] = useState<string>()
+  // Outside the service cities: offer the waitlist, with where the browser said they are.
+  const [waitlistHref, setWaitlistHref] = useState<string>()
   const t = useT()
 
   useEffect(() => {
@@ -89,6 +92,7 @@ export function LocationChip({
     }
     setLocating(true)
     setMessage(undefined)
+    setWaitlistHref(undefined)
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         try {
@@ -100,6 +104,7 @@ export function LocationChip({
             : { nearest: null, inServiceArea: false }
           if (!result.inServiceArea || !result.nearest) {
             setMessage(t('location.notInArea', { cities: cities.join(t('location.and')) }))
+            setWaitlistHref(`/waitlist?lat=${lat}&lng=${lng}`)
             return
           }
           choose({
@@ -180,6 +185,18 @@ export function LocationChip({
           {message && (
             <p role="status" className="rounded-md bg-surface-muted px-3 py-2 text-sm text-ink-900">
               {message}
+              {waitlistHref && (
+                <>
+                  {' '}
+                  <Link
+                    href={waitlistHref}
+                    onClick={() => setOpen(false)}
+                    className="font-medium text-brand-700 underline"
+                  >
+                    {t('waitlist.joinLink')}
+                  </Link>
+                </>
+              )}
             </p>
           )}
 

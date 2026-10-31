@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Table, TD, TH, THead, TR } from '@/components/ui/table'
 import { requirePageActor } from '@/modules/auth/page-guards'
 import { ANALYTICS_RANGES, getAdminAnalytics, type AnalyticsRange } from '@/modules/analytics/admin'
+import { waitlistDemand } from '@/modules/location/waitlist'
 
 export const instant = false
 
@@ -23,7 +24,7 @@ export default async function AdminAnalyticsPage({
   await requirePageActor('ADMIN')
   const { days: raw } = await searchParams
   const days: AnalyticsRange = ANALYTICS_RANGES.find((d) => d === raw) ?? '30'
-  const a = await getAdminAnalytics({ days })
+  const [a, waitlist] = await Promise.all([getAdminAnalytics({ days }), waitlistDemand()])
   const [searches, requests, booked, completed] = a.funnel
   const finished = a.outcomes.filter((o) => o.key !== 'OPEN').reduce((n, o) => n + o.count, 0)
 
@@ -151,6 +152,37 @@ export default async function AdminAnalyticsPage({
               ))}
             </tbody>
           </Table>
+        )}
+      </section>
+
+      <section aria-labelledby="waitlist-title" className="flex flex-col gap-3">
+        <h2 id="waitlist-title" className="font-display text-xl font-bold">
+          Cities people are waiting for
+        </h2>
+        <p className="text-sm text-ink-600">
+          From the waitlist outside the service cities (all time). Each person counts once per city.
+        </p>
+        {waitlist.length === 0 ? (
+          <p className="text-ink-600">Nobody has joined the waitlist yet.</p>
+        ) : (
+          <Card>
+            <CardContent>
+              <BarList
+                title="Waitlist by city"
+                rows={waitlist.map((w) => ({
+                  key: w.city,
+                  label: w.city,
+                  value: w.people,
+                  display: String(w.people),
+                  detail: `Latest ${new Date(w.latest).toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    timeZone: 'Asia/Kolkata',
+                  })}`,
+                }))}
+              />
+            </CardContent>
+          </Card>
         )}
       </section>
     </div>

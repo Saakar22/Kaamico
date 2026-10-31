@@ -13,6 +13,7 @@ const pages = [
   '/search?q=plumber',
   '/terms',
   '/privacy',
+  '/waitlist',
   '/dev/ui',
   '/dev/shells/customer',
   '/dev/shells/worker',
