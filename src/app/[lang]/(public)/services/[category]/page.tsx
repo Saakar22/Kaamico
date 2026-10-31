@@ -103,7 +103,7 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
           <h2 id="faq-title" className="font-display text-xl font-semibold">
             {t('category.faqTitle')}
           </h2>
-          <div className="flex flex-col divide-y divide-border border-y border-border">
+          <div className="flex flex-col divide-y divide-border rounded-xl bg-surface px-4 shadow-[var(--shadow-lift)] ring-1 ring-border sm:px-6">
             {FAQS.map((f) => (
               <details key={f.q} className="group">
                 <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 font-medium [&::-webkit-details-marker]:hidden">

@@ -126,7 +126,7 @@ export default async function CustomerDashboardPage() {
           <h2 id="active-title" className="font-display text-xl font-semibold">
             {dash.activeBooking.status === 'CONFIRMED' ? t('dashboard.next') : t('dashboard.now')}
           </h2>
-          <div className="border-y border-border">
+          <div className="rounded-xl bg-surface px-4 shadow-[var(--shadow-lift)] ring-1 ring-border sm:px-6">
             <BookingListItem booking={dash.activeBooking} />
           </div>
         </section>
@@ -137,7 +137,7 @@ export default async function CustomerDashboardPage() {
           <h2 id="waiting-title" className="font-display text-xl font-semibold">
             {t('dashboard.open')}
           </h2>
-          <ul className="flex flex-col divide-y divide-border border-y border-border">
+          <ul className="flex flex-col divide-y divide-border rounded-xl bg-surface px-4 shadow-[var(--shadow-lift)] ring-1 ring-border sm:px-6">
             {dash.waiting.map((b) => (
               <li key={b.id}>
                 <BookingListItem booking={b} />

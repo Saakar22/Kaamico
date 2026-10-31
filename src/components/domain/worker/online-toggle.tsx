@@ -114,13 +114,13 @@ export function OnlineToggle({ status, verified }: { status: WorkerStatus; verif
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+          <div className="grid grid-cols-3 gap-2">
             {PAUSES.map((p) => (
               <Button
                 key={p.label}
                 size="sm"
-                // Three across on phones: labels may wrap rather than stack the buttons.
-                className="h-auto min-h-9 px-2 py-1.5 text-xs whitespace-normal sm:px-3 sm:text-sm"
+                // Three across everywhere, text only: labels may wrap rather than stack the buttons.
+                className="h-auto min-h-10 px-1.5 py-1.5 text-xs leading-tight whitespace-normal [&_svg]:hidden"
                 variant="secondary"
                 onClick={() => pause(p.hours)}
                 disabled={pending}

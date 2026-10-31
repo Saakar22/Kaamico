@@ -16,6 +16,9 @@ export const buttonVariants = cva(
         secondary:
           'border border-border bg-surface text-ink-900 shadow-[0_1px_0_rgb(0_0_0/0.04)] hover:border-ink-600/40 hover:bg-surface-muted active:bg-surface-muted',
         tertiary: 'text-brand-700 hover:bg-brand-50 active:bg-brand-50',
+        // Quiet buttons on the night surface (earnings panel).
+        night:
+          'bg-on-night/10 text-on-night ring-1 ring-on-night/15 hover:bg-on-night/15 active:bg-on-night/20',
         // Marigold on the night surface (home and dashboard panels); always dark text.
         accent:
           'bg-accent-500 text-on-accent shadow-[inset_0_-2px_0_rgb(0_0_0/0.12)] hover:bg-accent-600 active:shadow-none',

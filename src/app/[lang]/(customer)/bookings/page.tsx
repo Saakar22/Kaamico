@@ -74,7 +74,7 @@ export default async function BookingsPage({ searchParams }: PageProps<'/[lang]/
         </Card>
       ) : (
         <ul
-          className="flex flex-col divide-y divide-border border-y border-border"
+          className="flex flex-col divide-y divide-border rounded-xl bg-surface px-4 shadow-[var(--shadow-lift)] ring-1 ring-border sm:px-6"
           aria-label={t('bookingList.listLabel', { tab: t(LABELS[tab]) })}
         >
           {bookings.map((b) => (

@@ -71,7 +71,7 @@ export default async function WorkerJobsPage({
         </Card>
       ) : (
         <ul
-          className="flex flex-col divide-y divide-border border-y border-border"
+          className="flex flex-col divide-y divide-border rounded-xl bg-surface px-4 shadow-[var(--shadow-lift)] ring-1 ring-border sm:px-6"
           aria-label={t('wjobs.listLabel', { tab: t(LABELS[tab]) })}
         >
           {jobs.map((j) => (
