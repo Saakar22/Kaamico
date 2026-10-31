@@ -50,7 +50,7 @@ export function CustomerRatingForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4 rounded-lg border border-border p-4">
+    <form onSubmit={submit} className="flex flex-col gap-4 rounded-md border border-border p-4">
       <div className="flex flex-col gap-1">
         <h2 className="font-semibold">{t('rateCustomer.title', { name: customerName })}</h2>
         <p className="text-sm text-ink-600">{t('rateCustomer.privacy', { name: customerName })}</p>

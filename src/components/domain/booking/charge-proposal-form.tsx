@@ -62,7 +62,7 @@ export function ChargeProposalForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+    <form onSubmit={submit} className="flex flex-col gap-3 rounded-md border border-border p-4">
       <h2 className="font-semibold">{t('extra.title')}</h2>
       <p className="text-sm text-ink-600">
         {t('extra.approvesFirst', { name: customerFirstName })}

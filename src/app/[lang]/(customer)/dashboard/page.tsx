@@ -24,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const actionClasses =
-  'flex flex-col gap-1 rounded-lg border border-accent-500 bg-surface p-4 hover:border-brand-600 sm:flex-row sm:items-center sm:justify-between'
+  'flex flex-col gap-1 rounded-md border border-accent-500 bg-surface p-4 hover:border-brand-600 sm:flex-row sm:items-center sm:justify-between'
 
 /** Needs-your-action first, then the active booking, open requests and quick rebooking (§5). */
 export default async function CustomerDashboardPage() {
@@ -46,7 +46,7 @@ export default async function CustomerDashboardPage() {
               })
             : t('dashboard.glance')
         }
-        actions={<SignOutButton />}
+        actions={<SignOutButton variant="tertiary" size="sm" />}
       />
 
       {actions > 0 && (

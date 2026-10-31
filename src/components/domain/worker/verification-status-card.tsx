@@ -101,7 +101,7 @@ export async function VerificationStatusCard({
   const { tone, icon: Icon, title, body } = describe(state, t, htmlLang[locale])
   return (
     <div
-      className={cn('flex items-start gap-3 rounded-lg border p-4', TONES[tone], className)}
+      className={cn('flex items-start gap-3 rounded-md border p-4', TONES[tone], className)}
       role="status"
     >
       <Icon aria-hidden="true" className={cn('mt-0.5 size-6 shrink-0', ICON_TONES[tone])} />

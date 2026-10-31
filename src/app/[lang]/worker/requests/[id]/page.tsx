@@ -60,7 +60,7 @@ export default async function WorkerRequestPage({
         description={`${lost ? t('wreq.lost') : statusLabel(request.status, 'worker', request.customerFirstName, t)} · ${request.code}`}
       />
       {request.mode === 'BROADCAST' && open && (
-        <p className="rounded-lg border border-accent-500 bg-surface p-3 text-sm" role="note">
+        <p className="rounded-md border border-accent-500 bg-surface p-3 text-sm" role="note">
           <span className="font-semibold">{t('wreq.quickMatch')}</span>{' '}
           {t('wreq.quickMatchBody', { name: request.customerFirstName })}
         </p>

@@ -19,7 +19,8 @@ import { VerificationStatusCard } from '@/components/domain/worker/verification-
 import { PageHeader } from '@/components/patterns/page-header'
 import { StatTile } from '@/components/patterns/stat-tile'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/cn'
+import { RateList, RateRow } from '@/components/patterns/rate-list'
 import { Money } from '@/components/ui/money'
 import { getT } from '@/i18n/server'
 import type { MessageKey } from '@/i18n/translate'
@@ -76,29 +77,32 @@ export default async function WorkerDashboardPage() {
                 })
               : t('wdash.glance')
         }
-        actions={<SignOutButton />}
+        actions={<SignOutButton variant="tertiary" size="sm" />}
       />
 
-      <Card>
-        <CardContent>
-          <OnlineToggle status={status} verified={verified} />
-        </CardContent>
-      </Card>
+      <div className="rounded-md bg-surface-muted p-5">
+        <OnlineToggle status={status} verified={verified} />
+      </div>
 
       {verified && (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Link href="/worker/requests" className="rounded-lg hover:ring-2 hover:ring-brand-600">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
+            <Link href="/worker/requests" className="group rounded-sm">
               <StatTile
                 label={t('wdash.awaiting')}
                 value={jobs.requestsAwaitingReply}
-                className={jobs.requestsAwaitingReply > 0 ? 'border-accent-500' : undefined}
+                className={cn(
+                  'group-hover:[&>span:first-child]:text-brand-700',
+                  // A marigold rule when someone is waiting on a reply.
+                  jobs.requestsAwaitingReply > 0 && 'border-accent-500',
+                )}
               />
             </Link>
             <StatTile label={t('wdash.jobsToday')} value={jobs.today.length} />
             <StatTile label={t('wdash.doneWeek')} value={jobs.week.completedJobs} />
-            <Link href="/worker/earnings" className="rounded-lg hover:ring-2 hover:ring-brand-600">
+            <Link href="/worker/earnings" className="group rounded-sm">
               <StatTile
+                className="group-hover:[&>span:first-child]:text-brand-700"
                 label={t('wdash.earnedWeek')}
                 value={<Money paise={earnings.netPaise} />}
                 hint={t('wdash.afterFee')}
@@ -119,9 +123,7 @@ export default async function WorkerDashboardPage() {
               </Link>
             </div>
             {jobs.today.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border p-4 text-ink-600">
-                {t('wdash.noJobs')}
-              </p>
+              <p className="border-y border-border py-4 text-ink-600">{t('wdash.noJobs')}</p>
             ) : (
               <ul className="flex flex-col divide-y divide-border border-y border-border">
                 {jobs.today.map((j) => (
@@ -161,30 +163,24 @@ export default async function WorkerDashboardPage() {
         <h2 id="settings-title" className="font-display text-xl font-semibold">
           {t('wdash.yourSetup')}
         </h2>
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <RateList className="sm:grid sm:grid-cols-2 sm:gap-x-10 sm:border-t-0">
           {SETTINGS.map((s) => (
-            <li key={s.href}>
-              <Link
-                href={s.href}
-                className="flex min-h-14 items-center gap-3 rounded-lg border border-border bg-surface px-4 hover:border-brand-600"
-              >
-                <s.icon aria-hidden="true" className="size-5 text-brand-700" />
-                <span className="font-medium">{t(s.label)}</span>
-              </Link>
-            </li>
+            <RateRow
+              key={s.href}
+              href={s.href}
+              className="sm:[&:nth-child(-n+2)]:border-t"
+              leading={<s.icon aria-hidden="true" className="size-5 text-brand-700" />}
+              label={t(s.label)}
+            />
           ))}
           {verified && (
-            <li>
-              <Link
-                href={`/professionals/${actor.workerId}`}
-                className="flex min-h-14 items-center gap-3 rounded-lg border border-border bg-surface px-4 hover:border-brand-600"
-              >
-                <MapPin aria-hidden="true" className="size-5 text-brand-700" />
-                <span className="font-medium">{t('wdash.publicProfile')}</span>
-              </Link>
-            </li>
+            <RateRow
+              href={`/professionals/${actor.workerId}`}
+              leading={<MapPin aria-hidden="true" className="size-5 text-brand-700" />}
+              label={t('wdash.publicProfile')}
+            />
           )}
-        </ul>
+        </RateList>
       </section>
     </div>
   )

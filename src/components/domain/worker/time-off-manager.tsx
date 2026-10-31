@@ -63,7 +63,7 @@ export function TimeOffManager({ initial }: { initial: TimeOff[] }) {
           {t('whours.noTimeOff')}
         </p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+        <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
           {initial.map((item) => (
             <li key={item.id} className="flex items-center justify-between gap-3 p-3">
               <span>

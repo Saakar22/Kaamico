@@ -26,7 +26,7 @@ export default function AdminResetPasswordPage(props: PageProps<'/[lang]/admin/r
       id="main-content"
       className="flex flex-1 flex-col items-center bg-surface-muted px-4 py-10 sm:justify-center"
     >
-      <div className="flex w-full max-w-sm flex-col gap-6 rounded-lg border border-border bg-surface p-6 shadow-xs">
+      <div className="flex w-full max-w-sm flex-col gap-6 rounded-md border border-border bg-surface p-6 shadow-xs">
         <div className="flex flex-col gap-2">
           <Logo />
           <h1 className="font-display text-2xl font-semibold">Choose a new password</h1>

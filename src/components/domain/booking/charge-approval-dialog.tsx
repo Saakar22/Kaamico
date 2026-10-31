@@ -88,7 +88,7 @@ export function ChargeApprovalDialog({
       {!open && (
         <div
           role="status"
-          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning-700/30 bg-warning-700/10 p-3"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-700/30 bg-warning-700/10 p-3"
         >
           <span>
             {t('charge.waiting')} {charge.description}, <Money paise={charge.amountPaise} />

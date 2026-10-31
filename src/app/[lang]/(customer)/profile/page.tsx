@@ -91,7 +91,7 @@ export default async function ProfilePage() {
             <li key={l.href}>
               <Link
                 href={l.href}
-                className="flex min-h-14 items-center gap-3 rounded-lg border border-border bg-surface px-4 hover:border-brand-600"
+                className="flex min-h-14 items-center gap-3 rounded-md border border-border bg-surface px-4 hover:border-brand-600"
               >
                 <l.icon aria-hidden="true" className="size-5 text-brand-700" />
                 <span className="flex-1 font-medium">{t(l.label)}</span>

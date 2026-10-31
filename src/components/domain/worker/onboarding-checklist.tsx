@@ -10,7 +10,7 @@ export async function OnboardingChecklist({ state }: { state: OnboardingState })
   const t = await getT()
   return (
     <ol
-      className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface"
+      className="flex flex-col divide-y divide-border rounded-md border border-border bg-surface"
       aria-label={t('onboard.steps')}
     >
       {state.steps.map((step, i) => {

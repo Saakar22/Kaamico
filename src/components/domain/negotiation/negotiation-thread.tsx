@@ -142,7 +142,7 @@ export function NegotiationThread({
     <div className="flex flex-col gap-5">
       {data.status === 'CONFIRMED' && data.agreedPaise !== null && (
         <div
-          className="flex flex-col gap-3 rounded-lg border border-success-700/30 bg-success-700/10 p-4"
+          className="flex flex-col gap-3 rounded-md border border-success-700/30 bg-success-700/10 p-4"
           role="status"
         >
           <p className="flex items-center gap-2 text-lg font-semibold">
@@ -232,7 +232,7 @@ export function NegotiationThread({
       {open && n.pendingFromThem && (
         <section
           aria-labelledby="respond-title"
-          className="flex flex-col gap-3 rounded-lg border border-border p-4"
+          className="flex flex-col gap-3 rounded-md border border-border p-4"
         >
           <h2 id="respond-title" className="font-semibold">
             {t('thread.theyOffered', {
@@ -279,7 +279,7 @@ export function NegotiationThread({
       {open && n.canOffer && (viewer === 'worker' || n.negotiable) && (
         <form
           onSubmit={sendOffer}
-          className="flex flex-col gap-3 rounded-lg border border-border p-4"
+          className="flex flex-col gap-3 rounded-md border border-border p-4"
         >
           <h2 className="font-semibold">
             {n.pendingFromThem ? t('thread.counter') : t('thread.makeOffer')}

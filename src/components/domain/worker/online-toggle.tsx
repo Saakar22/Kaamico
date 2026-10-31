@@ -82,7 +82,7 @@ export function OnlineToggle({ status, verified }: { status: WorkerStatus; verif
     <div className="flex flex-col gap-3">
       <label className="flex items-center justify-between gap-4">
         <span className="flex flex-col">
-          <span className="text-lg font-semibold">
+          <span className="font-display text-2xl font-semibold">
             {online ? t('online.youOnline') : t('online.youOffline')}
           </span>
           <span className="text-sm text-ink-600">
@@ -114,12 +114,14 @@ export function OnlineToggle({ status, verified }: { status: WorkerStatus; verif
             </Button>
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
             {PAUSES.map((p) => (
               <Button
                 key={p.label}
                 size="sm"
-                variant="tertiary"
+                // Three across on phones: labels may wrap rather than stack the buttons.
+                className="h-auto min-h-9 px-2 py-1.5 text-xs whitespace-normal sm:px-3 sm:text-sm"
+                variant="secondary"
                 onClick={() => pause(p.hours)}
                 disabled={pending}
               >

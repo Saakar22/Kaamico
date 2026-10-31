@@ -86,7 +86,7 @@ async function CityContent({ params }: { params: Props['params'] }) {
               <li key={c.slug}>
                 <Link
                   href={`/in/${city.slug}/${c.slug}`}
-                  className="flex h-full items-start gap-4 rounded-lg border border-border bg-surface p-4 shadow-xs hover:border-brand-600"
+                  className="flex h-full items-start gap-4 rounded-md border border-border bg-surface p-4 shadow-xs hover:border-brand-600"
                 >
                   <CategoryIcon iconKey={c.iconKey} />
                   <span className="flex min-w-0 flex-1 flex-col gap-1">

@@ -131,7 +131,7 @@ async function CityCategoryContent({ params }: { params: Props['params'] }) {
           {page.services.map((s) => (
             <li
               key={s.id}
-              className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
+              className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4"
             >
               <span className="font-semibold">{s.name}</span>
               {s.professionals > 0 && s.lowPaise !== null && s.highPaise !== null ? (
@@ -172,7 +172,7 @@ async function CityCategoryContent({ params }: { params: Props['params'] }) {
               <li key={p.id}>
                 <Link
                   href={`/professionals/${p.id}`}
-                  className="flex h-full gap-3 rounded-lg border border-border bg-surface p-4 shadow-xs hover:border-brand-600"
+                  className="flex h-full gap-3 rounded-md border border-border bg-surface p-4 shadow-xs hover:border-brand-600"
                 >
                   <Avatar name={p.displayName} src={p.photoUrl} />
                   <span className="flex min-w-0 flex-col gap-1">

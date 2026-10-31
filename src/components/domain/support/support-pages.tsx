@@ -32,7 +32,7 @@ export async function SupportHome({
     <div className="flex max-w-3xl flex-col gap-6">
       <PageHeader title={t('support.title')} description={t('support.description')} />
       <p
-        className="flex items-center gap-2 rounded-lg border border-danger-700/30 bg-danger-700/5 p-3 text-sm"
+        className="flex items-center gap-2 rounded-md border border-danger-700/30 bg-danger-700/5 p-3 text-sm"
         role="note"
       >
         <Phone aria-hidden="true" className="size-4 shrink-0 text-danger-700" />

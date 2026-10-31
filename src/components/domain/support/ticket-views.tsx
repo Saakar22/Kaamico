@@ -49,7 +49,7 @@ export async function TicketList({
         <li key={ticket.id}>
           <Link
             href={`${basePath}/${ticket.id}`}
-            className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4 hover:border-brand-600"
+            className="flex flex-col gap-1 rounded-md border border-border bg-surface p-4 hover:border-brand-600"
           >
             <span className="flex flex-wrap items-center gap-2">
               <span className="font-semibold">{ticket.subject}</span>

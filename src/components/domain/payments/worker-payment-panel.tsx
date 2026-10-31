@@ -38,7 +38,7 @@ export function WorkerPaymentPanel({
   return (
     <section
       aria-labelledby="pay-title"
-      className="flex flex-col gap-3 rounded-lg border border-border p-4"
+      className="flex flex-col gap-3 rounded-md border border-border p-4"
     >
       <h2 id="pay-title" className="font-semibold">
         {visitFee ? t('wpay.visitFee') : t('wpay.payment')}

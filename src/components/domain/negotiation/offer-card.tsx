@@ -49,7 +49,7 @@ export function OfferCard({
     <div className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
-          'flex w-full max-w-sm flex-col gap-1.5 rounded-lg border p-3',
+          'flex w-full max-w-sm flex-col gap-1.5 rounded-md border p-3',
           mine ? 'border-brand-600/30 bg-brand-50' : 'border-border bg-surface',
           offer.status === 'ACCEPTED' && 'border-success-700/40',
         )}

@@ -88,7 +88,7 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
           <h2 id="docs-title" className="text-lg font-semibold">
             {t('wverify.yourDocs')}
           </h2>
-          <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+          <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
             {state.documents.map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-3 p-3">
                 <span className="flex items-center gap-3">
@@ -133,7 +133,7 @@ export function VerificationPanel({ state }: { state: VerificationState }) {
       {state.canEdit && (
         <section
           aria-labelledby="add-title"
-          className="flex flex-col gap-4 rounded-lg border border-border p-4"
+          className="flex flex-col gap-4 rounded-md border border-border p-4"
         >
           <h2 id="add-title" className="text-lg font-semibold">
             {t('wverify.addDoc')}

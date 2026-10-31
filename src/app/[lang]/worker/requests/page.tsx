@@ -69,7 +69,7 @@ export default async function WorkerRequestsPage({
         </Card>
       ) : (
         <ul
-          className="flex flex-col gap-3"
+          className="flex flex-col divide-y divide-border border-y border-border"
           aria-label={t('wreq.listLabel', {
             tab: t(TABS.find((tab) => tab.key === state)!.label),
           })}
@@ -80,10 +80,10 @@ export default async function WorkerRequestsPage({
               <li key={r.invitationId}>
                 <Link
                   href={`/worker/requests/${r.invitationId}`}
-                  className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 hover:border-brand-600 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 py-4 transition-colors hover:bg-surface-muted motion-reduce:transition-none sm:-mx-3 sm:flex-row sm:items-center sm:justify-between sm:rounded-md sm:px-3"
                 >
                   <div className="flex flex-col gap-1">
-                    <span className="font-semibold">
+                    <span className="font-display text-lg font-semibold">
                       {t('wreq.forCustomer', { service: r.serviceName, name: r.customerFirstName })}
                     </span>
                     <span className="text-xs text-ink-600">
@@ -117,7 +117,10 @@ export default async function WorkerRequestsPage({
                     {r.latestOffer && (
                       <span>
                         {r.latestOffer.by === 'CUSTOMER' ? t('wreq.offers') : t('wreq.youAsked')}{' '}
-                        <Money paise={r.latestOffer.amountPaise} className="font-semibold" />
+                        <Money
+                          paise={r.latestOffer.amountPaise}
+                          className="font-display text-2xl font-semibold"
+                        />
                       </span>
                     )}
                     {theirTurn && state !== 'missed' && (

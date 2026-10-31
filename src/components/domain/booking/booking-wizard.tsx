@@ -370,7 +370,7 @@ export function BookingWizard(props: Props) {
           <h2 id="step-title" className="text-xl font-semibold">
             {t('book.reviewTitle')}
           </h2>
-          <dl className="flex flex-col divide-y divide-border rounded-lg border border-border">
+          <dl className="flex flex-col divide-y divide-border rounded-md border border-border">
             {[
               [t('book.service'), service.name],
               [t('book.professional'), worker.name],
@@ -474,7 +474,7 @@ function AddressForm({
   }
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-4 rounded-lg border border-border p-4">
+    <form onSubmit={save} className="flex flex-col gap-4 rounded-md border border-border p-4">
       <FormField label={t('book.line1')} required error={errors.line1}>
         {(field) => (
           <Input

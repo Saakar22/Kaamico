@@ -47,7 +47,7 @@ export default async function AdminPayoutsPage({
       />
       <form
         method="get"
-        className="grid gap-3 rounded-lg border border-border bg-surface p-4 sm:grid-cols-[1fr_auto] sm:items-end"
+        className="grid gap-3 rounded-md border border-border bg-surface p-4 sm:grid-cols-[1fr_auto] sm:items-end"
       >
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Status

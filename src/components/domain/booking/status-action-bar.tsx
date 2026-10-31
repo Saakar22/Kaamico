@@ -76,7 +76,7 @@ export function StatusActionBar({
       if (/^\d{4}$/.test(code)) void move('IN_PROGRESS', t('action.started'), code)
     }
     return (
-      <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+      <form onSubmit={submit} className="flex flex-col gap-3 rounded-md border border-border p-4">
         <h2 className="font-semibold">{t('action.startTitle')}</h2>
         <FormField
           label={t('action.codeFrom', { name: customerFirstName })}

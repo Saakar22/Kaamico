@@ -58,7 +58,7 @@ export function PaymentPanel({
     return (
       <section
         aria-labelledby="payment-title"
-        className="flex flex-col gap-2 rounded-lg border border-success-700/30 bg-success-700/10 p-4"
+        className="flex flex-col gap-2 rounded-md border border-success-700/30 bg-success-700/10 p-4"
       >
         <h2 id="payment-title" className="flex flex-wrap items-center gap-2 font-semibold">
           <CircleCheck aria-hidden="true" className="size-5 text-success-800" />
@@ -85,7 +85,7 @@ export function PaymentPanel({
   return (
     <section
       aria-labelledby="payment-title"
-      className="flex flex-col gap-3 rounded-lg border border-accent-500 bg-surface p-4"
+      className="flex flex-col gap-3 rounded-md border border-accent-500 bg-surface p-4"
     >
       <h2 id="payment-title" className="text-lg font-semibold">
         {state.state === 'AWAITING_CASH'

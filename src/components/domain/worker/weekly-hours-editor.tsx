@@ -81,7 +81,7 @@ export function WeeklyHoursEditor({ initial }: { initial: Rule[] }) {
 
   return (
     <form onSubmit={save} className="flex flex-col gap-4">
-      <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+      <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
         {DAYS.map((dayKey, weekday) => {
           const day = t(dayKey)
           const windows = rules

@@ -94,8 +94,8 @@ export function PricingEditor({
               {heading && <h3 className="mt-2 font-display text-lg font-semibold">{heading}</h3>}
               <fieldset
                 className={cn(
-                  'flex flex-col gap-3 rounded-lg border p-4',
-                  d.active ? 'border-brand-600/40 bg-surface' : 'border-border bg-surface-muted',
+                  'flex flex-col gap-3 rounded-md border p-4',
+                  d.active ? 'border-border bg-surface' : 'border-border bg-surface-muted',
                 )}
               >
                 <legend className="sr-only">{r.serviceName}</legend>

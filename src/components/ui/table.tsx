@@ -7,7 +7,7 @@ export function Table({ className, label, ...props }: ComponentProps<'table'> & 
     <div
       // `relative` makes this the containing block for sr-only text in cells; otherwise
       // that absolutely positioned text escapes the scroll area and widens the page.
-      className="relative overflow-x-auto rounded-lg border border-border bg-surface"
+      className="relative overflow-x-auto rounded-md border border-border bg-surface"
       role="region"
       aria-label={label}
       tabIndex={0}
@@ -18,14 +18,14 @@ export function Table({ className, label, ...props }: ComponentProps<'table'> & 
 }
 
 export function THead(props: ComponentProps<'thead'>) {
-  return <thead className="bg-surface-muted text-xs text-ink-600 uppercase" {...props} />
+  return <thead className="border-b border-ink-900 text-sm text-ink-600" {...props} />
 }
 
 export function TH({ className, ...props }: ComponentProps<'th'>) {
   return (
     <th
       scope="col"
-      className={cn('px-3 py-2.5 font-medium tracking-wide whitespace-nowrap', className)}
+      className={cn('px-3 py-2.5 font-medium whitespace-nowrap', className)}
       {...props}
     />
   )

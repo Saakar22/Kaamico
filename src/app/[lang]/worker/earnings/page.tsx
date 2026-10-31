@@ -319,7 +319,7 @@ export default async function EarningsPage({ searchParams }: PageProps<'/[lang]/
             {payouts.map((p) => (
               <li
                 key={p.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface p-3"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface p-3"
               >
                 <span className="flex flex-col">
                   <span className="font-semibold">
