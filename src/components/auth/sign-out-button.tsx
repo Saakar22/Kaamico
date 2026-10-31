@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Button, type ButtonProps } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 
 export function SignOutButton({
@@ -12,13 +13,14 @@ export function SignOutButton({
   ...props
 }: { redirectTo?: string } & Omit<ButtonProps, 'onClick' | 'loading'>) {
   const router = useRouter()
+  const t = useT()
   const [pending, setPending] = useState(false)
 
   return (
     <Button
       variant="secondary"
       loading={pending}
-      loadingText="Signing out…"
+      loadingText={t('account.signingOut')}
       onClick={async () => {
         setPending(true)
         try {
@@ -27,13 +29,13 @@ export function SignOutButton({
           router.refresh()
         } catch {
           setPending(false)
-          toast.error('Could not sign out. Please try again.')
+          toast.error(t('account.signOutFailed'))
         }
       }}
       {...props}
     >
       <LogOut aria-hidden="true" />
-      Sign out
+      {t('account.signOut')}
     </Button>
   )
 }

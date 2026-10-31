@@ -10,12 +10,15 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Money } from '@/components/ui/money'
 import { MoneyInput } from '@/components/ui/money-input'
+import { useLocale, useT } from '@/i18n/client'
+import { htmlLang } from '@/i18n/config'
 import { apiFetch } from '@/lib/api-client'
 import { cn } from '@/lib/cn'
 import { formatIstTime } from '@/lib/time'
 import type { AddressSnapshot } from '@/db/schema'
 import type { MessageView, NegotiationState, OfferView } from '@/modules/bookings/views'
 import { OfferCard } from './offer-card'
+import { formatINR } from '@/lib/money'
 
 export type ThreadData = {
   bookingId: string
@@ -51,6 +54,8 @@ export function NegotiationThread({
   counterpartName: string
 }) {
   const router = useRouter()
+  const t = useT()
+  const lang = htmlLang[useLocale()]
   const { pending, error, run } = useApiAction()
   const [amount, setAmount] = useState<number | null>(null)
   const [note, setNote] = useState('')
@@ -79,15 +84,15 @@ export function NegotiationThread({
             : `/worker/bookings/${data.bookingId}`,
         )
       },
-      { success: 'Booking confirmed', refresh: false },
+      { success: t('thread.confirmed'), refresh: false },
     )
   const reject = (offer: OfferView) =>
     run(() => apiFetch(`/api/v1/offers/${offer.id}/reject`, { body: {} }), {
-      success: 'Offer declined',
+      success: t('thread.declined'),
     })
   const withdraw = (offer: OfferView) =>
     run(() => apiFetch(`/api/v1/offers/${offer.id}/withdraw`, { body: {} }), {
-      success: 'Offer withdrawn',
+      success: t('thread.withdrawn'),
     })
 
   const sendOffer = (event: FormEvent) => {
@@ -103,7 +108,7 @@ export function NegotiationThread({
         setAmount(null)
         setNote('')
       },
-      { success: 'Offer sent' },
+      { success: t('thread.sent') },
     )
   }
 
@@ -126,11 +131,11 @@ export function NegotiationThread({
     amount === null
       ? null
       : n.minPaise !== null && amount < n.minPaise
-        ? 'Too low for this service'
+        ? t('thread.tooLow')
         : n.maxPaise !== null && amount > n.maxPaise
           ? viewer === 'customer'
-            ? 'More than the listed price: accept it instead'
-            : 'You cannot ask for more than before'
+            ? t('thread.moreThanListed')
+            : t('thread.notMoreThanBefore')
           : null
 
   return (
@@ -142,17 +147,16 @@ export function NegotiationThread({
         >
           <p className="flex items-center gap-2 text-lg font-semibold">
             <Lock aria-hidden="true" className="size-5 text-success-800" />
-            Confirmed · Price locked at <Money paise={data.agreedPaise} />
+            {t('thread.priceLocked')} <Money paise={data.agreedPaise} />
           </p>
           {viewer === 'customer' && data.startCode && (
             <div className="flex flex-col gap-1">
-              <span className="text-sm">
-                Share this start code with {counterpartName} when they arrive. The job only starts
-                with it.
-              </span>
+              <span className="text-sm">{t('thread.shareCode', { name: counterpartName })}</span>
               <span
                 className="font-mono text-3xl font-bold tracking-[0.4em]"
-                aria-label={`Start code ${data.startCode.split('').join(' ')}`}
+                aria-label={t('thread.startCodeLabel', {
+                  digits: data.startCode.split('').join(' '),
+                })}
               >
                 {data.startCode}
               </span>
@@ -175,13 +179,15 @@ export function NegotiationThread({
               </span>
             </p>
           )}
-          <p className="text-sm text-ink-600">
-            Any extra charge needs the customer&apos;s OK in the app.
-          </p>
+          <p className="text-sm text-ink-600">{t('thread.extraNeedsOk')}</p>
         </div>
       )}
 
-      <ol className="flex flex-col gap-3" aria-label="Offers and messages" aria-live="polite">
+      <ol
+        className="flex flex-col gap-3"
+        aria-label={t('thread.offersAndMessages')}
+        aria-live="polite"
+      >
         {timeline.map((item) =>
           item.kind === 'offer' ? (
             <li key={item.offer.id}>
@@ -205,7 +211,9 @@ export function NegotiationThread({
                     : 'bg-surface-muted text-ink-900',
                 )}
               >
-                <span className="sr-only">{item.message.fromMe ? 'You' : counterpartName}: </span>
+                <span className="sr-only">
+                  {item.message.fromMe ? t('thread.you') : counterpartName}:{' '}
+                </span>
                 {item.message.body}
                 <span
                   className={cn(
@@ -213,7 +221,7 @@ export function NegotiationThread({
                     item.message.fromMe ? 'text-on-fill/80' : 'text-ink-600',
                   )}
                 >
-                  {formatIstTime(new Date(item.message.createdAt))}
+                  {formatIstTime(new Date(item.message.createdAt), lang)}
                 </span>
               </p>
             </li>
@@ -227,17 +235,19 @@ export function NegotiationThread({
           className="flex flex-col gap-3 rounded-lg border border-border p-4"
         >
           <h2 id="respond-title" className="font-semibold">
-            {counterpartName} offered <Money paise={n.pendingFromThem.amountPaise} />. Accept, or
-            suggest your price.
+            {t('thread.theyOffered', {
+              name: counterpartName,
+              amount: formatINR(n.pendingFromThem.amountPaise),
+            })}
           </h2>
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => accept(n.pendingFromThem!)}
               loading={pending}
-              loadingText="Confirming…"
+              loadingText={t('thread.confirming')}
             >
               <Check aria-hidden="true" />
-              Accept <Money paise={n.pendingFromThem.amountPaise} />
+              {t('thread.accept')} <Money paise={n.pendingFromThem.amountPaise} />
             </Button>
             <Button
               variant="destructive"
@@ -245,7 +255,7 @@ export function NegotiationThread({
               disabled={pending}
             >
               <X aria-hidden="true" />
-              Decline
+              {t('thread.decline')}
             </Button>
           </div>
         </section>
@@ -253,7 +263,7 @@ export function NegotiationThread({
 
       {open && n.pendingFromMe && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-surface-muted px-3 py-2">
-          <span>Waiting for {counterpartName} to respond.</span>
+          <span>{t('thread.waiting', { name: counterpartName })}</span>
           <Button
             variant="tertiary"
             size="sm"
@@ -261,7 +271,7 @@ export function NegotiationThread({
             disabled={pending}
           >
             <Undo2 aria-hidden="true" />
-            Withdraw my offer
+            {t('thread.withdraw')}
           </Button>
         </div>
       )}
@@ -272,26 +282,27 @@ export function NegotiationThread({
           className="flex flex-col gap-3 rounded-lg border border-border p-4"
         >
           <h2 className="font-semibold">
-            {n.pendingFromThem ? 'Or make a counter-offer' : 'Make an offer'}
+            {n.pendingFromThem ? t('thread.counter') : t('thread.makeOffer')}
           </h2>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <FormField
-              label="Your price"
+              label={t('thread.yourPrice')}
               className="sm:w-48"
               hint={
-                viewer === 'customer' && n.minPaise !== null && n.maxPaise !== null ? (
-                  <>
-                    Between <Money paise={n.minPaise} /> and <Money paise={n.maxPaise} />
-                  </>
-                ) : n.offersLeft === 1 ? (
-                  'This will be your final offer'
-                ) : undefined
+                viewer === 'customer' && n.minPaise !== null && n.maxPaise !== null
+                  ? t('thread.between', {
+                      min: formatINR(n.minPaise),
+                      max: formatINR(n.maxPaise),
+                    })
+                  : n.offersLeft === 1
+                    ? t('thread.finalOffer')
+                    : undefined
               }
               error={amountProblem}
             >
               {(field) => <MoneyInput {...field} value={amount} onValueChange={setAmount} />}
             </FormField>
-            <FormField label="Note (optional)" className="flex-1">
+            <FormField label={t('thread.note')} className="flex-1">
               {(field) => (
                 <Input
                   {...field}
@@ -308,10 +319,12 @@ export function NegotiationThread({
             className="self-start"
             disabled={amount === null || !!amountProblem || pending}
           >
-            Send offer
+            {t('thread.sendOffer')}
           </Button>
           <p className="text-sm text-ink-600">
-            {n.offersLeft} {n.offersLeft === 1 ? 'offer' : 'offers'} left on your side.
+            {t(n.offersLeft === 1 ? 'thread.offersLeftOne' : 'thread.offersLeftOther', {
+              count: n.offersLeft,
+            })}
           </p>
         </form>
       )}
@@ -325,31 +338,28 @@ export function NegotiationThread({
       {!['COMPLETED', 'CANCELLED', 'EXPIRED'].includes(data.status) && (
         <form onSubmit={sendMessage} className="flex gap-2">
           <label htmlFor="thread-message" className="sr-only">
-            Message {counterpartName}
+            {t('thread.messageTo', { name: counterpartName })}
           </label>
           <Input
             id="thread-message"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             maxLength={500}
-            placeholder={`Message ${counterpartName}`}
+            placeholder={t('thread.messageTo', { name: counterpartName })}
             autoComplete="off"
           />
           <Button
             type="submit"
             variant="secondary"
             size="icon"
-            aria-label="Send message"
+            aria-label={t('thread.sendMessage')}
             disabled={!message.trim() || pending}
           >
             <Send aria-hidden="true" />
           </Button>
         </form>
       )}
-      <p className="text-xs text-ink-600">
-        Phone numbers and payment IDs are hidden in messages. Keep everything on Kaamico until the
-        booking is confirmed.
-      </p>
+      <p className="text-xs text-ink-600">{t('thread.privacy')}</p>
     </div>
   )
 }

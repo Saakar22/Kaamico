@@ -7,6 +7,8 @@ import { PageHeader } from '@/components/patterns/page-header'
 import { EmptyState } from '@/components/patterns/states'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { htmlLang } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
 import { AppError } from '@/lib/errors'
 import { formatIstDay, istDateKey } from '@/lib/time'
 import { listAddresses } from '@/modules/addresses/addresses'
@@ -18,7 +20,9 @@ import { getPublicProfile } from '@/modules/professionals/profile'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Book a professional' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('book.metaTitle') }
+}
 
 const DAYS_AHEAD = 7
 
@@ -29,12 +33,13 @@ export default async function BookPage({
   const actor = await requirePageActor('CUSTOMER')
   const [{ serviceId }, query] = await Promise.all([params, searchParams])
   const workerId = typeof query.worker === 'string' ? query.worker : null
-  const service = await getService(serviceId)
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const service = await getService(serviceId, locale)
   if (!service || !workerId) notFound()
 
   let profile
   try {
-    profile = await getPublicProfile(workerId)
+    profile = await getPublicProfile(workerId, locale)
   } catch (error) {
     if (error instanceof AppError && error.status === 404) notFound()
     throw error
@@ -45,10 +50,10 @@ export default async function BookPage({
       <Card>
         <EmptyState
           icon={SearchX}
-          title={`${profile.displayName} does not offer ${service.name}`}
+          title={t('book.notOffered', { name: profile.displayName, service: service.name })}
           action={
             <Button asChild>
-              <Link href={`/search?service=${service.id}`}>See other professionals</Link>
+              <Link href={`/search?service=${service.id}`}>{t('book.seeOthers')}</Link>
             </Button>
           }
         />
@@ -64,14 +69,14 @@ export default async function BookPage({
   ])
   const days = Array.from({ length: DAYS_AHEAD }, (_, i) => {
     const d = new Date(now.getTime() + i * 86_400_000)
-    return { date: istDateKey(d), label: formatIstDay(d, now) }
+    return { date: istDateKey(d), label: formatIstDay(d, now, htmlLang[locale]) }
   })
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <PageHeader
-        title={`Book ${service.name}`}
-        description={`Your request goes to ${profile.displayName}, who confirms it.`}
+        title={t('book.title', { service: service.name })}
+        description={t('book.description', { name: profile.displayName })}
       />
       <BookingWizard
         service={{

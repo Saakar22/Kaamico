@@ -4,10 +4,13 @@ import { statusBadgeLabel, statusTone } from '@/components/domain/negotiation/bo
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Money } from '@/components/ui/money'
+import { htmlLang } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
 import { formatIstDateTime } from '@/lib/time'
 import type { CustomerBookingItem, WorkerJobItem } from '@/modules/bookings/lists'
 
-function When({ timing, startsAt }: { timing: string; startsAt: string }) {
+async function When({ timing, startsAt }: { timing: string; startsAt: string }) {
+  const locale = await getLocale()
   return (
     <span className="flex items-center gap-1">
       {timing === 'ON_DEMAND' ? (
@@ -15,7 +18,7 @@ function When({ timing, startsAt }: { timing: string; startsAt: string }) {
       ) : (
         <CalendarClock aria-hidden="true" className="size-4" />
       )}
-      {formatIstDateTime(new Date(startsAt))}
+      {formatIstDateTime(new Date(startsAt), htmlLang[locale])}
     </span>
   )
 }
@@ -24,7 +27,8 @@ const cardClasses =
   'flex items-center gap-3 rounded-lg border border-border bg-surface p-4 hover:border-brand-600'
 
 /** One booking in the customer's lists. Open requests go to the thread, the rest to the booking. */
-export function BookingListItem({ booking }: { booking: CustomerBookingItem }) {
+export async function BookingListItem({ booking }: { booking: CustomerBookingItem }) {
+  const t = await getT()
   const href = ['REQUESTED', 'NEGOTIATING'].includes(booking.status)
     ? `/bookings/${booking.id}/negotiate`
     : `/bookings/${booking.id}`
@@ -34,8 +38,8 @@ export function BookingListItem({ booking }: { booking: CustomerBookingItem }) {
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-semibold">{booking.serviceName}</span>
-          <Badge tone={statusTone(booking.status)}>{statusBadgeLabel(booking.status)}</Badge>
-          {booking.needsAction && <Badge tone="accent">Needs your answer</Badge>}
+          <Badge tone={statusTone(booking.status)}>{statusBadgeLabel(booking.status, t)}</Badge>
+          {booking.needsAction && <Badge tone="accent">{t('bookingList.needsAnswer')}</Badge>}
         </span>
         <span className="text-sm text-ink-600">
           {booking.workerName} · {booking.code}

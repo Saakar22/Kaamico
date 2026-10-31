@@ -7,25 +7,29 @@ import { PageHeader } from '@/components/patterns/page-header'
 import { EmptyState } from '@/components/patterns/states'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { getLocale, getT } from '@/i18n/server'
+import type { MessageKey } from '@/i18n/translate'
 import { requirePageActor } from '@/modules/auth/page-guards'
 import { CUSTOMER_TABS, listCustomerBookings, type CustomerTab } from '@/modules/bookings/lists'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Your bookings' }
-
-const LABELS: Record<CustomerTab, string> = {
-  active: 'Active',
-  upcoming: 'Upcoming',
-  past: 'Past',
-  cancelled: 'Cancelled',
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('bookingList.metaTitle') }
 }
 
-const EMPTY: Record<CustomerTab, string> = {
-  active: 'Requests and jobs in progress appear here.',
-  upcoming: 'Confirmed bookings appear here until the day of the job.',
-  past: 'Finished jobs appear here.',
-  cancelled: 'Cancelled and expired requests appear here.',
+const LABELS: Record<CustomerTab, MessageKey> = {
+  active: 'bookingList.tabActive',
+  upcoming: 'bookingList.tabUpcoming',
+  past: 'bookingList.tabPast',
+  cancelled: 'bookingList.tabCancelled',
+}
+
+const EMPTY: Record<CustomerTab, MessageKey> = {
+  active: 'bookingList.emptyActive',
+  upcoming: 'bookingList.emptyUpcoming',
+  past: 'bookingList.emptyPast',
+  cancelled: 'bookingList.emptyCancelled',
 }
 
 export default async function BookingsPage({ searchParams }: PageProps<'/[lang]/bookings'>) {
@@ -33,33 +37,46 @@ export default async function BookingsPage({ searchParams }: PageProps<'/[lang]/
   const { tab: rawTab, cursor: rawCursor } = await searchParams
   const tab = CUSTOMER_TABS.find((t) => t === rawTab) ?? 'active'
   const cursor = typeof rawCursor === 'string' ? rawCursor : null
-  const { bookings, nextCursor } = await listCustomerBookings(actor, { tab, cursor })
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const { bookings, nextCursor } = await listCustomerBookings(
+    actor,
+    { tab, cursor },
+    new Date(),
+    locale,
+  )
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Your bookings" />
+      <PageHeader title={t('bookingList.title')} />
       <LinkTabs
-        label="Booking types"
+        label={t('bookingList.tabs')}
         current={tab}
-        tabs={CUSTOMER_TABS.map((t) => ({ key: t, label: LABELS[t], href: `/bookings?tab=${t}` }))}
+        tabs={CUSTOMER_TABS.map((key) => ({
+          key,
+          label: t(LABELS[key]),
+          href: `/bookings?tab=${key}`,
+        }))}
       />
       {bookings.length === 0 ? (
         <Card>
           <EmptyState
             icon={CalendarCheck}
-            title={cursor ? 'No more bookings' : 'Nothing here yet'}
-            description={EMPTY[tab]}
+            title={cursor ? t('bookingList.noMore') : t('bookingList.nothing')}
+            description={t(EMPTY[tab])}
             action={
               tab === 'active' && !cursor ? (
                 <Button asChild>
-                  <Link href="/services">Book your first service</Link>
+                  <Link href="/services">{t('bookingList.bookFirst')}</Link>
                 </Button>
               ) : undefined
             }
           />
         </Card>
       ) : (
-        <ul className="flex flex-col gap-3" aria-label={`${LABELS[tab]} bookings`}>
+        <ul
+          className="flex flex-col gap-3"
+          aria-label={t('bookingList.listLabel', { tab: t(LABELS[tab]) })}
+        >
           {bookings.map((b) => (
             <li key={b.id}>
               <BookingListItem booking={b} />
@@ -69,7 +86,9 @@ export default async function BookingsPage({ searchParams }: PageProps<'/[lang]/
       )}
       {nextCursor && (
         <Button asChild variant="secondary" className="self-center">
-          <Link href={`/bookings?tab=${tab}&cursor=${nextCursor}`}>Show older</Link>
+          <Link href={`/bookings?tab=${tab}&cursor=${nextCursor}`}>
+            {t('bookingList.showOlder')}
+          </Link>
         </Button>
       )}
     </div>

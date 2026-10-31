@@ -7,9 +7,11 @@ import { SimulationBadge } from '@/components/domain/trust-badges'
 import { useApiAction } from '@/components/domain/worker/use-api-action'
 import { Button } from '@/components/ui/button'
 import { Money } from '@/components/ui/money'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 import type { BookingPayment } from '@/modules/payments/payments'
 import { RazorpayButton } from './razorpay-button'
+import { formatINR } from '@/lib/money'
 
 /**
  * Paying for a completed job (§4 step 11): cash to the professional, or online, either
@@ -32,6 +34,7 @@ export function PaymentPanel({
   /** The amount is the visit fee for cancelling after the professional set off. */
   visitFee?: boolean
 }) {
+  const t = useT()
   const { pending, error, run } = useApiAction()
   // One key per attempt: a double tap cannot start two payments.
   const [key, setKey] = useState(() => crypto.randomUUID())
@@ -46,10 +49,10 @@ export function PaymentPanel({
     })
   const simulate = (outcome: 'success' | 'failure') =>
     run(() => apiFetch(`/api/v1/payments/${state.payment!.id}/simulate`, { body: { outcome } }), {
-      success: outcome === 'success' ? 'Payment successful' : undefined,
+      success: outcome === 'success' ? t('pay.success') : undefined,
     })
 
-  const amount = <Money paise={totalPaise} />
+  const rupees = formatINR(totalPaise)
 
   if (state.state === 'PAID' && state.payment) {
     return (
@@ -59,11 +62,11 @@ export function PaymentPanel({
       >
         <h2 id="payment-title" className="flex flex-wrap items-center gap-2 font-semibold">
           <CircleCheck aria-hidden="true" className="size-5 text-success-800" />
-          Paid <Money paise={state.payment.amountPaise} />{' '}
-          {state.payment.provider === 'CASH' ? 'in cash' : 'online'}
-          {state.payment.simulated && <SimulationBadge label="Simulated: no money moved" />}
+          {t('pay.paid')} <Money paise={state.payment.amountPaise} />{' '}
+          {state.payment.provider === 'CASH' ? t('pay.inCash') : t('pay.online')}
+          {state.payment.simulated && <SimulationBadge label={t('pay.simulatedBadge')} />}
           {state.payment.provider === 'RAZORPAY' && (
-            <SimulationBadge label="Razorpay test mode: no real money" />
+            <SimulationBadge label={t('pay.testModeBadge')} />
           )}
         </h2>
         {state.receiptNumber && (
@@ -72,7 +75,7 @@ export function PaymentPanel({
             className="inline-flex h-11 w-fit items-center gap-2 text-sm font-medium text-brand-700 hover:underline"
           >
             <ReceiptText aria-hidden="true" className="size-4" />
-            Receipt {state.receiptNumber}
+            {t('pay.receipt', { number: state.receiptNumber })}
           </Link>
         )}
       </section>
@@ -85,18 +88,18 @@ export function PaymentPanel({
       className="flex flex-col gap-3 rounded-lg border border-accent-500 bg-surface p-4"
     >
       <h2 id="payment-title" className="text-lg font-semibold">
-        {state.state === 'AWAITING_CASH' ? <>Pay {amount} in cash</> : <>Pay {amount}</>}
-        {visitFee && ' visit fee'}
+        {state.state === 'AWAITING_CASH'
+          ? t('pay.payInCash', { amount: rupees })
+          : t('pay.pay', { amount: rupees })}
+        {visitFee && t('pay.visitFeeSuffix')}
       </h2>
 
       {state.state === 'AWAITING_CASH' && (
         <>
-          <p>
-            Hand {amount} to {workerName}. They confirm in their app and your receipt appears here.
-          </p>
+          <p>{t('pay.handCash', { amount: rupees, name: workerName })}</p>
           {online === 'RAZORPAY' ? (
             <RazorpayButton bookingId={bookingId} variant="tertiary" className="self-start">
-              Pay online instead
+              {t('pay.payOnlineInstead')}
             </RazorpayButton>
           ) : (
             <Button
@@ -106,7 +109,7 @@ export function PaymentPanel({
               disabled={pending}
             >
               <CreditCard aria-hidden="true" />
-              Pay online instead
+              {t('pay.payOnlineInstead')}
             </Button>
           )}
         </>
@@ -114,16 +117,16 @@ export function PaymentPanel({
 
       {state.state === 'AWAITING_ONLINE' && (
         <div className="flex flex-col gap-3">
-          <p>Your online payment is not finished yet.</p>
+          <p>{t('pay.notFinished')}</p>
           <div className="flex flex-wrap gap-2">
-            <RazorpayButton bookingId={bookingId}>Continue to payment</RazorpayButton>
+            <RazorpayButton bookingId={bookingId}>{t('pay.continue')}</RazorpayButton>
             <Button variant="tertiary" onClick={() => start('CASH')} disabled={pending}>
               <Banknote aria-hidden="true" />
-              Pay in cash instead
+              {t('pay.cashInstead')}
             </Button>
           </div>
           <p className="flex items-center gap-2 text-xs text-ink-600">
-            <SimulationBadge label="Test mode" /> Razorpay test mode: use a test card or UPI ID.
+            <SimulationBadge label={t('pay.testMode')} /> {t('pay.testModeHint')}
           </p>
         </div>
       )}
@@ -131,19 +134,20 @@ export function PaymentPanel({
       {state.state === 'AWAITING_SIMULATED' && (
         <div className="flex flex-col gap-3 rounded-md border border-dashed border-border p-3">
           <p className="flex flex-wrap items-center gap-2 font-medium">
-            Online checkout <SimulationBadge label="Simulation: no money moves" />
+            {t('pay.checkout')} <SimulationBadge label={t('pay.simulation')} />
           </p>
-          <p className="text-sm text-ink-600">
-            Real online payments (UPI and cards) arrive later. Choose how this practice payment
-            ends.
-          </p>
+          <p className="text-sm text-ink-600">{t('pay.simulationHint')}</p>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => simulate('success')} loading={pending} loadingText="Paying…">
-              Pay {amount} (simulated)
+            <Button
+              onClick={() => simulate('success')}
+              loading={pending}
+              loadingText={t('pay.paying')}
+            >
+              {t('pay.paySimulated', { amount: rupees })}
             </Button>
             <Button variant="secondary" onClick={() => simulate('failure')} disabled={pending}>
               <X aria-hidden="true" />
-              Simulate a failed payment
+              {t('pay.simulateFail')}
             </Button>
           </div>
           <Button
@@ -153,7 +157,7 @@ export function PaymentPanel({
             disabled={pending}
           >
             <Banknote aria-hidden="true" />
-            Pay in cash instead
+            {t('pay.cashInstead')}
           </Button>
         </div>
       )}
@@ -165,37 +169,39 @@ export function PaymentPanel({
               role="alert"
               className="rounded-md bg-danger-700/10 px-3 py-2 text-sm text-danger-700"
             >
-              {state.lastFailure}. Try again or pay in cash.
+              {t('pay.lastFailure', { reason: state.lastFailure })}
             </p>
           )}
           <p className="text-ink-600">
-            {visitFee
-              ? `You cancelled after ${workerName} had set off, so a visit fee covers their trip.`
-              : 'The price was agreed before the job and cannot change now.'}
+            {visitFee ? t('pay.visitFeeNote', { name: workerName }) : t('pay.lockedNote')}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => start('CASH')} loading={pending} loadingText="One moment…">
+            <Button
+              onClick={() => start('CASH')}
+              loading={pending}
+              loadingText={t('pay.oneMoment')}
+            >
               <Banknote aria-hidden="true" />
-              Pay in cash
+              {t('pay.cash')}
             </Button>
             {online === 'RAZORPAY' ? (
               <RazorpayButton bookingId={bookingId} variant="secondary" disabled={pending}>
-                Pay online (UPI or card)
+                {t('pay.payOnlineUpi')}
               </RazorpayButton>
             ) : (
               <Button variant="secondary" onClick={() => start('SIMULATED')} disabled={pending}>
                 <CreditCard aria-hidden="true" />
-                Pay online
+                {t('pay.payOnline')}
               </Button>
             )}
           </div>
           {online === 'RAZORPAY' ? (
             <p className="flex items-center gap-2 text-xs text-ink-600">
-              <SimulationBadge label="Test mode" /> Razorpay test mode: no real money moves.
+              <SimulationBadge label={t('pay.testMode')} /> {t('pay.testNoMoney')}
             </p>
           ) : (
             <p className="flex items-center gap-2 text-xs text-ink-600">
-              <SimulationBadge /> Online payments are simulated in this demo.
+              <SimulationBadge /> {t('pay.simulatedNote')}
             </p>
           )}
         </>

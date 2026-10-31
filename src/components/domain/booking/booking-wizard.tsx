@@ -12,12 +12,16 @@ import { Input, NativeSelect, Textarea } from '@/components/ui/input'
 import { Money } from '@/components/ui/money'
 import { MoneyInput } from '@/components/ui/money-input'
 import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
+import { useErrorMessage, useLocale, useT } from '@/i18n/client'
+import { htmlLang } from '@/i18n/config'
+import type { MessageKey } from '@/i18n/translate'
 import { apiFetch, ApiError } from '@/lib/api-client'
 import { cn } from '@/lib/cn'
 import { formatIstDateTime, formatIstTime } from '@/lib/time'
 import type { SavedAddress } from '@/modules/addresses/addresses'
 import { formatDuration, unitSuffix, type PricingUnit } from '@/modules/catalog/units'
 import { customerFloor } from '@/modules/negotiation/rules'
+import { formatINR } from '@/lib/money'
 
 type Props = {
   service: { id: string; name: string; unit: PricingUnit; durationMin: number }
@@ -29,11 +33,21 @@ type Props = {
   days: { date: string; label: string }[]
 }
 
-const STEPS = ['Address', 'When', 'Details', 'Price', 'Review']
+const STEPS: MessageKey[] = [
+  'book.stepAddress',
+  'book.stepWhen',
+  'book.stepDetails',
+  'book.stepPrice',
+  'book.stepReview',
+]
 
 /** The booking wizard (§4.2 step 6). The server re-checks everything on submit. */
 export function BookingWizard(props: Props) {
   const router = useRouter()
+  const t = useT()
+  const locale = useLocale()
+  const lang = htmlLang[locale]
+  const errorMessage = useErrorMessage()
   const { service, worker, price } = props
   const firstName = worker.name.split(' ')[0]
   const [step, setStep] = useState(0)
@@ -81,9 +95,9 @@ export function BookingWizard(props: Props) {
   const offerProblem =
     decision === 'OFFER' && offer !== null
       ? offer < floor
-        ? `Offers for this service start at ₹${floor / 100}`
+        ? t('book.offerFrom', { amount: `₹${floor / 100}` })
         : offer > price.listedPaise
-          ? 'That is more than the listed price: accept it instead'
+          ? t('book.offerAboveListed')
           : null
       : null
 
@@ -118,27 +132,28 @@ export function BookingWizard(props: Props) {
       router.push(`/bookings/${result.bookingId}/negotiate`)
     } catch (e) {
       if (e instanceof ApiError) {
-        setError(e.message)
+        setError(errorMessage(e))
         if (e.code === 'SLOT_TAKEN') {
           setAlternatives((e.details?.alternatives as string[]) ?? [])
           setStep(1)
         }
-      } else setError('Something went wrong. Please try again.')
+      } else setError(errorMessage(e))
       setPending(false)
     }
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <Stepper steps={STEPS} current={step} />
+      <Stepper steps={STEPS.map((s) => t(s))} current={step} />
       <Card>
         <CardContent className="flex items-center gap-3">
           <Avatar name={worker.name} src={worker.photoUrl} />
           <div className="flex flex-col">
             <span className="font-semibold">{service.name}</span>
             <span className="text-sm text-ink-600">
-              with {worker.name} · <Money paise={price.listedPaise} /> {unitSuffix(service.unit)} ·
-              about {formatDuration(service.durationMin)}
+              {t('book.withPro', { name: worker.name })} · <Money paise={price.listedPaise} />{' '}
+              {unitSuffix(service.unit, locale)} ·{' '}
+              {t('book.about', { duration: formatDuration(service.durationMin, locale) })}
             </span>
           </div>
         </CardContent>
@@ -147,10 +162,14 @@ export function BookingWizard(props: Props) {
       {step === 0 && (
         <section aria-labelledby="step-title" className="flex flex-col gap-4">
           <h2 id="step-title" className="text-xl font-semibold">
-            Where is the job?
+            {t('book.whereTitle')}
           </h2>
           {addresses.length > 0 && (
-            <RadioGroup value={addressId} onValueChange={setAddressId} aria-label="Saved addresses">
+            <RadioGroup
+              value={addressId}
+              onValueChange={setAddressId}
+              aria-label={t('book.savedAddresses')}
+            >
               {addresses.map((a) => (
                 <RadioOption
                   key={a.id}
@@ -176,51 +195,49 @@ export function BookingWizard(props: Props) {
           ) : (
             <Button variant="tertiary" className="self-start" onClick={() => setAdding(true)}>
               <Plus aria-hidden="true" />
-              Add a new address
+              {t('book.addAddress')}
             </Button>
           )}
-          <p className="text-sm text-ink-600">
-            {firstName} sees only your area until the booking is confirmed.
-          </p>
+          <p className="text-sm text-ink-600">{t('book.areaOnly', { name: firstName })}</p>
         </section>
       )}
 
       {step === 1 && (
         <section aria-labelledby="step-title" className="flex flex-col gap-4">
           <h2 id="step-title" className="text-xl font-semibold">
-            When do you need {firstName}?
+            {t('book.whenTitle', { name: firstName })}
           </h2>
           <RadioGroup
             value={timing}
             onValueChange={(v) => setTiming(v as typeof timing)}
-            aria-label="When"
+            aria-label={t('book.when')}
           >
             <RadioOption
               value="ON_DEMAND"
               disabled={!props.availableNow}
               label={
                 <span className="flex items-center gap-1.5">
-                  <Zap aria-hidden="true" className="size-4" /> As soon as possible
+                  <Zap aria-hidden="true" className="size-4" /> {t('book.asap')}
                 </span>
               }
               description={
                 props.availableNow
-                  ? `${firstName} is available now`
-                  : `${firstName} is not available right now`
+                  ? t('book.availableNow', { name: firstName })
+                  : t('book.notAvailableNow', { name: firstName })
               }
             />
             <RadioOption
               value="SCHEDULED"
               label={
                 <span className="flex items-center gap-1.5">
-                  <CalendarClock aria-hidden="true" className="size-4" /> Choose a time
+                  <CalendarClock aria-hidden="true" className="size-4" /> {t('book.chooseTime')}
                 </span>
               }
             />
           </RadioGroup>
           {timing === 'SCHEDULED' && (
             <div className="flex flex-col gap-3">
-              <FormField label="Day">
+              <FormField label={t('book.day')}>
                 {(field) => (
                   <NativeSelect
                     {...field}
@@ -241,13 +258,13 @@ export function BookingWizard(props: Props) {
               </FormField>
               {slots === null ? (
                 <p className="text-ink-600" role="status">
-                  Checking {firstName}&apos;s free times…
+                  {t('book.checkingTimes', { name: firstName })}
                 </p>
               ) : slots.length === 0 ? (
-                <p className="text-ink-600">No free times that day. Try another day.</p>
+                <p className="text-ink-600">{t('book.noTimes')}</p>
               ) : (
                 <fieldset>
-                  <legend className="mb-2 text-sm font-medium">Start time (IST)</legend>
+                  <legend className="mb-2 text-sm font-medium">{t('book.startTime')}</legend>
                   <div className="flex flex-wrap gap-2">
                     {slots.map((s) => (
                       <button
@@ -262,7 +279,7 @@ export function BookingWizard(props: Props) {
                             : 'border-border hover:border-brand-600',
                         )}
                       >
-                        {formatIstTime(new Date(s.start))}
+                        {formatIstTime(new Date(s.start), lang)}
                       </button>
                     ))}
                   </div>
@@ -270,7 +287,11 @@ export function BookingWizard(props: Props) {
               )}
               {alternatives.length > 0 && (
                 <p className="text-sm" role="status">
-                  Free soon: {alternatives.map((a) => formatIstDateTime(new Date(a))).join(' · ')}
+                  {t('book.freeSoon', {
+                    times: alternatives
+                      .map((a) => formatIstDateTime(new Date(a), lang))
+                      .join(' · '),
+                  })}
                 </p>
               )}
             </div>
@@ -281,12 +302,9 @@ export function BookingWizard(props: Props) {
       {step === 2 && (
         <section aria-labelledby="step-title" className="flex flex-col gap-4">
           <h2 id="step-title" className="text-xl font-semibold">
-            Tell {firstName} about the job
+            {t('book.detailsTitle', { name: firstName })}
           </h2>
-          <FormField
-            label="What needs doing? (optional)"
-            hint="Up to 1000 characters. Do not include phone numbers."
-          >
+          <FormField label={t('book.whatNeedsDoing')} hint={t('book.detailsHint')}>
             {(field) => (
               <Textarea
                 {...field}
@@ -303,41 +321,40 @@ export function BookingWizard(props: Props) {
       {step === 3 && (
         <section aria-labelledby="step-title" className="flex flex-col gap-4">
           <h2 id="step-title" className="text-xl font-semibold">
-            Your price
+            {t('book.priceTitle')}
           </h2>
           <RadioGroup
             value={decision}
             onValueChange={(v) => setDecision(v as typeof decision)}
-            aria-label="Price"
+            aria-label={t('book.price')}
           >
             <RadioOption
               value="ACCEPT_LISTED"
               label={
                 <>
-                  Accept <Money paise={price.listedPaise} />
+                  {t('book.accept')} <Money paise={price.listedPaise} />
                 </>
               }
-              description={`${firstName}'s own price. ${firstName} still confirms the job.`}
+              description={t('book.ownPrice', { name: firstName })}
             />
             <RadioOption
               value="OFFER"
               disabled={!price.negotiable}
-              label="Suggest a different price"
+              label={t('book.suggest')}
               description={
                 price.negotiable
-                  ? `${firstName} can accept, decline or counter.`
-                  : `${firstName} has a fixed price for this service.`
+                  ? t('book.canCounter', { name: firstName })
+                  : t('book.fixedPrice', { name: firstName })
               }
             />
           </RadioGroup>
           {decision === 'OFFER' && (
             <FormField
-              label="Your offer"
-              hint={
-                <>
-                  Between <Money paise={floor} /> and <Money paise={price.listedPaise} />
-                </>
-              }
+              label={t('book.yourOffer')}
+              hint={t('book.between', {
+                min: formatINR(floor),
+                max: formatINR(price.listedPaise),
+              })}
               error={offerProblem}
             >
               {(field) => (
@@ -351,26 +368,26 @@ export function BookingWizard(props: Props) {
       {step === 4 && (
         <section aria-labelledby="step-title" className="flex flex-col gap-4">
           <h2 id="step-title" className="text-xl font-semibold">
-            Check and send
+            {t('book.reviewTitle')}
           </h2>
           <dl className="flex flex-col divide-y divide-border rounded-lg border border-border">
             {[
-              ['Service', service.name],
-              ['Professional', worker.name],
+              [t('book.service'), service.name],
+              [t('book.professional'), worker.name],
               [
-                'Where',
+                t('book.where'),
                 address
                   ? `${address.line1}, ${[address.locality, address.city].filter(Boolean).join(', ')}`
                   : '',
               ],
               [
-                'When',
-                timing === 'ON_DEMAND' ? 'As soon as possible' : formatIstDateTime(new Date(start)),
+                t('book.when'),
+                timing === 'ON_DEMAND' ? t('book.asap') : formatIstDateTime(new Date(start), lang),
               ],
               [
-                'Your price',
+                t('book.yourPrice'),
                 amount !== null
-                  ? `₹${(amount / 100).toLocaleString('en-IN')}${decision === 'OFFER' ? ' (your offer)' : ''}`
+                  ? `₹${(amount / 100).toLocaleString('en-IN')}${decision === 'OFFER' ? t('book.yourOfferSuffix') : ''}`
                   : '',
               ],
             ].map(([k, v]) => (
@@ -382,7 +399,7 @@ export function BookingWizard(props: Props) {
           </dl>
           <p className="flex items-start gap-2 text-sm text-ink-600">
             <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-            {firstName} sees your full address only after confirming. No payment is taken now.
+            {t('book.afterConfirm', { name: firstName })}
           </p>
         </section>
       )}
@@ -397,17 +414,17 @@ export function BookingWizard(props: Props) {
         {step > 0 && (
           <Button variant="secondary" onClick={() => setStep((s) => s - 1)} disabled={pending}>
             <ArrowLeft aria-hidden="true" />
-            Back
+            {t('book.back')}
           </Button>
         )}
         {step < STEPS.length - 1 ? (
           <Button onClick={() => setStep((s) => s + 1)} disabled={!canContinue}>
-            Continue
+            {t('book.continue')}
           </Button>
         ) : (
-          <Button onClick={submit} loading={pending} loadingText="Sending…">
+          <Button onClick={submit} loading={pending} loadingText={t('book.sending')}>
             <Check aria-hidden="true" />
-            Send request to {firstName}
+            {t('book.send', { name: firstName })}
           </Button>
         )}
       </div>
@@ -424,6 +441,8 @@ function AddressForm({
   onSaved: (a: SavedAddress) => void
   onCancel?: () => void
 }) {
+  const t = useT()
+  const errorMessage = useErrorMessage()
   const cities = [...new Set(localities.map((l) => l.city))]
   const [line1, setLine1] = useState('')
   const [landmark, setLandmark] = useState('')
@@ -447,7 +466,7 @@ function AddressForm({
       if (e instanceof ApiError) {
         const issues = (e.details?.issues as { path: string; message: string }[]) ?? []
         setErrors(Object.fromEntries(issues.map((i) => [i.path, i.message])))
-        if (issues.length === 0) setError(e.message)
+        if (issues.length === 0) setError(errorMessage(e))
       }
     } finally {
       setPending(false)
@@ -456,7 +475,7 @@ function AddressForm({
 
   return (
     <form onSubmit={save} className="flex flex-col gap-4 rounded-lg border border-border p-4">
-      <FormField label="Flat, house and street" required error={errors.line1}>
+      <FormField label={t('book.line1')} required error={errors.line1}>
         {(field) => (
           <Input
             {...field}
@@ -467,7 +486,7 @@ function AddressForm({
           />
         )}
       </FormField>
-      <FormField label="Landmark (optional)" error={errors.landmark}>
+      <FormField label={t('book.landmark')} error={errors.landmark}>
         {(field) => (
           <Input
             {...field}
@@ -478,7 +497,7 @@ function AddressForm({
         )}
       </FormField>
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Area" required error={errors.localityId}>
+        <FormField label={t('book.area')} required error={errors.localityId}>
           {(field) => (
             <NativeSelect
               {...field}
@@ -490,7 +509,7 @@ function AddressForm({
               }}
             >
               <option value="" disabled>
-                Choose your area
+                {t('book.chooseArea')}
               </option>
               {cities.map((city) => (
                 <optgroup key={city} label={city}>
@@ -506,7 +525,7 @@ function AddressForm({
             </NativeSelect>
           )}
         </FormField>
-        <FormField label="Pincode" required error={errors.pincode}>
+        <FormField label={t('book.pincode')} required error={errors.pincode}>
           {(field) => (
             <Input
               {...field}
@@ -528,14 +547,14 @@ function AddressForm({
           type="submit"
           variant="secondary"
           loading={pending}
-          loadingText="Saving…"
+          loadingText={t('book.saving')}
           disabled={!line1 || !localityId || pincode.length !== 6}
         >
-          Save address
+          {t('book.saveAddress')}
         </Button>
         {onCancel && (
           <Button variant="tertiary" onClick={onCancel}>
-            Cancel
+            {t('book.cancel')}
           </Button>
         )}
       </div>

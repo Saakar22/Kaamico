@@ -1,4 +1,7 @@
+'use client'
+
 import { Check } from 'lucide-react'
+import { useT } from '@/i18n/client'
 import { cn } from '@/lib/cn'
 
 /** Progress through a multi-step flow (booking wizard, worker onboarding). */
@@ -12,10 +15,11 @@ export function Stepper({
   current: number
   className?: string
 }) {
+  const t = useT()
   return (
-    <nav aria-label="Progress" className={className}>
+    <nav aria-label={t('stepper.progress')} className={className}>
       <p className="mb-2 text-sm text-ink-600 sm:hidden">
-        Step {current + 1} of {steps.length}:{' '}
+        {t('stepper.stepOf', { current: current + 1, total: steps.length })}{' '}
         <span className="font-medium text-ink-900">{steps[current]}</span>
       </p>
       <ol className="flex items-center gap-2">

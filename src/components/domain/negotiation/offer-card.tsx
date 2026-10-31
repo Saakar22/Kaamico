@@ -1,21 +1,26 @@
+'use client'
+
 import { Clock, Flag } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Money } from '@/components/ui/money'
+import { useLocale, useT } from '@/i18n/client'
+import { htmlLang } from '@/i18n/config'
+import type { MessageKey } from '@/i18n/translate'
 import { cn } from '@/lib/cn'
 import { formatIstTime } from '@/lib/time'
 import type { OfferView } from '@/modules/bookings/views'
 
 const STATUS_LABEL: Record<
   string,
-  { label: string; tone: 'neutral' | 'success' | 'warning' | 'danger' | 'brand' }
+  { label: MessageKey; tone: 'neutral' | 'success' | 'warning' | 'danger' | 'brand' }
 > = {
-  PENDING: { label: 'Waiting for reply', tone: 'warning' },
-  ACCEPTED: { label: 'Accepted', tone: 'success' },
-  COUNTERED: { label: 'Countered', tone: 'neutral' },
-  REJECTED: { label: 'Declined', tone: 'danger' },
-  EXPIRED: { label: 'Expired', tone: 'neutral' },
-  WITHDRAWN: { label: 'Withdrawn', tone: 'neutral' },
-  SUPERSEDED: { label: 'Closed', tone: 'neutral' },
+  PENDING: { label: 'offer.pending', tone: 'warning' },
+  ACCEPTED: { label: 'offer.accepted', tone: 'success' },
+  COUNTERED: { label: 'offer.countered', tone: 'neutral' },
+  REJECTED: { label: 'offer.rejected', tone: 'danger' },
+  EXPIRED: { label: 'offer.expired', tone: 'neutral' },
+  WITHDRAWN: { label: 'offer.withdrawn', tone: 'neutral' },
+  SUPERSEDED: { label: 'offer.superseded', tone: 'neutral' },
 }
 
 /** One offer in the thread: who offered what, when, and what happened to it. */
@@ -30,7 +35,12 @@ export function OfferCard({
   authorName: string
   listedPaise: number | null
 }) {
-  const status = STATUS_LABEL[offer.status] ?? { label: offer.status, tone: 'neutral' as const }
+  const t = useT()
+  const lang = htmlLang[useLocale()]
+  const known = STATUS_LABEL[offer.status]
+  const status = known
+    ? { label: t(known.label), tone: known.tone }
+    : { label: offer.status, tone: 'neutral' as const }
   const aboveListed =
     listedPaise && offer.offeredBy === 'WORKER' && offer.amountPaise > listedPaise
       ? Math.round(((offer.amountPaise - listedPaise) / listedPaise) * 100)
@@ -45,12 +55,16 @@ export function OfferCard({
         )}
       >
         <div className="flex items-center justify-between gap-2 text-sm">
-          <span className="font-medium">{mine ? 'Your offer' : `${authorName}'s offer`}</span>
-          <span className="text-ink-600">{formatIstTime(new Date(offer.createdAt))}</span>
+          <span className="font-medium">
+            {mine ? t('offer.yours') : t('offer.theirs', { name: authorName })}
+          </span>
+          <span className="text-ink-600">{formatIstTime(new Date(offer.createdAt), lang)}</span>
         </div>
         <Money paise={offer.amountPaise} className="text-2xl font-bold" />
         {aboveListed !== null && aboveListed > 0 && (
-          <span className="text-sm text-warning-800">+{aboveListed}% above listed price</span>
+          <span className="text-sm text-warning-800">
+            {t('offer.aboveListed', { percent: aboveListed })}
+          </span>
         )}
         {offer.note && <p className="text-sm text-ink-900">“{offer.note}”</p>}
         <div className="flex flex-wrap items-center gap-2">
@@ -58,13 +72,13 @@ export function OfferCard({
           {offer.isFinal && (
             <Badge tone="info">
               <Flag aria-hidden="true" />
-              Final offer
+              {t('offer.final')}
             </Badge>
           )}
           {offer.status === 'PENDING' && (
             <span className="flex items-center gap-1 text-xs text-ink-600">
               <Clock aria-hidden="true" className="size-3.5" />
-              Expires {formatIstTime(new Date(offer.expiresAt))}
+              {t('offer.expires', { time: formatIstTime(new Date(offer.expiresAt), lang) })}
             </span>
           )}
         </div>

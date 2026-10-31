@@ -7,6 +7,8 @@ import type { Actor } from '@/modules/auth/types'
 import { photoUrl } from '@/modules/uploads/serve'
 import { expireDue } from './repo'
 import type { BookingStatus } from './state-machine'
+import type { Locale } from '@/i18n/config'
+import { localized } from '@/modules/catalog/catalog'
 
 /**
  * Booking lists and dashboards for both sides (IMPLEMENTATION_PLAN.md §5, §10.6–10.7).
@@ -119,9 +121,10 @@ type CustomerRow = {
 async function customerRows(
   actor: Actor,
   q: { where: SQL; sortKey: SQL; orderBy: SQL; limit: number; after?: SQL },
+  locale: Locale = 'en',
 ): Promise<CustomerRow[]> {
   return getDb().execute<CustomerRow>(sql`
-    select b.id, b.code, b.status, b.service_id, s.name as service_name,
+    select b.id, b.code, b.status, b.service_id, ${localized(locale, 's', 'name')} as service_name,
            i.worker_id, w.display_name as worker_name, w.photo_key as worker_photo,
            b.timing, coalesce(lower(b.slot), b.requested_start) as starts_at, b.locality_label,
            coalesce(b.final_amount_paise, b.agreed_price_paise, b.listed_price_paise) as price_paise,
@@ -166,17 +169,22 @@ export async function listCustomerBookings(
   actor: Actor,
   options: { tab?: CustomerTab; cursor?: string | null } = {},
   now: Date = new Date(),
+  locale: Locale = 'en',
 ): Promise<{ bookings: CustomerBookingItem[]; nextCursor: string | null }> {
   await expireDue(now, { customerId: actor.userId })
   const tab = CUSTOMER_TAB[options.tab ?? 'active']
   const { after, by } = keyset(tab.order, decodeCursor(options.cursor))
-  const rows = await customerRows(actor, {
-    where: tab.where,
-    after,
-    orderBy: by,
-    limit: PAGE + 1,
-    sortKey: tab.order.key,
-  })
+  const rows = await customerRows(
+    actor,
+    {
+      where: tab.where,
+      after,
+      orderBy: by,
+      limit: PAGE + 1,
+      sortKey: tab.order.key,
+    },
+    locale,
+  )
   const { items, nextCursor } = page(rows)
   return { bookings: items.map(toCustomerItem), nextCursor }
 }
@@ -219,6 +227,7 @@ export type CustomerDashboard = {
 export async function getCustomerDashboard(
   actor: Actor,
   now: Date = new Date(),
+  locale: Locale = 'en',
 ): Promise<CustomerDashboard> {
   await expireDue(now, { customerId: actor.userId })
   const db = getDb()
@@ -231,7 +240,7 @@ export async function getCustomerDashboard(
       amount_paise: number
       expires_at: Date | string
     }>(sql`
-      select b.id as booking_id, b.code, s.name as service_name, w.display_name as worker_name,
+      select b.id as booking_id, b.code, ${localized(locale, 's', 'name')} as service_name, w.display_name as worker_name,
              o.amount_paise, o.expires_at
       from price_offers o
       join bookings b on b.id = o.booking_id
@@ -250,7 +259,7 @@ export async function getCustomerDashboard(
       description: string
       amount_paise: number
     }>(sql`
-      select b.id as booking_id, c.id as charge_id, b.code, s.name as service_name,
+      select b.id as booking_id, c.id as charge_id, b.code, ${localized(locale, 's', 'name')} as service_name,
              w.display_name as worker_name, c.description, c.amount_paise
       from booking_charges c
       join bookings b on b.id = c.booking_id
@@ -259,18 +268,26 @@ export async function getCustomerDashboard(
       where b.customer_id = ${actor.userId} and c.status = 'PROPOSED'
       order by c.created_at asc
       limit 10`),
-    customerRows(actor, {
-      where: sql`b.status in ('CONFIRMED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS')`,
-      orderBy: sql`(b.status <> 'CONFIRMED') desc, lower(b.slot) asc`,
-      limit: 1,
-      sortKey: sql`b.created_at`,
-    }),
-    customerRows(actor, {
-      where: sql`b.status in ('REQUESTED', 'NEGOTIATING')`,
-      orderBy: sql`b.created_at desc`,
-      limit: 3,
-      sortKey: sql`b.created_at`,
-    }),
+    customerRows(
+      actor,
+      {
+        where: sql`b.status in ('CONFIRMED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS')`,
+        orderBy: sql`(b.status <> 'CONFIRMED') desc, lower(b.slot) asc`,
+        limit: 1,
+        sortKey: sql`b.created_at`,
+      },
+      locale,
+    ),
+    customerRows(
+      actor,
+      {
+        where: sql`b.status in ('REQUESTED', 'NEGOTIATING')`,
+        orderBy: sql`b.created_at desc`,
+        limit: 3,
+        sortKey: sql`b.created_at`,
+      },
+      locale,
+    ),
     db.execute<{
       service_id: string
       service_name: string
@@ -279,7 +296,7 @@ export async function getCustomerDashboard(
     }>(sql`
       select service_id, service_name, worker_id, worker_name from (
         select distinct on (b.worker_id, b.service_id)
-               b.service_id, s.name as service_name, b.worker_id, w.display_name as worker_name,
+               b.service_id, ${localized(locale, 's', 'name')} as service_name, b.worker_id, w.display_name as worker_name,
                b.completed_at
         from bookings b
         join services s on s.id = b.service_id and s.is_active
@@ -296,7 +313,7 @@ export async function getCustomerDashboard(
       worker_name: string
       total_paise: number
     }>(sql`
-      select b.id as booking_id, b.code, s.name as service_name, w.display_name as worker_name,
+      select b.id as booking_id, b.code, ${localized(locale, 's', 'name')} as service_name, w.display_name as worker_name,
              b.final_amount_paise as total_paise
       from bookings b
       join services s on s.id = b.service_id
@@ -416,12 +433,13 @@ export async function listWorkerJobs(
   actor: Actor,
   options: { tab?: WorkerTab; cursor?: string | null } = {},
   now: Date = new Date(),
+  locale: Locale = 'en',
 ): Promise<{ jobs: WorkerJobItem[]; nextCursor: string | null }> {
   if (!actor.workerId) return { jobs: [], nextCursor: null }
   const tab = workerTab(options.tab ?? 'today', now)
   const { after, by } = keyset(tab.order, decodeCursor(options.cursor))
   const rows = await getDb().execute<WorkerRow>(sql`
-    select b.id, b.code, b.status, s.name as service_name, cu.name as customer_name,
+    select b.id, b.code, b.status, ${localized(locale, 's', 'name')} as service_name, cu.name as customer_name,
            b.locality_label, b.timing, coalesce(lower(b.slot), b.requested_start) as starts_at,
            coalesce(b.final_amount_paise, b.agreed_price_paise) as price_paise,
            exists (select 1 from booking_charges c where c.booking_id = b.id and c.status = 'PROPOSED') as charge_pending,

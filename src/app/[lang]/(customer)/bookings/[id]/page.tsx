@@ -18,6 +18,8 @@ import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Money } from '@/components/ui/money'
+import { htmlLang, type Locale } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
 import { AppError } from '@/lib/errors'
 import { formatIstDateTime } from '@/lib/time'
 import { requirePageActor } from '@/modules/auth/page-guards'
@@ -30,14 +32,16 @@ import { reviewState } from '@/modules/reviews/reviews'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Your booking' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('bookingPage.metaTitle') }
+}
 
 const POLL_MS = 10_000
 const CANCELLABLE = ['CONFIRMED', 'EN_ROUTE', 'ARRIVED']
 
-async function load(actor: Actor, id: string) {
+async function load(actor: Actor, id: string, locale: Locale) {
   try {
-    return await getCustomerBooking(actor, id)
+    return await getCustomerBooking(actor, id, new Date(), locale)
   } catch (error) {
     if (error instanceof AppError && error.status === 404) notFound()
     throw error
@@ -51,7 +55,8 @@ export default async function BookingPage({
 }: PageProps<'/[lang]/bookings/[id]'>) {
   const actor = await requirePageActor('CUSTOMER')
   const [{ id }, query] = await Promise.all([params, searchParams])
-  const booking = await load(actor, id)
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const booking = await load(actor, id, locale)
   // Still agreeing a price: the thread is the page for that.
   if (OPEN_REQUEST.includes(booking.status)) redirect(`/bookings/${booking.id}/negotiate`)
   const completed = booking.status === 'COMPLETED'
@@ -70,8 +75,8 @@ export default async function BookingPage({
   const firstName = booking.worker.displayName.split(' ')[0]
   const when =
     booking.timing === 'ON_DEMAND' && !booking.slot
-      ? 'As soon as possible'
-      : formatIstDateTime(new Date(booking.slot?.start ?? booking.requestedStart))
+      ? t('book.asap')
+      : formatIstDateTime(new Date(booking.slot?.start ?? booking.requestedStart), htmlLang[locale])
   const proposed = booking.charges.find((c) => c.status === 'PROPOSED')
   // Keep refreshing a completed job (or visit fee) until it is paid: the professional confirms cash.
   const live = !TERMINAL.includes(booking.status) || payment?.state === 'AWAITING_CASH'
@@ -82,7 +87,7 @@ export default async function BookingPage({
       <AutoRefresh intervalMs={POLL_MS} enabled={live} />
       <PageHeader
         title={booking.service.name}
-        description={`${statusLabel(booking.status, 'customer', firstName)} · ${booking.code}`}
+        description={`${statusLabel(booking.status, 'customer', firstName, t)} · ${booking.code}`}
       />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
@@ -101,7 +106,7 @@ export default async function BookingPage({
           {review?.review && (
             <Card>
               <CardContent className="flex flex-col gap-1">
-                <h2 className="font-semibold">Your review</h2>
+                <h2 className="font-semibold">{t('bookingPage.yourReview')}</h2>
                 <RatingStars rating={review.review.rating} />
                 {review.review.comment && <p className="text-ink-600">“{review.review.comment}”</p>}
               </CardContent>
@@ -110,9 +115,11 @@ export default async function BookingPage({
           {review?.canReview && (
             <Card>
               <CardContent className="flex flex-col items-start gap-3">
-                <p>How did {firstName} do? Your rating helps neighbours choose.</p>
+                <p>{t('bookingPage.howDid', { name: firstName })}</p>
                 <Button asChild>
-                  <Link href={`/bookings/${booking.id}/review`}>Rate {firstName}</Link>
+                  <Link href={`/bookings/${booking.id}/review`}>
+                    {t('bookingPage.rate', { name: firstName })}
+                  </Link>
                 </Button>
               </CardContent>
             </Card>
@@ -125,7 +132,7 @@ export default async function BookingPage({
             >
               <Lock aria-hidden="true" className="size-5 shrink-0 text-success-800" />
               <span>
-                Confirmed · Price locked at <Money paise={booking.price.agreedPaise} />
+                {t('thread.priceLocked')} <Money paise={booking.price.agreedPaise} />
               </span>
             </div>
           )}
@@ -135,17 +142,18 @@ export default async function BookingPage({
               <CardContent className="flex flex-col gap-2">
                 <h2 className="flex items-center gap-2 font-semibold">
                   <KeyRound aria-hidden="true" className="size-5 text-brand-700" />
-                  Your start code
+                  {t('bookingPage.startCode')}
                 </h2>
                 <span
                   className="font-mono text-4xl font-bold tracking-[0.4em]"
-                  aria-label={`Start code ${booking.startCode.split('').join(' ')}`}
+                  aria-label={t('thread.startCodeLabel', {
+                    digits: booking.startCode.split('').join(' '),
+                  })}
                 >
                   {booking.startCode}
                 </span>
                 <p className="text-sm text-ink-600">
-                  Tell {firstName} this code when they arrive. The job only starts with it, so
-                  don&apos;t share it before then.
+                  {t('bookingPage.startCodeHelp', { name: firstName })}
                 </p>
               </CardContent>
             </Card>
@@ -175,12 +183,12 @@ export default async function BookingPage({
             <Card>
               <CardContent className="flex flex-col items-start gap-3">
                 <p>
-                  {booking.cancellationReason ? `${booking.cancellationReason}. ` : ''}You can book
-                  another professional nearby.
+                  {booking.cancellationReason ? `${booking.cancellationReason}. ` : ''}
+                  {t('bookingPage.bookAnother')}
                 </p>
                 <Button asChild>
                   <Link href={`/search?service=${booking.service.id}`}>
-                    Find another professional
+                    {t('negotiate.findAnother')}
                   </Link>
                 </Button>
               </CardContent>
@@ -189,10 +197,10 @@ export default async function BookingPage({
           {booking.status === 'COMPLETED' && (
             <Card>
               <CardContent className="flex flex-col items-start gap-3">
-                <p>Need {booking.service.name.toLowerCase()} again?</p>
+                <p>{t('bookingPage.needAgain', { service: booking.service.name.toLowerCase() })}</p>
                 <Button asChild variant="secondary">
                   <Link href={`/book/${booking.service.id}?worker=${booking.worker.id}`}>
-                    Book {firstName} again
+                    {t('bookingPage.bookAgain', { name: firstName })}
                   </Link>
                 </Button>
               </CardContent>
@@ -200,7 +208,7 @@ export default async function BookingPage({
           )}
         </div>
 
-        <aside className="flex flex-col gap-4" aria-label="Booking summary">
+        <aside className="flex flex-col gap-4" aria-label={t('negotiate.summary')}>
           <Card>
             <CardContent className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
@@ -217,7 +225,7 @@ export default async function BookingPage({
               </div>
               <dl className="flex flex-col gap-2 text-sm">
                 <div className="flex items-start gap-2">
-                  <dt className="sr-only">When</dt>
+                  <dt className="sr-only">{t('negotiate.when')}</dt>
                   <CalendarClock
                     aria-hidden="true"
                     className="mt-0.5 size-4 shrink-0 text-ink-600"
@@ -225,7 +233,7 @@ export default async function BookingPage({
                   <dd>{when}</dd>
                 </div>
                 <div className="flex items-start gap-2">
-                  <dt className="sr-only">Where</dt>
+                  <dt className="sr-only">{t('negotiate.where')}</dt>
                   <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-ink-600" />
                   <dd>
                     {booking.address.line1}, {booking.localityLabel}
@@ -240,7 +248,7 @@ export default async function BookingPage({
                 className="inline-flex h-11 items-center gap-2 text-sm font-medium text-brand-700 hover:underline"
               >
                 <MessagesSquare aria-hidden="true" className="size-4" />
-                Offers and messages
+                {t('bookingPage.offersAndMessages')}
               </Link>
             </CardContent>
           </Card>
@@ -252,17 +260,17 @@ export default async function BookingPage({
             className="inline-flex h-11 items-center gap-2 text-sm font-medium text-brand-700 hover:underline"
           >
             <LifeBuoy aria-hidden="true" className="size-4" />
-            Get help with this booking
+            {t('bookingPage.help')}
           </Link>
           {CANCELLABLE.includes(booking.status) && (
             <CancelBookingButton
               bookingId={booking.id}
               version={booking.version}
-              label="Cancel booking"
+              label={t('cancel.cancelBooking')}
               description={
                 booking.status === 'CONFIRMED'
-                  ? 'Cancelling now is free.'
-                  : `${firstName} has already set off, so a visit fee of up to ₹99 applies.`
+                  ? t('cancel.free')
+                  : t('cancel.visitFee', { name: firstName })
               }
             />
           )}

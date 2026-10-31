@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Money } from '@/components/ui/money'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 import type { ChargeView } from '@/modules/bookings/views'
 
@@ -29,6 +30,7 @@ export function ChargeApprovalDialog({
   currentTotalPaise: number
   workerName: string
 }) {
+  const t = useT()
   const [open, setOpen] = useState(true)
   const { pending, error, run } = useApiAction()
   const decide = (decision: 'approve' | 'reject') =>
@@ -37,7 +39,7 @@ export function ChargeApprovalDialog({
         await apiFetch(`/api/v1/charges/${charge.id}/${decision}`, { body: {} })
         setOpen(false)
       },
-      { success: decision === 'approve' ? 'Extra charge approved' : 'Extra charge declined' },
+      { success: decision === 'approve' ? t('charge.approved') : t('charge.declined') },
     )
 
   return (
@@ -45,8 +47,8 @@ export function ChargeApprovalDialog({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{workerName} added an extra charge</DialogTitle>
-            <DialogDescription>It is added to your bill only if you approve it.</DialogDescription>
+            <DialogTitle>{t('charge.added', { name: workerName })}</DialogTitle>
+            <DialogDescription>{t('charge.onlyIfApproved')}</DialogDescription>
           </DialogHeader>
           <dl className="flex flex-col gap-2 rounded-md bg-surface-muted p-3">
             <div className="flex justify-between gap-3">
@@ -56,7 +58,7 @@ export function ChargeApprovalDialog({
               </dd>
             </div>
             <div className="flex justify-between gap-3 border-t border-border pt-2">
-              <dt>New total if approved</dt>
+              <dt>{t('charge.newTotal')}</dt>
               <dd className="font-semibold">
                 <Money paise={currentTotalPaise + charge.amountPaise} />
               </dd>
@@ -70,11 +72,15 @@ export function ChargeApprovalDialog({
           <DialogFooter>
             <Button variant="destructive" onClick={() => decide('reject')} disabled={pending}>
               <X aria-hidden="true" />
-              Decline
+              {t('charge.decline')}
             </Button>
-            <Button onClick={() => decide('approve')} loading={pending} loadingText="Approving…">
+            <Button
+              onClick={() => decide('approve')}
+              loading={pending}
+              loadingText={t('charge.approving')}
+            >
               <Check aria-hidden="true" />
-              Approve <Money paise={charge.amountPaise} />
+              {t('charge.approve')} <Money paise={charge.amountPaise} />
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -85,10 +91,10 @@ export function ChargeApprovalDialog({
           className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning-700/30 bg-warning-700/10 p-3"
         >
           <span>
-            Extra charge waiting: {charge.description}, <Money paise={charge.amountPaise} />
+            {t('charge.waiting')} {charge.description}, <Money paise={charge.amountPaise} />
           </span>
           <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-            Review charge
+            {t('charge.review')}
           </Button>
         </div>
       )}

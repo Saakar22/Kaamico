@@ -9,32 +9,32 @@ import { EmptyState } from '@/components/patterns/states'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { getT } from '@/i18n/server'
 import { requirePageActor } from '@/modules/auth/page-guards'
 import { listFavorites } from '@/modules/favorites/favorites'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Saved professionals' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('saved.metaTitle') }
+}
 
 export default async function FavoritesPage() {
   const actor = await requirePageActor('CUSTOMER')
-  const favorites = await listFavorites(actor)
+  const [favorites, t] = await Promise.all([listFavorites(actor), getT()])
 
   return (
     <div className="flex max-w-3xl flex-col gap-5">
-      <PageHeader
-        title="Saved professionals"
-        description="People you liked working with, ready to book again."
-      />
+      <PageHeader title={t('saved.title')} description={t('saved.description')} />
       {favorites.length === 0 ? (
         <Card>
           <EmptyState
             icon={Heart}
-            title="No saved professionals yet"
-            description="Tap Save on a professional's profile to keep them here."
+            title={t('saved.emptyTitle')}
+            description={t('saved.emptyBody')}
             action={
               <Button asChild>
-                <Link href="/search">Find a professional</Link>
+                <Link href="/search">{t('saved.find')}</Link>
               </Button>
             }
           />
@@ -59,14 +59,16 @@ export default async function FavoritesPage() {
                     </div>
                     <p className="text-sm text-ink-600">
                       {[f.categories.join(', '), f.city].filter(Boolean).join(' · ')}
-                      {f.lastJob && <> · Last job: {f.lastJob.serviceName}</>}
+                      {f.lastJob && (
+                        <> · {t('saved.lastJob', { service: f.lastJob.serviceName })}</>
+                      )}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {f.lastJob && (
                       <Button asChild size="sm">
                         <Link href={`/book/${f.lastJob.serviceId}?worker=${f.workerId}`}>
-                          Book again
+                          {t('saved.bookAgain')}
                         </Link>
                       </Button>
                     )}

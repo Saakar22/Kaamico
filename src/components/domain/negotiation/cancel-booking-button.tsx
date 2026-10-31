@@ -15,13 +15,14 @@ import {
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { Textarea } from '@/components/ui/input'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 
 /** Cancel with a confirmation step; the server applies the policy (§11.3). */
 export function CancelBookingButton({
   bookingId,
   version,
-  label = 'Cancel request',
+  label,
   description,
   reasonRequired = false,
 }: {
@@ -31,8 +32,10 @@ export function CancelBookingButton({
   description: string
   reasonRequired?: boolean
 }) {
+  const t = useT()
   const { pending, error, run } = useApiAction()
   const [open, setOpen] = useState(false)
+  const title = label ?? t('cancel.cancelRequest')
   const [reason, setReason] = useState('')
 
   const confirm = () =>
@@ -43,21 +46,21 @@ export function CancelBookingButton({
         })
         setOpen(false)
       },
-      { success: 'Cancelled' },
+      { success: t('cancel.done') },
     )
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive">{label}</Button>
+        <Button variant="destructive">{title}</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{label}?</DialogTitle>
+          <DialogTitle>{title}?</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <FormField
-          label={reasonRequired ? 'Reason' : 'Reason (optional)'}
+          label={reasonRequired ? t('cancel.reason') : t('cancel.reasonOptional')}
           required={reasonRequired}
         >
           {(field) => (
@@ -77,16 +80,16 @@ export function CancelBookingButton({
         )}
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="secondary">Keep it</Button>
+            <Button variant="secondary">{t('cancel.keep')}</Button>
           </DialogClose>
           <Button
             variant="destructive-solid"
             onClick={confirm}
             loading={pending}
-            loadingText="Cancelling…"
+            loadingText={t('cancel.cancelling')}
             disabled={reasonRequired && !reason.trim()}
           >
-            {label}
+            {title}
           </Button>
         </DialogFooter>
       </DialogContent>

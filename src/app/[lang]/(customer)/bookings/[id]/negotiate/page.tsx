@@ -13,6 +13,8 @@ import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Money } from '@/components/ui/money'
+import { htmlLang, type Locale } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
 import { AppError } from '@/lib/errors'
 import { formatIstDateTime } from '@/lib/time'
 import { requirePageActor } from '@/modules/auth/page-guards'
@@ -21,13 +23,19 @@ import { unitSuffix } from '@/modules/catalog/units'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Your request' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('negotiate.metaTitle') }
+}
 
 const CANCELLABLE = ['REQUESTED', 'NEGOTIATING', 'CONFIRMED', 'EN_ROUTE', 'ARRIVED']
 
-async function load(actorId: Parameters<typeof getCustomerBooking>[0], id: string) {
+async function load(
+  actorId: Parameters<typeof getCustomerBooking>[0],
+  id: string,
+  locale: Locale,
+) {
   try {
-    return await getCustomerBooking(actorId, id)
+    return await getCustomerBooking(actorId, id, new Date(), locale)
   } catch (error) {
     if (error instanceof AppError && error.status === 404) notFound()
     throw error
@@ -38,12 +46,13 @@ export default async function NegotiatePage({
   params,
 }: PageProps<'/[lang]/bookings/[id]/negotiate'>) {
   const actor = await requirePageActor('CUSTOMER')
-  const booking = await load(actor, (await params).id)
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const booking = await load(actor, (await params).id, locale)
   const firstName = booking.worker.displayName.split(' ')[0]
   const when =
     booking.timing === 'ON_DEMAND'
-      ? 'As soon as possible'
-      : formatIstDateTime(new Date(booking.slot?.start ?? booking.requestedStart))
+      ? t('book.asap')
+      : formatIstDateTime(new Date(booking.slot?.start ?? booking.requestedStart), htmlLang[locale])
   const afterSetOff = booking.status === 'EN_ROUTE' || booking.status === 'ARRIVED'
   // Confirmed or later: the booking page tracks it; the thread stays for messages.
   const booked = !['REQUESTED', 'NEGOTIATING', 'CANCELLED', 'EXPIRED'].includes(booking.status)
@@ -58,8 +67,8 @@ export default async function NegotiatePage({
         title={booking.service.name}
         description={
           matching
-            ? `Quick match · ${booking.code}`
-            : `${statusLabel(booking.status, 'customer', firstName)} · ${booking.code}`
+            ? t('negotiate.quickMatch', { code: booking.code })
+            : `${statusLabel(booking.status, 'customer', firstName, t)} · ${booking.code}`
         }
       />
       <AutoRefresh intervalMs={5_000} enabled={matching} />
@@ -91,7 +100,7 @@ export default async function NegotiatePage({
           )}
           {booked && (
             <Button asChild size="lg" className="self-start">
-              <Link href={`/bookings/${booking.id}`}>Track your booking</Link>
+              <Link href={`/bookings/${booking.id}`}>{t('negotiate.track')}</Link>
             </Button>
           )}
           {['CANCELLED', 'EXPIRED'].includes(booking.status) && (
@@ -101,11 +110,11 @@ export default async function NegotiatePage({
                   {booking.status === 'CANCELLED' && booking.cancellationReason
                     ? `${booking.cancellationReason}. `
                     : ''}
-                  You can ask another professional nearby.
+                  {t('negotiate.askAnother')}
                 </p>
                 <Button asChild>
                   <Link href={`/search?service=${booking.service.id}`}>
-                    Find another professional
+                    {t('negotiate.findAnother')}
                   </Link>
                 </Button>
               </CardContent>
@@ -113,7 +122,7 @@ export default async function NegotiatePage({
           )}
         </div>
 
-        <aside className="flex flex-col gap-4" aria-label="Booking summary">
+        <aside className="flex flex-col gap-4" aria-label={t('negotiate.summary')}>
           <Card>
             <CardContent className="flex flex-col gap-4">
               {!matching && (
@@ -132,7 +141,7 @@ export default async function NegotiatePage({
               )}
               <dl className="flex flex-col gap-2 text-sm">
                 <div className="flex items-start gap-2">
-                  <dt className="sr-only">When</dt>
+                  <dt className="sr-only">{t('negotiate.when')}</dt>
                   <CalendarClock
                     aria-hidden="true"
                     className="mt-0.5 size-4 shrink-0 text-ink-600"
@@ -140,7 +149,7 @@ export default async function NegotiatePage({
                   <dd>{when}</dd>
                 </div>
                 <div className="flex items-start gap-2">
-                  <dt className="sr-only">Where</dt>
+                  <dt className="sr-only">{t('negotiate.where')}</dt>
                   <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-ink-600" />
                   <dd>
                     {booking.address.line1}, {booking.localityLabel}
@@ -148,16 +157,18 @@ export default async function NegotiatePage({
                 </div>
                 {booking.price.listedPaise !== null && (
                   <div className="flex justify-between gap-2 border-t border-border pt-2">
-                    <dt>Listed price</dt>
+                    <dt>{t('negotiate.listedPrice')}</dt>
                     <dd>
                       <Money paise={booking.price.listedPaise} />{' '}
-                      <span className="text-ink-600">{unitSuffix(booking.service.unit)}</span>
+                      <span className="text-ink-600">
+                        {unitSuffix(booking.service.unit, locale)}
+                      </span>
                     </dd>
                   </div>
                 )}
                 {booking.price.agreedPaise !== null && (
                   <div className="flex justify-between gap-2 font-semibold">
-                    <dt>Agreed price</dt>
+                    <dt>{t('negotiate.agreedPrice')}</dt>
                     <dd>
                       <Money paise={booking.price.agreedPaise} />
                     </dd>
@@ -175,13 +186,11 @@ export default async function NegotiatePage({
               version={booking.version}
               label={
                 ['REQUESTED', 'NEGOTIATING'].includes(booking.status)
-                  ? 'Cancel request'
-                  : 'Cancel booking'
+                  ? t('cancel.cancelRequest')
+                  : t('cancel.cancelBooking')
               }
               description={
-                afterSetOff
-                  ? `${firstName} has already set off, so a visit fee of up to ₹99 applies.`
-                  : 'Cancelling now is free.'
+                afterSetOff ? t('cancel.visitFee', { name: firstName }) : t('cancel.free')
               }
             />
           )}

@@ -1,30 +1,40 @@
-/** Plain-language status labels (one persisted state can read differently per viewer). */
+import { en } from '@/i18n/messages/en'
+import { createTranslator, type Translate } from '@/i18n/translate'
+
+const english = createTranslator(en)
+
+/**
+ * Plain-language status labels (one persisted state can read differently per viewer).
+ * Pass the page's `t` for the visitor's language; English otherwise (admin console).
+ */
 export function statusLabel(
   status: string,
   viewer: 'customer' | 'worker',
   counterpart: string,
+  t: Translate = english,
 ): string {
+  const name = { name: counterpart }
   switch (status) {
     case 'REQUESTED':
-      return viewer === 'customer' ? `Waiting for ${counterpart} to respond` : 'New request'
+      return viewer === 'customer' ? t('status.waitingFor', name) : t('status.newRequest')
     case 'NEGOTIATING':
-      return 'Agreeing a price'
+      return t('status.agreeing')
     case 'CONFIRMED':
-      return 'Confirmed'
+      return t('status.confirmed')
     case 'EN_ROUTE':
-      return viewer === 'customer' ? `${counterpart} is on the way` : 'On the way'
+      return viewer === 'customer' ? t('status.onTheWayName', name) : t('status.onTheWay')
     case 'ARRIVED':
-      return viewer === 'customer' ? `${counterpart} has arrived` : 'Arrived'
+      return viewer === 'customer' ? t('status.arrivedName', name) : t('status.arrived')
     case 'IN_PROGRESS':
-      return 'Work in progress'
+      return t('status.inProgress')
     case 'COMPLETED':
-      return 'Completed'
+      return t('status.completed')
     case 'CANCELLED':
-      return 'Cancelled'
+      return t('status.cancelled')
     case 'EXPIRED':
-      return 'Expired: no price was agreed in time'
+      return t('status.expiredLong')
     case 'DISPUTED':
-      return 'Under review by Kaamico'
+      return t('status.underReviewLong')
     default:
       return status
   }
@@ -54,18 +64,28 @@ export function statusTone(status: string): StatusTone {
 }
 
 /** Short badge text (the long `statusLabel` reads as a sentence). */
-export function statusBadgeLabel(status: string): string {
+export function statusBadgeLabel(status: string, t: Translate = english): string {
   switch (status) {
     case 'REQUESTED':
-      return 'Requested'
+      return t('status.requested')
     case 'NEGOTIATING':
-      return 'Agreeing price'
+      return t('status.agreeingShort')
+    case 'CONFIRMED':
+      return t('status.confirmed')
     case 'EN_ROUTE':
-      return 'On the way'
+      return t('status.onTheWay')
+    case 'ARRIVED':
+      return t('status.arrived')
     case 'IN_PROGRESS':
-      return 'In progress'
+      return t('status.inProgressShort')
+    case 'COMPLETED':
+      return t('status.completed')
+    case 'CANCELLED':
+      return t('status.cancelled')
+    case 'EXPIRED':
+      return t('status.expired')
     case 'DISPUTED':
-      return 'Under review'
+      return t('status.underReview')
     default:
       return status.charAt(0) + status.slice(1).toLowerCase()
   }

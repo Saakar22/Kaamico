@@ -1,29 +1,37 @@
 import { Check, CircleDot, X } from 'lucide-react'
+import { htmlLang } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
+import type { MessageKey, Translate } from '@/i18n/translate'
 import { cn } from '@/lib/cn'
 import { formatIstDateTime } from '@/lib/time'
 import type { HistoryView } from '@/modules/bookings/views'
 
 const STEPS = ['REQUESTED', 'CONFIRMED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'] as const
-const ENDINGS: Record<string, string> = {
-  CANCELLED: 'Cancelled',
-  EXPIRED: 'Expired',
-  DISPUTED: 'Under review by Kaamico',
+const ENDINGS: Record<string, MessageKey> = {
+  CANCELLED: 'timeline.cancelled',
+  EXPIRED: 'timeline.expired',
+  DISPUTED: 'timeline.underReview',
 }
 
-function stepLabel(step: (typeof STEPS)[number], viewer: 'customer' | 'worker', name: string) {
+function stepLabel(
+  step: (typeof STEPS)[number],
+  viewer: 'customer' | 'worker',
+  name: string,
+  t: Translate,
+) {
   switch (step) {
     case 'REQUESTED':
-      return 'Requested'
+      return t('timeline.requested')
     case 'CONFIRMED':
-      return 'Confirmed · price locked'
+      return t('timeline.confirmed')
     case 'EN_ROUTE':
-      return viewer === 'customer' ? `${name} is on the way` : 'You set off'
+      return viewer === 'customer' ? t('timeline.onTheWay', { name }) : t('timeline.youSetOff')
     case 'ARRIVED':
-      return viewer === 'customer' ? `${name} arrived` : 'You arrived'
+      return viewer === 'customer' ? t('timeline.arrivedName', { name }) : t('timeline.youArrived')
     case 'IN_PROGRESS':
-      return 'Work started'
+      return t('timeline.started')
     case 'COMPLETED':
-      return 'Completed'
+      return t('timeline.completed')
   }
 }
 
@@ -39,7 +47,7 @@ type Entry = {
  * Status-based tracking (no live GPS in P0): each step the professional taps, with its
  * time, plus extra-charge decisions. Shared by the customer and worker booking pages.
  */
-export function BookingTimeline({
+export async function BookingTimeline({
   history,
   status,
   viewer,
@@ -50,6 +58,7 @@ export function BookingTimeline({
   viewer: 'customer' | 'worker'
   counterpartName: string
 }) {
+  const [t, locale] = await Promise.all([getT(), getLocale()])
   const reached = new Map<string, HistoryView>()
   for (const h of history) if (h.from !== h.to && !reached.has(h.to)) reached.set(h.to, h)
   const ending = ENDINGS[status] ? history.findLast((h) => h.to === status) : undefined
@@ -63,14 +72,14 @@ export function BookingTimeline({
     if (h) {
       entries.push({
         key: step,
-        label: stepLabel(step, viewer, counterpartName),
+        label: stepLabel(step, viewer, counterpartName, t),
         at: h.at,
         state: i === currentIndex && step !== 'COMPLETED' ? 'current' : 'done',
       })
     } else if (!ending) {
       entries.push({
         key: step,
-        label: stepLabel(step, viewer, counterpartName),
+        label: stepLabel(step, viewer, counterpartName, t),
         at: null,
         state: 'todo',
       })
@@ -85,7 +94,7 @@ export function BookingTimeline({
   if (ending) {
     entries.push({
       key: status,
-      label: ENDINGS[status],
+      label: t(ENDINGS[status]),
       at: ending.at,
       note: ending.reason,
       state: 'ended',
@@ -98,7 +107,7 @@ export function BookingTimeline({
   return (
     <section aria-labelledby="timeline-title" className="flex flex-col gap-3">
       <h2 id="timeline-title" className="font-semibold">
-        Progress
+        {t('timeline.title')}
       </h2>
       <ol className="flex flex-col">
         {ordered.map((e, i) => (
@@ -140,7 +149,7 @@ export function BookingTimeline({
               {e.note && <span className="text-sm text-ink-600">{e.note}</span>}
               {e.at && (
                 <time dateTime={e.at} className="text-xs text-ink-600">
-                  {formatIstDateTime(new Date(e.at))}
+                  {formatIstDateTime(new Date(e.at), htmlLang[locale])}
                 </time>
               )}
             </div>
@@ -149,7 +158,7 @@ export function BookingTimeline({
       </ol>
       {viewer === 'customer' && !ending && status !== 'COMPLETED' && (
         <p className="text-xs text-ink-600">
-          Updates when {counterpartName} taps each step. Live location is not shared.
+          {t('timeline.updatesNote', { name: counterpartName })}
         </p>
       )}
     </section>

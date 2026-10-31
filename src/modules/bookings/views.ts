@@ -20,6 +20,8 @@ import { photoUrl } from '@/modules/uploads/serve'
 import { expireDue } from './repo'
 import { deriveStartCode } from './start-code'
 import { ACTIVE_JOB, OPEN_REQUEST, type BookingStatus } from './state-machine'
+import type { Locale } from '@/i18n/config'
+import { localized } from '@/modules/catalog/catalog'
 
 export type OfferView = {
   id: string
@@ -114,7 +116,10 @@ type BaseRow = {
 
 const iso = (v: Date | string | null) => (v ? new Date(v).toISOString() : null)
 
-async function loadBase(where: ReturnType<typeof sql>): Promise<BaseRow | undefined> {
+async function loadBase(
+  where: ReturnType<typeof sql>,
+  locale: Locale = 'en',
+): Promise<BaseRow | undefined> {
   const [row] = await getDb().execute<BaseRow>(sql`
     select b.id, b.code, b.status, b.version, b.timing, b.requested_start,
            lower(b.slot) as slot_start, upper(b.slot) as slot_end, b.expires_at,
@@ -122,7 +127,7 @@ async function loadBase(where: ReturnType<typeof sql>): Promise<BaseRow | undefi
            i.worker_id as invited_worker_id, i.id as invitation_id, i.status as invitation_status, i.distance_km,
            w.display_name as worker_name, w.photo_key as worker_photo,
            w.rating_sum as worker_rating_sum, w.rating_count as worker_rating_count,
-           b.service_id, s.name as service_name, s.pricing_unit, b.description, b.locality_label,
+           b.service_id, ${localized(locale, 's', 'name')} as service_name, s.pricing_unit, b.description, b.locality_label,
            b.address_snapshot, b.listed_price_paise, b.agreed_price_paise, b.approved_charges_paise,
            b.final_amount_paise, p.min_charge_paise, p.is_negotiable, b.start_code_attempts,
            b.cancellation_reason, b.visit_fee_paise, b.completed_at, b.job_lat, b.job_lng, b.commission_bps,
@@ -282,10 +287,15 @@ function commonFields(row: BaseRow) {
 }
 
 /** The customer's view of their own booking (others get 404). The start code is shown only to them. */
-export async function getCustomerBooking(actor: Actor, bookingId: string, now: Date = new Date()) {
+export async function getCustomerBooking(
+  actor: Actor,
+  bookingId: string,
+  now: Date = new Date(),
+  locale: Locale = 'en',
+) {
   if (!z.uuid().safeParse(bookingId).success) throw notFound('Booking not found')
   await expireDue(now, bookingId)
-  const row = await loadBase(sql`b.id = ${bookingId} and b.customer_id = ${actor.userId}`)
+  const row = await loadBase(sql`b.id = ${bookingId} and b.customer_id = ${actor.userId}`, locale)
   if (!row) throw notFound('Booking not found')
   const parts = await threadParts(row, { userId: actor.userId, party: 'CUSTOMER' })
   return {
@@ -348,7 +358,12 @@ async function workerProjection(row: BaseRow, actor: Actor, now: Date) {
  * customer's first name only. The full address appears once confirmed and disappears
  * 24 hours after completion.
  */
-export async function getWorkerRequest(actor: Actor, invitationId: string, now: Date = new Date()) {
+export async function getWorkerRequest(
+  actor: Actor,
+  invitationId: string,
+  now: Date = new Date(),
+  locale: Locale = 'en',
+) {
   if (!actor.workerId || !z.uuid().safeParse(invitationId).success)
     throw notFound('Request not found')
   const [inv] = await getDb()
@@ -368,17 +383,26 @@ export async function getWorkerRequest(actor: Actor, invitationId: string, now: 
       })
       .where(eq(bookingInvitations.id, invitationId))
   }
-  const row = await loadBase(sql`i.id = ${invitationId} and i.worker_id = ${actor.workerId}`)
+  const row = await loadBase(
+    sql`i.id = ${invitationId} and i.worker_id = ${actor.workerId}`,
+    locale,
+  )
   if (!row) throw notFound('Request not found')
   return workerProjection(row, actor, now)
 }
 
 /** A job assigned to the professional, by booking id (`/worker/bookings/[id]`). Others get 404. */
-export async function getWorkerBooking(actor: Actor, bookingId: string, now: Date = new Date()) {
+export async function getWorkerBooking(
+  actor: Actor,
+  bookingId: string,
+  now: Date = new Date(),
+  locale: Locale = 'en',
+) {
   if (!actor.workerId || !z.uuid().safeParse(bookingId).success) throw notFound('Job not found')
   await expireDue(now, bookingId)
   const row = await loadBase(
     sql`b.id = ${bookingId} and b.worker_id = ${actor.workerId} and i.worker_id = b.worker_id`,
+    locale,
   )
   if (!row) throw notFound('Job not found')
   return workerProjection(row, actor, now)
@@ -417,6 +441,7 @@ export async function listWorkerRequests(
   actor: Actor,
   state: RequestState,
   now: Date = new Date(),
+  locale: Locale = 'en',
 ): Promise<RequestListItem[]> {
   if (!actor.workerId) return []
   await expireDue(now, { workerId: actor.workerId })
@@ -439,7 +464,7 @@ export async function listWorkerRequests(
     offer_expires: Date | string | null
   }>(sql`
     select i.id as invitation_id, b.id as booking_id, b.code, b.status, i.status as invitation_status,
-           s.name as service_name, cu.name as customer_name, b.locality_label, i.distance_km,
+           ${localized(locale, 's', 'name')} as service_name, cu.name as customer_name, b.locality_label, i.distance_km,
            b.timing, b.requested_start, b.expires_at,
            o.offered_by as offer_by, o.amount_paise as offer_amount, o.status as offer_status, o.expires_at as offer_expires
     from booking_invitations i

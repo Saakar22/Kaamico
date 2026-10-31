@@ -6,6 +6,7 @@ import { useState, type ReactNode } from 'react'
 import { useApiAction } from '@/components/domain/worker/use-api-action'
 import { Button, type ButtonProps } from '@/components/ui/button'
 import { toast } from '@/components/ui/toaster'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 import type { PaymentView, RazorpayCheckout } from '@/modules/payments/payments'
 
@@ -50,6 +51,7 @@ export function RazorpayButton({
   ...props
 }: { bookingId: string; children: ReactNode } & Omit<ButtonProps, 'onClick' | 'loading'>) {
   const router = useRouter()
+  const t = useT()
   const { pending, error, run } = useApiAction()
   const [key, setKey] = useState(() => crypto.randomUUID())
 
@@ -79,9 +81,9 @@ export function RazorpayButton({
           handler: async (response: RazorpayResponse) => {
             try {
               await apiFetch(`/api/v1/payments/${payment.id}/razorpay`, { body: response })
-              toast.success('Payment successful')
+              toast.success(t('pay.success'))
             } catch {
-              toast.error('We could not confirm the payment yet. It will update shortly.')
+              toast.error(t('pay.confirmLater'))
             }
             router.refresh()
           },
@@ -95,7 +97,7 @@ export function RazorpayButton({
 
   return (
     <div className="flex flex-col gap-1">
-      <Button onClick={pay} loading={pending} loadingText="Opening…" {...props}>
+      <Button onClick={pay} loading={pending} loadingText={t('pay.opening')} {...props}>
         <CreditCard aria-hidden="true" />
         {children}
       </Button>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Textarea } from '@/components/ui/input'
 import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 import type { SavedAddress } from '@/modules/addresses/addresses'
 
@@ -19,6 +20,7 @@ export function QuickMatchForm({
   addresses: SavedAddress[]
 }) {
   const router = useRouter()
+  const t = useT()
   const { pending, error, fieldErrors, run } = useApiAction()
   const [addressId, setAddressId] = useState(
     () => (addresses.find((a) => a.isDefault) ?? addresses[0])?.id ?? '',
@@ -42,7 +44,7 @@ export function QuickMatchForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-5">
-      <RadioGroup value={addressId} onValueChange={setAddressId} aria-label="Where is the job?">
+      <RadioGroup value={addressId} onValueChange={setAddressId} aria-label={t('quick.where')}>
         {addresses.map((a) => (
           <RadioOption
             key={a.id}
@@ -53,8 +55,8 @@ export function QuickMatchForm({
         ))}
       </RadioGroup>
       <FormField
-        label="What needs doing? (optional)"
-        hint="Helps professionals decide quickly."
+        label={t('quick.whatNeedsDoing')}
+        hint={t('quick.hint')}
         error={fieldErrors.description}
       >
         {(field) => (
@@ -78,9 +80,9 @@ export function QuickMatchForm({
         className="self-start"
         disabled={!addressId}
         loading={pending}
-        loadingText="Sending…"
+        loadingText={t('quick.sending')}
       >
-        Send to nearby professionals
+        {t('quick.send')}
       </Button>
     </form>
   )

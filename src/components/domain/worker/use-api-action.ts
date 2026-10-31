@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from '@/components/ui/toaster'
+import { useErrorMessage, useT } from '@/i18n/client'
 import { ApiError } from '@/lib/api-client'
 
 type Issue = { path: string; message: string }
@@ -16,6 +17,8 @@ export function useApiAction() {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string>()
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const t = useT()
+  const errorMessage = useErrorMessage()
 
   async function run<T>(
     action: () => Promise<T>,
@@ -33,9 +36,9 @@ export function useApiAction() {
       if (e instanceof ApiError) {
         const issues = (e.details?.issues as Issue[] | undefined) ?? []
         setFieldErrors(Object.fromEntries(issues.map((i) => [i.path, i.message])))
-        setError(issues.length > 0 ? 'Please fix the highlighted fields.' : e.message)
+        setError(issues.length > 0 ? t('errors.fixFields') : errorMessage(e))
       } else {
-        setError('Something went wrong. Please try again.')
+        setError(errorMessage(e))
       }
       return undefined
     } finally {

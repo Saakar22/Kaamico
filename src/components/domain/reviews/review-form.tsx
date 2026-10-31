@@ -7,15 +7,26 @@ import { useApiAction } from '@/components/domain/worker/use-api-action'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Textarea } from '@/components/ui/input'
+import { useLocale, useT } from '@/i18n/client'
+import type { MessageKey } from '@/i18n/translate'
 import { apiFetch } from '@/lib/api-client'
 import { cn } from '@/lib/cn'
-import { REVIEW_TAG_LABELS, REVIEW_TAGS, type ReviewTag } from '@/modules/reviews/tags'
+import { reviewTagLabel, REVIEW_TAGS, type ReviewTag } from '@/modules/reviews/tags'
 
-const MEANING = ['', 'Poor', 'Below expectations', 'Okay', 'Good', 'Excellent']
+const MEANING: MessageKey[] = [
+  'review.poor',
+  'review.poor',
+  'review.below',
+  'review.okay',
+  'review.good',
+  'review.excellent',
+]
 
 /** Stars with large tap targets, optional compliments and a comment (§4 step 12). */
 export function ReviewForm({ bookingId, workerName }: { bookingId: string; workerName: string }) {
   const router = useRouter()
+  const t = useT()
+  const locale = useLocale()
   const { pending, error, run } = useApiAction()
   const [rating, setRating] = useState(0)
   const [tags, setTags] = useState<ReviewTag[]>([])
@@ -36,22 +47,25 @@ export function ReviewForm({ bookingId, workerName }: { bookingId: string; worke
         })
         router.push(`/bookings/${bookingId}`)
       },
-      { success: 'Thanks for your review', refresh: false },
+      { success: t('review.thanks'), refresh: false },
     )
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-5">
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 font-semibold">How was {workerName}&apos;s work?</legend>
-        <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+        <legend className="mb-2 font-semibold">{t('review.how', { name: workerName })}</legend>
+        <div className="flex gap-1" role="radiogroup" aria-label={t('review.rating')}>
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
               role="radio"
               aria-checked={rating === n}
-              aria-label={`${n} ${n === 1 ? 'star' : 'stars'}: ${MEANING[n]}`}
+              aria-label={t(n === 1 ? 'review.starOne' : 'review.starOther', {
+                count: n,
+                meaning: t(MEANING[n]),
+              })}
               onClick={() => setRating(n)}
               className="flex size-12 items-center justify-center rounded-md hover:bg-surface-muted"
             >
@@ -66,12 +80,12 @@ export function ReviewForm({ bookingId, workerName }: { bookingId: string; worke
           ))}
         </div>
         <p className="h-5 text-sm text-ink-600" aria-live="polite">
-          {MEANING[rating]}
+          {rating > 0 && t(MEANING[rating])}
         </p>
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 font-semibold">What went well? (optional)</legend>
+        <legend className="mb-2 font-semibold">{t('review.wentWell')}</legend>
         <div className="flex flex-wrap gap-2">
           {REVIEW_TAGS.map((tag) => (
             <button
@@ -86,16 +100,13 @@ export function ReviewForm({ bookingId, workerName }: { bookingId: string; worke
                   : 'border-border text-ink-900 hover:border-brand-600',
               )}
             >
-              {REVIEW_TAG_LABELS[tag]}
+              {reviewTagLabel(tag, locale)}
             </button>
           ))}
         </div>
       </fieldset>
 
-      <FormField
-        label="Anything else? (optional)"
-        hint="Shown on their profile with your first name."
-      >
+      <FormField label={t('review.anythingElse')} hint={t('review.shownOn')}>
         {(field) => (
           <Textarea
             {...field}
@@ -117,9 +128,9 @@ export function ReviewForm({ bookingId, workerName }: { bookingId: string; worke
         className="self-start"
         disabled={!rating}
         loading={pending}
-        loadingText="Sending…"
+        loadingText={t('review.sending')}
       >
-        Post review
+        {t('review.post')}
       </Button>
     </form>
   )

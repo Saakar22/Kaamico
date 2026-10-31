@@ -6,6 +6,12 @@ import { htmlLang, LOCALE_COOKIE, type Locale } from '@/i18n/config'
 
 const YEAR_SECONDS = 365 * 24 * 60 * 60
 
+/** Saves the language for the proxy and reloads the page in it. */
+export function chooseLanguage(locale: Locale) {
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${YEAR_SECONDS}; samesite=lax`
+  window.location.reload()
+}
+
 /**
  * Switches between English and Hindi. The language lives in a cookie the proxy reads, so
  * a full reload shows the same page in the other language (the client router would
@@ -15,10 +21,7 @@ export function LanguageSwitch() {
   const locale = useLocale()
   const t = useT()
   const other: Locale = locale === 'hi' ? 'en' : 'hi'
-  const choose = () => {
-    document.cookie = `${LOCALE_COOKIE}=${other}; path=/; max-age=${YEAR_SECONDS}; samesite=lax`
-    window.location.reload()
-  }
+  const choose = () => chooseLanguage(other)
   return (
     <button
       type="button"

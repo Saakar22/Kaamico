@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { useApiAction } from '@/components/domain/worker/use-api-action'
 import { Button } from '@/components/ui/button'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 
 /** Accepts a professional's offer; confirms the booking at that price. */
@@ -19,6 +20,7 @@ export function AcceptOfferButton({
   children: ReactNode
 }) {
   const router = useRouter()
+  const t = useT()
   const { pending, error, run } = useApiAction()
   const [key] = useState(() => crypto.randomUUID())
 
@@ -36,7 +38,7 @@ export function AcceptOfferButton({
 
   return (
     <div className="flex flex-col gap-1">
-      <Button size="sm" onClick={accept} loading={pending} loadingText="Booking…">
+      <Button size="sm" onClick={accept} loading={pending} loadingText={t('cancel.booking')}>
         {children}
       </Button>
       {error && (
