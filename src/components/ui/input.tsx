@@ -12,7 +12,7 @@ import { cn } from '@/lib/cn'
 
 // 16px text on all controls prevents iOS from zooming on focus.
 export const controlClasses =
-  'w-full rounded-md border border-border bg-surface px-3 text-base text-ink-900 placeholder:text-ink-600/70 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70 aria-invalid:border-danger-700'
+  'w-full rounded-md border border-border bg-surface px-3 text-base text-ink-900 shadow-[inset_0_1px_1px_rgb(0_0_0/0.04)] transition-[border-color,box-shadow] duration-150 placeholder:text-ink-600/70 hover:border-ink-600/40 focus-visible:border-brand-600 focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70 aria-invalid:border-danger-700 motion-reduce:transition-none'
 
 type Field = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
 

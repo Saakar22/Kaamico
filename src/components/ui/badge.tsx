@@ -3,7 +3,8 @@ import type { ComponentProps } from 'react'
 import { cn } from '@/lib/cn'
 
 export const badgeVariants = cva(
-  'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap [&_svg]:size-3.5 [&_svg]:shrink-0',
+  // Squared tags, like a stamp on a job card, rather than pills.
+  'inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-xs leading-4 font-semibold whitespace-nowrap [&_svg]:size-3.5 [&_svg]:shrink-0',
   {
     variants: {
       tone: {

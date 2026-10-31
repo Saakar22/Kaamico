@@ -10,10 +10,43 @@
     background-color: var(--color-surface);
     color: var(--color-ink-900);
     font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
   }
 
   :focus-visible {
     outline: 2px solid var(--color-brand-600);
     outline-offset: 2px;
   }
+}
+
+/*
+ * Display type is Anek set slightly condensed: headings read like a shop's painted
+ * signboard rather than a rounded app font. Hindi uses Anek Devanagari at the same width.
+ */
+@utility font-display {
+  font-family: var(--font-display);
+  font-stretch: 88%;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * Devanagari carries vowel signs above and below the letters, so tight display leading
+ * (e.g. leading-[0.95] on the home headline) makes lines collide. Hindi headings get room.
+ */
+html[lang|='hi'] .font-display {
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+/*
+ * The rate list: a service on the left, its price on the right, joined by a dotted
+ * leader like a printed rate card. The leader is decoration and hidden from assistive tech.
+ */
+@utility leader {
+  flex: 1 1 1.5rem;
+  min-width: 1.5rem;
+  align-self: baseline;
+  height: 0;
+  border-bottom: 2px dotted var(--color-rule);
+  transform: translateY(-0.3em);
 }

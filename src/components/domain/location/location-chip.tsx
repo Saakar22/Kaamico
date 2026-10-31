@@ -141,7 +141,7 @@ export function LocationChip({
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          'inline-flex h-11 max-w-full min-w-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium',
+          'inline-flex h-10 max-w-full min-w-0 items-center gap-1.5 rounded-md border px-2.5 text-sm font-medium transition-colors motion-reduce:transition-none',
           location
             ? 'border-border bg-surface text-ink-900 hover:bg-surface-muted'
             : 'border-brand-600 bg-brand-50 text-brand-700',
@@ -161,7 +161,23 @@ export function LocationChip({
         )}
         <span className="truncate">
           <span className="sr-only">{t('location.srLabel')}</span>
-          {location?.label ?? t('location.setLocation')}
+          {location ? (
+            <>
+              {/*
+                Phones show the locality alone ("Kothrud"); wider screens add the city.
+                Assistive tech always hears the full place.
+              */}
+              <span className="sr-only">{location.label}</span>
+              <span aria-hidden="true" className="sm:hidden">
+                {location.label.split(',')[0]}
+              </span>
+              <span aria-hidden="true" className="hidden sm:inline">
+                {location.label}
+              </span>
+            </>
+          ) : (
+            t('location.setLocation')
+          )}
         </span>
         <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-ink-600" />
       </button>

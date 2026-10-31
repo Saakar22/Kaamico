@@ -25,7 +25,16 @@ export function LogoMark({ className }: { className?: string }) {
 }
 
 /** Mark + wordmark lockup. The accessible name is the brand name. */
-export function Logo({ className, markOnly = false }: { className?: string; markOnly?: boolean }) {
+export function Logo({
+  className,
+  markOnly = false,
+  compact = false,
+}: {
+  className?: string
+  markOnly?: boolean
+  /** Hide the wordmark on phones, where the header also holds the location chip. */
+  compact?: boolean
+}) {
   return (
     <span
       className={cn('inline-flex items-center gap-2', className)}
@@ -36,7 +45,11 @@ export function Logo({ className, markOnly = false }: { className?: string; mark
       {!markOnly && (
         <span
           aria-hidden="true"
-          className="font-display text-2xl leading-none font-bold text-brand-600"
+          className={cn(
+            // The wordmark keeps its natural width; only headings are condensed.
+            'font-display text-[1.65rem] leading-none font-bold tracking-tight text-brand-600 [font-stretch:100%]',
+            compact && 'hidden sm:inline',
+          )}
         >
           {brand.wordmark}
         </span>

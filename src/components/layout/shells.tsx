@@ -20,10 +20,10 @@ function SkipLink({ label = 'Skip to content' }: { label?: string }) {
   )
 }
 
-function HomeLink({ href = '/' }: { href?: string }) {
+function HomeLink({ href = '/', compact = false }: { href?: string; compact?: boolean }) {
   return (
-    <Link href={href} className="inline-flex h-11 items-center rounded-md">
-      <Logo />
+    <Link href={href} className="inline-flex h-11 shrink-0 items-center rounded-md">
+      <Logo compact={compact} />
     </Link>
   )
 }
@@ -44,9 +44,9 @@ export async function CustomerShell({
   return (
     <>
       <SkipLink label={t('shell.skipToContent')} />
-      <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-border bg-surface">
         <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
-          <HomeLink />
+          <HomeLink compact={Boolean(headerSlot)} />
           {headerSlot && <div className="min-w-0 flex-1">{headerSlot}</div>}
           <div className={cn('flex items-center gap-1', !headerSlot && 'ml-auto')}>
             <TopNavLinks nav="customer" label={t('shell.mainNav')} />
@@ -76,12 +76,10 @@ function ConsoleSidebar({
   nav: ReactNode
 }) {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col gap-6 border-r border-border bg-surface p-4 md:flex">
+    <aside className="hidden w-60 shrink-0 flex-col gap-6 border-r border-border bg-surface p-4 md:flex">
       <div className="flex flex-col gap-1">
         <HomeLink href={homeHref} />
-        <span className="text-xs font-medium tracking-wide text-ink-600 uppercase">
-          {roleLabel}
-        </span>
+        <span className="pl-10 text-sm text-ink-600">{roleLabel}</span>
       </div>
       {nav}
     </aside>

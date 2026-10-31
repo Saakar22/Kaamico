@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Baloo_2, Inter, Noto_Sans_Devanagari } from 'next/font/google'
+import { Anek_Devanagari, Anek_Latin, Inter, Noto_Sans_Devanagari } from 'next/font/google'
 import { Suspense } from 'react'
 import { DemoBanner } from '@/components/layout/demo-banner'
 import { PwaSetup } from '@/components/pwa/pwa-setup'
@@ -16,17 +16,18 @@ const inter = Inter({
   subsets: ['latin'],
 })
 
-const baloo = Baloo_2({
-  variable: '--font-baloo',
+// Display type: Anek (Ek Type, Mumbai), set a little condensed. Variable width and weight.
+const anek = Anek_Latin({
+  variable: '--font-anek',
   subsets: ['latin'],
-  weight: ['600', '700'],
+  axes: ['wdth'],
 })
 
-// Hindi headings. Not preloaded: English pages never use these glyphs.
-const balooDevanagari = Baloo_2({
-  variable: '--font-baloo-devanagari',
+// Hindi headings in the same family. Not preloaded: English pages never use these glyphs.
+const anekDevanagari = Anek_Devanagari({
+  variable: '--font-anek-devanagari',
   subsets: ['devanagari'],
-  weight: ['600', '700'],
+  axes: ['wdth'],
   preload: false,
 })
 
@@ -75,7 +76,7 @@ export default async function RootLayout({ children }: LayoutProps<'/[lang]'>) {
     // data-theme is set by THEME_SCRIPT before React hydrates, so the server's <html> differs.
     <html
       lang={htmlLang[locale]}
-      className={`${inter.variable} ${baloo.variable} ${balooDevanagari.variable} ${devanagari.variable} h-full antialiased`}
+      className={`${inter.variable} ${anek.variable} ${anekDevanagari.variable} ${devanagari.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { CategoryCard } from '@/components/domain/catalog/category-card'
 import { SearchBar } from '@/components/domain/catalog/search-bar'
 import { PageHeader } from '@/components/patterns/page-header'
+import { RateList } from '@/components/patterns/rate-list'
 import { EmptyState } from '@/components/patterns/states'
 import { getLocale, getT } from '@/i18n/server'
 import { listCategories } from '@/modules/catalog/catalog'
@@ -21,13 +22,11 @@ export default async function ServicesPage() {
       {categories.length === 0 ? (
         <EmptyState title={t('services.emptyTitle')} description={t('services.emptyBody')} />
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
+        <RateList className="max-w-3xl">
           {categories.map((c) => (
-            <li key={c.id}>
-              <CategoryCard category={c} />
-            </li>
+            <CategoryCard key={c.id} category={c} />
           ))}
-        </ul>
+        </RateList>
       )}
     </div>
   )

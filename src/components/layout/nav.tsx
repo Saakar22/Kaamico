@@ -58,8 +58,10 @@ function BottomTabBarView({ nav, label, pathname }: ViewProps) {
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium',
-                  isActive ? 'text-brand-700' : 'text-ink-600',
+                  'relative flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium',
+                  // A short bar over the active tab, tied to the bar's top edge.
+                  'before:absolute before:inset-x-1/4 before:top-0 before:h-0.5 before:rounded-b-sm',
+                  isActive ? 'text-brand-700 before:bg-brand-600' : 'text-ink-600',
                 )}
               >
                 <Icon aria-hidden="true" className="size-6" strokeWidth={isActive ? 2.25 : 1.75} />
@@ -87,8 +89,10 @@ function TopNavLinksView({ nav, label, pathname }: ViewProps) {
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'inline-flex h-11 items-center rounded-md px-3 text-sm font-medium hover:bg-surface-muted',
-                  isActive ? 'text-brand-700' : 'text-ink-600 hover:text-ink-900',
+                  // The active link is underlined at the header's bottom edge (h-16 bar).
+                  'relative inline-flex h-11 items-center px-3 text-sm font-medium transition-colors motion-reduce:transition-none',
+                  'after:absolute after:inset-x-3 after:-bottom-[11px] after:h-0.5',
+                  isActive ? 'text-ink-900 after:bg-brand-600' : 'text-ink-600 hover:text-ink-900',
                 )}
               >
                 {labelOf(item)}
@@ -116,13 +120,17 @@ function SidebarNavView({ nav, label, pathname }: ViewProps) {
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'flex h-11 items-center gap-3 rounded-md px-3 text-sm font-medium',
+                  'relative flex h-10 items-center gap-3 rounded-sm px-3 text-sm font-medium',
+                  'before:absolute before:inset-y-2 before:-left-4 before:w-0.5 before:rounded-r-sm',
                   isActive
-                    ? 'bg-brand-50 text-brand-700'
+                    ? 'bg-surface-muted text-ink-900 before:bg-brand-600'
                     : 'text-ink-600 hover:bg-surface-muted hover:text-ink-900',
                 )}
               >
-                <Icon aria-hidden="true" className="size-5" />
+                <Icon
+                  aria-hidden="true"
+                  className={cn('size-[18px]', isActive ? 'text-brand-700' : 'text-ink-600')}
+                />
                 {labelOf(item)}
               </Link>
             </li>

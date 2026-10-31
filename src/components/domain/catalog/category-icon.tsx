@@ -30,12 +30,30 @@ const ICONS: Record<string, LucideIcon> = {
 export const CATEGORY_ICON_KEYS = Object.keys(ICONS)
 
 /** Category icon in a tinted circle. Unknown keys fall back to a wrench. */
-export function CategoryIcon({ iconKey, className }: { iconKey: string; className?: string }) {
+export function CategoryIcon({
+  iconKey,
+  className,
+  plain = false,
+}: {
+  iconKey: string
+  className?: string
+  /** Just the glyph, for rate-list rows; the default sits on a tinted square. */
+  plain?: boolean
+}) {
   const Icon = ICONS[iconKey] ?? Wrench
+  if (plain) {
+    return (
+      <Icon
+        aria-hidden="true"
+        className={cn('size-5 text-brand-700', className)}
+        strokeWidth={1.75}
+      />
+    )
+  }
   return (
     <span
       className={cn(
-        'flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-700',
+        'flex size-12 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700',
         className,
       )}
     >

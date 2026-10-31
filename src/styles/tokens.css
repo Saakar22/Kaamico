@@ -9,12 +9,15 @@
   --color-brand-700: #08573f;
   --color-accent-500: #f2a900;
 
-  --color-ink-900: #1b1f24;
+  --color-ink-900: #16191d;
   --color-ink-600: #4b5563;
 
   --color-surface: #ffffff;
-  --color-surface-muted: #f6f4ef;
-  --color-border: #e3e0d8;
+  /* Slate paper: a cool, faintly green grey that sits with neem green (not cream). */
+  --color-surface-muted: #f1f3f0;
+  --color-border: #dde2dc;
+  /* Stronger rule for the rate list's leaders and section dividers. */
+  --color-rule: #c9d0c8;
 
   --color-info-600: #1d4ed8;
   --color-success-700: #15803d;
@@ -98,6 +101,7 @@
     --color-surface: #121417;
     --color-surface-muted: #1b1e23;
     --color-border: #2f343b;
+    --color-rule: #3d434b;
     --color-info-600: #8ab4ff;
     --color-success-700: #4cc777;
     --color-warning-700: #e8a33d;
@@ -120,6 +124,7 @@
   --color-surface: #121417;
   --color-surface-muted: #1b1e23;
   --color-border: #2f343b;
+  --color-rule: #3d434b;
   --color-info-600: #8ab4ff;
   --color-success-700: #4cc777;
   --color-warning-700: #e8a33d;
@@ -135,6 +140,6 @@
 @theme inline {
   --font-sans: var(--font-inter), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
   --font-display:
-    var(--font-baloo), var(--font-baloo-devanagari), var(--font-inter), var(--font-devanagari),
+    var(--font-anek), var(--font-anek-devanagari), var(--font-inter), var(--font-devanagari),
     ui-sans-serif, sans-serif;
 }

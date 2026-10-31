@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
-import { Baloo_2, Inter, Noto_Sans_Devanagari } from 'next/font/google'
+import { Anek_Latin, Inter, Noto_Sans_Devanagari } from 'next/font/google'
 import Link from 'next/link'
 import { Logo } from '@/components/brand/logo'
 import { THEME_SCRIPT } from '@/components/pwa/theme'
 import './globals.css'
 
 const inter = Inter({ variable: '--font-inter', subsets: ['latin'] })
-const baloo = Baloo_2({ variable: '--font-baloo', subsets: ['latin'], weight: ['700'] })
+const anek = Anek_Latin({ variable: '--font-anek', subsets: ['latin'], axes: ['wdth'] })
 const devanagari = Noto_Sans_Devanagari({
   variable: '--font-devanagari',
   subsets: ['devanagari'],
@@ -23,7 +23,7 @@ export default function GlobalNotFound() {
   return (
     <html
       lang="en-IN"
-      className={`${inter.variable} ${baloo.variable} ${devanagari.variable} h-full antialiased`}
+      className={`${inter.variable} ${anek.variable} ${devanagari.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
