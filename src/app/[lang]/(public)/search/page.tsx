@@ -19,6 +19,7 @@ import {
   ProfessionalCard,
 } from '@/components/domain/professionals/professional-card'
 import { PageHeader } from '@/components/patterns/page-header'
+import { RateList, RateRow } from '@/components/patterns/rate-list'
 import { EmptyState } from '@/components/patterns/states'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -110,7 +111,7 @@ async function SortTabs({ filters }: { filters: Filters }) {
                 className={cn(
                   '-mb-px inline-flex h-11 items-center border-b-2 px-3 text-sm font-medium whitespace-nowrap',
                   active
-                    ? 'border-brand-600 text-brand-700'
+                    ? 'border-brand-600 text-ink-900'
                     : 'border-transparent text-ink-600 hover:text-ink-900',
                 )}
               >
@@ -130,7 +131,7 @@ async function FilterPanel({ filters }: { filters: Filters }) {
   const active = [filters.now, filters.maxPrice, filters.minRating].filter(Boolean).length
   return (
     <details
-      className="group rounded-lg border border-border bg-surface md:open:bg-surface"
+      className="group rounded-md border border-border bg-surface"
       open={active > 0 ? true : undefined}
     >
       <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-4 font-medium">
@@ -230,19 +231,16 @@ async function ServiceSearch({ q }: { q?: string }) {
           />
         </Card>
       ) : (
-        <ul className="grid gap-2 sm:grid-cols-2" aria-label={t('searchPage.matchingServices')}>
+        <RateList label={t('searchPage.matchingServices')} className="max-w-3xl">
           {matches.map((m) => (
-            <li key={m.serviceId}>
-              <Link
-                href={`/search?service=${m.serviceId}`}
-                className="flex min-h-14 flex-col justify-center rounded-lg border border-border bg-surface px-4 py-3 hover:border-brand-600"
-              >
-                <span className="font-semibold">{m.name}</span>
-                <span className="text-sm text-ink-600">{m.category.name}</span>
-              </Link>
-            </li>
+            <RateRow
+              key={m.serviceId}
+              href={`/search?service=${m.serviceId}`}
+              label={<span className="font-semibold">{m.name}</span>}
+              detail={m.category.name}
+            />
           ))}
-        </ul>
+        </RateList>
       )}
     </div>
   )
@@ -351,9 +349,9 @@ async function ProfessionalResults({
         })}
       </p>
       {freeNow > 0 && (
-        <div className="flex flex-col gap-3 rounded-lg border border-accent-500 bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-md border border-accent-500/70 bg-accent-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-start gap-2">
-            <Zap aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-accent-500" />
+            <Zap aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-warning-700" />
             <span>
               <span className="font-semibold">{t('searchPage.needItNow')}</span>{' '}
               {t('searchPage.quickMatchPitch')}
@@ -370,7 +368,10 @@ async function ProfessionalResults({
           {t('searchPage.widerRadius', { km: result.radiusKm })}
         </p>
       )}
-      <ol className="flex flex-col gap-3" aria-label={t('searchPage.professionals')}>
+      <ol
+        className="flex flex-col divide-y divide-border border-y border-border"
+        aria-label={t('searchPage.professionals')}
+      >
         {result.items.map((pro) => (
           <li key={pro.workerId}>
             <ProfessionalCard pro={pro} serviceId={filters.service} now={now} />

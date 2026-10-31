@@ -1,4 +1,4 @@
-import { ChevronLeft, MapPin } from 'lucide-react'
+import { ChevronLeft, MapPin, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -59,10 +59,10 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
         <div className="flex items-start gap-4">
           <CategoryIcon iconKey={category.iconKey} className="size-14" />
           <div className="flex flex-col gap-1">
-            <h1 className="font-display text-2xl leading-tight font-bold sm:text-3xl">
+            <h1 className="font-display text-4xl leading-none font-semibold sm:text-5xl">
               {category.name}
             </h1>
-            {category.description && <p className="text-ink-600">{category.description}</p>}
+            {category.description && <p className="text-lg text-ink-600">{category.description}</p>}
           </div>
         </div>
         {location ? (
@@ -71,14 +71,14 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
             {t('category.pricesFrom', { place: location.label })}
           </p>
         ) : (
-          <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-surface-muted p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col items-start gap-3 rounded-md bg-surface-muted p-4 sm:flex-row sm:items-center sm:justify-between">
             <p>{t('category.setLocation')}</p>
             <OpenLocationButton />
           </div>
         )}
       </header>
 
-      <ul className="grid gap-4 md:grid-cols-2">
+      <ul className="flex max-w-4xl flex-col divide-y divide-border border-y border-border">
         {category.services.map((service) => (
           <li key={service.id}>
             <ServiceCard service={service} hasLocation={location !== null} />
@@ -86,17 +86,21 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
         ))}
       </ul>
 
-      <section aria-labelledby="faq-title" className="flex flex-col gap-3">
-        <h2 id="faq-title" className="font-display text-xl font-bold">
+      <section aria-labelledby="faq-title" className="flex max-w-4xl flex-col gap-3 pt-4">
+        <h2 id="faq-title" className="font-display text-2xl font-semibold">
           {t('category.faqTitle')}
         </h2>
-        <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
+        <div className="flex flex-col divide-y divide-border border-y border-border">
           {FAQS.map((f) => (
-            <details key={f.q} className="group px-4 py-1">
-              <summary className="flex min-h-11 cursor-pointer items-center font-medium">
+            <details key={f.q} className="group">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 font-medium [&::-webkit-details-marker]:hidden">
                 {t(f.q)}
+                <Plus
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-ink-600 transition-transform group-open:rotate-45 motion-reduce:transition-none"
+                />
               </summary>
-              <p className="pb-3 text-ink-600">{t(f.a)}</p>
+              <p className="max-w-prose pb-4 text-ink-600">{t(f.a)}</p>
             </details>
           ))}
         </div>
@@ -116,15 +120,15 @@ async function CategorySkeleton() {
     >
       <Skeleton className="h-6 w-28" />
       <div className="flex gap-4">
-        <Skeleton className="size-14 rounded-full" />
+        <Skeleton className="size-14 rounded-md" />
         <div className="flex flex-1 flex-col gap-2">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72 max-w-full" />
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="flex max-w-4xl flex-col gap-6">
         {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-56" />
+          <Skeleton key={i} className="h-32" />
         ))}
       </div>
     </div>

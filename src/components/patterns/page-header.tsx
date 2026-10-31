@@ -17,8 +17,8 @@ export function PageHeader({
       className={cn('flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between', className)}
     >
       <div className="flex flex-col gap-1">
-        <h1 className="font-display text-2xl leading-tight font-bold sm:text-3xl">{title}</h1>
-        {description && <p className="text-ink-600">{description}</p>}
+        <h1 className="font-display text-3xl leading-tight font-semibold sm:text-4xl">{title}</h1>
+        {description && <p className="max-w-prose text-ink-600">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
     </header>

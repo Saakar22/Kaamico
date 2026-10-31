@@ -17,7 +17,7 @@ import { VerificationBadge } from '@/components/domain/trust-badges'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { RateList, RateRow } from '@/components/patterns/rate-list'
 import { Money } from '@/components/ui/money'
 import { Skeleton } from '@/components/ui/skeleton'
 import { htmlLang, type Locale } from '@/i18n/config'
@@ -68,10 +68,15 @@ async function loadProfile(id: string, locale: Locale): Promise<PublicProfile> {
 async function ProfileHeader({ profile }: { profile: PublicProfile }) {
   const [t, locale] = await Promise.all([getT(), getLocale()])
   return (
-    <header className="flex flex-col gap-4 sm:flex-row sm:items-start">
-      <Avatar name={profile.displayName} src={profile.photoUrl} size="lg" />
+    <header className="flex items-start gap-4">
+      <Avatar
+        name={profile.displayName}
+        src={profile.photoUrl}
+        size="lg"
+        className="size-14 text-base sm:size-20 sm:text-xl"
+      />
       <div className="flex min-w-0 flex-col gap-2">
-        <h1 className="font-display text-2xl leading-tight font-bold sm:text-3xl">
+        <h1 className="font-display text-4xl leading-none font-semibold sm:text-5xl">
           {profile.displayName}
         </h1>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -130,52 +135,52 @@ async function ServicePriceList({
   const [t, locale] = await Promise.all([getT(), getLocale()])
   const firstName = profile.displayName.split(' ')[0]
   return (
-    <Card>
-      <CardHeader>
-        <h2 className="text-lg leading-snug font-semibold">{t('profile.servicesAndPrices')}</h2>
+    <section aria-labelledby="prices-title" className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <h2 id="prices-title" className="font-display text-2xl font-semibold">
+          {t('profile.servicesAndPrices')}
+        </h2>
         <p className="text-sm text-ink-600">{t('profile.pricesSetBy', { name: firstName })}</p>
-      </CardHeader>
-      <CardContent>
-        <ul className="flex flex-col divide-y divide-border">
-          {profile.services.map((s) => (
-            <li
-              key={s.serviceId}
-              className={cn(
-                'flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4',
-                s.serviceId === highlight &&
-                  '-mx-2 rounded-md bg-brand-50 px-2 first:pt-2 last:pb-2',
-              )}
-            >
-              <div className="flex flex-col">
-                <span className="font-medium">{s.name}</span>
-                <span className="text-sm text-ink-600">
-                  {s.category.name} ·{' '}
-                  {t('profile.about', { duration: formatDuration(s.typicalDurationMin, locale) })}
+      </div>
+      <RateList>
+        {profile.services.map((s) => (
+          <RateRow
+            key={s.serviceId}
+            className={cn(
+              s.serviceId === highlight &&
+                'relative -mx-3 rounded-sm bg-brand-50 px-3 before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:bg-brand-600',
+            )}
+            label={s.name}
+            detail={
+              <>
+                {s.category.name} ·{' '}
+                {t('profile.about', { duration: formatDuration(s.typicalDurationMin, locale) })}
+              </>
+            }
+            price={
+              <>
+                <Money paise={s.pricePaise} />{' '}
+                <span className="font-sans text-sm font-normal text-ink-600" aria-hidden="true">
+                  {unitSuffix(s.unit, locale)}
                 </span>
-              </div>
-              <div className="flex flex-col sm:items-end">
-                <span>
-                  <Money paise={s.pricePaise} className="font-semibold" />{' '}
-                  <span className="text-sm text-ink-600" aria-hidden="true">
-                    {unitSuffix(s.unit, locale)}
-                  </span>
-                  <span className="sr-only">{unitSpoken(s.unit, locale)}</span>
-                </span>
-                <span className="text-sm text-ink-600">
-                  {s.negotiable ? t('proCard.openToOffers') : t('proCard.fixedPrice')}
-                  {s.minChargePaise > 0 && (
-                    <>
-                      {' · '}
-                      {t('profile.minimum')} <Money paise={s.minChargePaise} />
-                    </>
-                  )}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+                <span className="sr-only">{unitSpoken(s.unit, locale)}</span>
+              </>
+            }
+            priceNote={
+              <>
+                {s.negotiable ? t('proCard.openToOffers') : t('proCard.fixedPrice')}
+                {s.minChargePaise > 0 && (
+                  <>
+                    {' · '}
+                    {t('profile.minimum')} <Money paise={s.minChargePaise} />
+                  </>
+                )}
+              </>
+            }
+          />
+        ))}
+      </RateList>
+    </section>
   )
 }
 
@@ -201,11 +206,14 @@ async function AvailabilityPreview({
   )
   const withSlots = days.filter((d) => d.slots.length > 0)
   return (
-    <Card>
-      <CardHeader>
-        <h2 className="text-lg leading-snug font-semibold">{t('profile.upcomingFree')}</h2>
-      </CardHeader>
-      <CardContent>
+    <section
+      aria-labelledby="free-title"
+      className="flex flex-col gap-3 border-t border-border pt-5"
+    >
+      <h2 id="free-title" className="font-display text-xl font-semibold">
+        {t('profile.upcomingFree')}
+      </h2>
+      <div>
         {withSlots.length === 0 ? (
           <p className="text-ink-600">{t('profile.noFreeTimes', { days: PREVIEW_DAYS })}</p>
         ) : (
@@ -220,7 +228,7 @@ async function AvailabilityPreview({
                   {d.slots.slice(0, PREVIEW_TIMES).map((s) => (
                     <li
                       key={s.start}
-                      className="rounded-full border border-border px-3 py-1 text-sm tabular-nums"
+                      className="rounded-sm border border-border px-2.5 py-1 text-sm tabular-nums"
                     >
                       {formatIstTime(new Date(s.start), lang)}
                     </li>
@@ -235,8 +243,8 @@ async function AvailabilityPreview({
             ))}
           </ul>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }
 
@@ -244,27 +252,29 @@ async function ReviewList({ reviews, total }: { reviews: ReviewPage; total: numb
   const [t, locale] = await Promise.all([getT(), getLocale()])
   const max = Math.max(1, ...Object.values(reviews.histogram))
   return (
-    <Card>
-      <CardHeader>
-        <h2 className="text-lg leading-snug font-semibold">{t('profile.reviews')}</h2>
+    <section aria-labelledby="reviews-title" className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1">
+        <h2 id="reviews-title" className="font-display text-2xl font-semibold">
+          {t('profile.reviews')}
+        </h2>
         <p className="text-sm text-ink-600">{t('profile.reviewsNote')}</p>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-5">
+      </div>
+      <div className="flex flex-col gap-5">
         {total === 0 ? (
           <p className="text-ink-600">{t('profile.noReviews')}</p>
         ) : (
           <>
-            <dl className="flex flex-col gap-1.5">
+            <dl className="flex max-w-md flex-col gap-1.5">
               {([5, 4, 3, 2, 1] as const).map((star) => (
                 <div key={star} className="flex items-center gap-3 text-sm">
                   <dt className="w-14 shrink-0">{t('profile.starRow', { star })}</dt>
                   <dd className="flex flex-1 items-center gap-3">
                     <span
                       aria-hidden="true"
-                      className="h-2 flex-1 overflow-hidden rounded-full bg-surface-muted"
+                      className="h-1.5 flex-1 overflow-hidden rounded-sm bg-surface-muted"
                     >
                       <span
-                        className="block h-full rounded-full bg-accent-500"
+                        className="block h-full rounded-sm bg-accent-500"
                         style={{ width: `${(reviews.histogram[star] / max) * 100}%` }}
                       />
                     </span>
@@ -273,9 +283,9 @@ async function ReviewList({ reviews, total }: { reviews: ReviewPage; total: numb
                 </div>
               ))}
             </dl>
-            <ul className="flex flex-col divide-y divide-border">
+            <ul className="flex flex-col divide-y divide-border border-t border-border">
               {reviews.items.map((r) => (
-                <li key={r.id} className="flex flex-col gap-1.5 py-4 first:pt-0 last:pb-0">
+                <li key={r.id} className="flex flex-col gap-1.5 py-4">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <RatingStars rating={r.rating} />
                     <span className="text-sm font-medium">{r.author}</span>
@@ -283,7 +293,7 @@ async function ReviewList({ reviews, total }: { reviews: ReviewPage; total: numb
                       {r.serviceName} · {monthYear(locale, new Date(r.createdAt))}
                     </span>
                   </div>
-                  {r.comment && <p>{r.comment}</p>}
+                  {r.comment && <p className="max-w-prose">{r.comment}</p>}
                   {r.tags.length > 0 && (
                     <ul className="flex flex-wrap gap-1.5" aria-label={t('profile.tags')}>
                       {r.tags.map((tag) => (
@@ -294,7 +304,7 @@ async function ReviewList({ reviews, total }: { reviews: ReviewPage; total: numb
                     </ul>
                   )}
                   {r.workerReply && (
-                    <p className="rounded-md bg-surface-muted px-3 py-2 text-sm">
+                    <p className="max-w-prose border-l-2 border-brand-600 py-1 pl-3 text-sm">
                       <span className="font-medium">{t('profile.reply')}</span>
                       {r.workerReply}
                     </p>
@@ -304,8 +314,8 @@ async function ReviewList({ reviews, total }: { reviews: ReviewPage; total: numb
             </ul>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }
 
@@ -314,13 +324,16 @@ async function BookPanel({ profile, serviceId }: { profile: PublicProfile; servi
   const [t, locale] = await Promise.all([getT(), getLocale()])
   const service = profile.services.find((s) => s.serviceId === serviceId) ?? profile.services[0]
   return (
-    <div className="fixed inset-x-0 bottom-16 z-30 border-t border-border bg-surface px-4 py-3 shadow-lg md:static md:rounded-lg md:border md:p-5 md:shadow-xs">
+    <div className="fixed inset-x-0 bottom-16 z-30 border-t border-border bg-surface px-4 py-3 shadow-[0_-4px_16px_rgb(0_0_0/0.06)] md:static md:rounded-md md:border md:p-5 md:shadow-none">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-3 md:flex-col md:items-stretch">
         {service && (
           <p className="flex min-w-0 flex-col">
             <span className="truncate text-sm text-ink-600">{service.name}</span>
             <span>
-              <Money paise={service.pricePaise} className="text-lg font-bold" />{' '}
+              <Money
+                paise={service.pricePaise}
+                className="font-display text-2xl font-semibold md:text-3xl"
+              />{' '}
               <span className="text-sm text-ink-600">{unitSuffix(service.unit, locale)}</span>
             </span>
           </p>
@@ -360,11 +373,11 @@ async function ProfileContent({ params, searchParams }: Props) {
         {t('profile.backToResults')}
       </Link>
       <ProfileHeader profile={profile} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-        <div className="flex min-w-0 flex-col gap-6">
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-16">
+        <div className="flex min-w-0 flex-col gap-12">
           {profile.bio && (
             <section aria-labelledby="about-title" className="flex flex-col gap-2">
-              <h2 id="about-title" className="text-lg font-semibold">
+              <h2 id="about-title" className="font-display text-2xl font-semibold">
                 {t('profile.aboutTitle')}
               </h2>
               <p className="max-w-prose text-ink-900">{profile.bio}</p>

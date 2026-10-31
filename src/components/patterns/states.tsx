@@ -22,13 +22,11 @@ function StateLayout({
   return (
     <div className={cn('flex flex-col items-center gap-3 px-4 py-10 text-center', className)}>
       {Icon && (
-        <span
-          className={cn('flex size-14 items-center justify-center rounded-full', iconClassName)}
-        >
-          <Icon aria-hidden="true" className="size-7" />
+        <span className={cn('flex size-12 items-center justify-center rounded-md', iconClassName)}>
+          <Icon aria-hidden="true" className="size-6" strokeWidth={1.75} />
         </span>
       )}
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h2 className="font-display text-xl font-semibold">{title}</h2>
       {description && <p className="max-w-sm text-ink-600">{description}</p>}
       {action && <div className="mt-2 flex flex-wrap justify-center gap-2">{action}</div>}
     </div>
