@@ -20,10 +20,14 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
+import type { MessageKey } from '@/i18n/translate'
 
 export type NavItem = {
   href: string
+  /** English label (the admin console, which is English only). */
   label: string
+  /** Translated label for the customer and professional navs. */
+  labelKey?: MessageKey
   icon: LucideIcon
   /** Also active on nested paths (e.g. /bookings/123). Defaults to true except for "/". */
   matchNested?: boolean
@@ -32,17 +36,17 @@ export type NavItem = {
 // Routes are defined in IMPLEMENTATION_PLAN.md §5; most are built in later phases.
 
 export const customerNav: NavItem[] = [
-  { href: '/', label: 'Home', icon: House, matchNested: false },
-  { href: '/search', label: 'Search', icon: Search },
-  { href: '/bookings', label: 'Bookings', icon: CalendarCheck },
-  { href: '/profile', label: 'Account', icon: User },
+  { href: '/', label: 'Home', labelKey: 'nav.home', icon: House, matchNested: false },
+  { href: '/search', label: 'Search', labelKey: 'nav.search', icon: Search },
+  { href: '/bookings', label: 'Bookings', labelKey: 'nav.bookings', icon: CalendarCheck },
+  { href: '/profile', label: 'Account', labelKey: 'nav.account', icon: User },
 ]
 
 export const workerNav: NavItem[] = [
-  { href: '/worker/dashboard', label: 'Home', icon: House },
-  { href: '/worker/requests', label: 'Requests', icon: Inbox },
-  { href: '/worker/bookings', label: 'Jobs', icon: BriefcaseBusiness },
-  { href: '/worker/earnings', label: 'Earnings', icon: Wallet },
+  { href: '/worker/dashboard', label: 'Home', labelKey: 'nav.home', icon: House },
+  { href: '/worker/requests', label: 'Requests', labelKey: 'nav.requests', icon: Inbox },
+  { href: '/worker/bookings', label: 'Jobs', labelKey: 'nav.jobs', icon: BriefcaseBusiness },
+  { href: '/worker/earnings', label: 'Earnings', labelKey: 'nav.earnings', icon: Wallet },
 ]
 
 export const adminNav: NavItem[] = [

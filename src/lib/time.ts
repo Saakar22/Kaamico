@@ -35,7 +35,7 @@ export function toIstParts(date: Date): IstParts {
   }
 }
 
-const displayFormatter = new Intl.DateTimeFormat('en-IN', {
+const displayOptions: Intl.DateTimeFormatOptions = {
   timeZone: IST_TIME_ZONE,
   weekday: 'short',
   day: 'numeric',
@@ -43,11 +43,17 @@ const displayFormatter = new Intl.DateTimeFormat('en-IN', {
   hour: 'numeric',
   minute: '2-digit',
   hour12: true,
-})
+}
+const displayFormatters = new Map<string, Intl.DateTimeFormat>()
 
-/** e.g. "Tue, 27 Oct, 10:30 am" */
-export function formatIstDateTime(date: Date): string {
-  return displayFormatter.format(date)
+/** e.g. "Tue, 27 Oct, 10:30 am"; `lang` "hi-IN" gives Hindi day and month names. */
+export function formatIstDateTime(date: Date, lang = 'en-IN'): string {
+  let formatter = displayFormatters.get(lang)
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(lang, displayOptions)
+    displayFormatters.set(lang, formatter)
+  }
+  return formatter.format(date)
 }
 
 const MINUTE_MS = 60_000

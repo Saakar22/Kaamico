@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    // Unknown URLs: the root layout sits under [lang], so the 404 page is app/global-not-found.
+    globalNotFound: true,
+  },
   turbopack: {
     // Pin the workspace root; a stray lockfile in a parent folder would otherwise be picked up.
     root: import.meta.dirname,

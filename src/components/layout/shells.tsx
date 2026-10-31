@@ -1,19 +1,21 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Logo } from '@/components/brand/logo'
+import { getT } from '@/i18n/server'
 import { cn } from '@/lib/cn'
 import { AdminMobileMenu } from './admin-mobile-menu'
+import { LanguageSwitch } from './language-switch'
 import { BottomTabBar, SidebarNav, TopNavLinks } from './nav'
 
 const MAIN_ID = 'main-content'
 
-function SkipLink() {
+function SkipLink({ label = 'Skip to content' }: { label?: string }) {
   return (
     <a
       href={`#${MAIN_ID}`}
       className="sr-only z-50 rounded-md bg-fill-brand px-4 py-2 text-on-fill focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
     >
-      Skip to content
+      {label}
     </a>
   )
 }
@@ -27,7 +29,7 @@ function HomeLink({ href = '/' }: { href?: string }) {
 }
 
 /** Customer and public pages: top bar on desktop, bottom tabs on phones. */
-export function CustomerShell({
+export async function CustomerShell({
   children,
   headerSlot,
   actions,
@@ -38,15 +40,17 @@ export function CustomerShell({
   /** Header icons on the right, e.g. the notification bell. */
   actions?: ReactNode
 }) {
+  const t = await getT()
   return (
     <>
-      <SkipLink />
+      <SkipLink label={t('shell.skipToContent')} />
       <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
           <HomeLink />
           {headerSlot && <div className="min-w-0 flex-1">{headerSlot}</div>}
           <div className={cn('flex items-center gap-1', !headerSlot && 'ml-auto')}>
-            <TopNavLinks nav="customer" label="Main" />
+            <TopNavLinks nav="customer" label={t('shell.mainNav')} />
+            <LanguageSwitch />
             {actions}
           </div>
         </div>
@@ -57,7 +61,7 @@ export function CustomerShell({
       >
         {children}
       </main>
-      <BottomTabBar nav="customer" label="Main" />
+      <BottomTabBar nav="customer" label={t('shell.mainNav')} />
     </>
   )
 }
@@ -85,27 +89,37 @@ function ConsoleSidebar({
 }
 
 /** Worker console: sidebar on desktop, bottom tabs on phones (workers are mostly on phones). */
-export function WorkerShell({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
+export async function WorkerShell({
+  children,
+  actions,
+}: {
+  children: ReactNode
+  actions?: ReactNode
+}) {
+  const t = await getT()
   return (
     <div className="flex min-h-full flex-1">
-      <SkipLink />
+      <SkipLink label={t('shell.skipToContent')} />
       <ConsoleSidebar
         homeHref="/worker/dashboard"
-        roleLabel="For professionals"
-        nav={<SidebarNav nav="worker" label="Professional" />}
+        roleLabel={t('shell.forProfessionals')}
+        nav={<SidebarNav nav="worker" label={t('shell.proNav')} />}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <header
           className={cn(
             'sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-surface px-4',
-            // On desktop the sidebar has the logo; the bar stays only for header actions.
-            actions ? 'md:justify-end md:px-6' : 'md:hidden',
+            // On desktop the sidebar has the logo; the bar holds the header actions.
+            'md:justify-end md:px-6',
           )}
         >
           <div className="md:hidden">
             <HomeLink href="/worker/dashboard" />
           </div>
-          {actions}
+          <div className="flex items-center gap-1">
+            <LanguageSwitch />
+            {actions}
+          </div>
         </header>
         <main
           id={MAIN_ID}
@@ -114,7 +128,7 @@ export function WorkerShell({ children, actions }: { children: ReactNode; action
           {children}
         </main>
       </div>
-      <BottomTabBar nav="worker" label="Professional" />
+      <BottomTabBar nav="worker" label={t('shell.proNav')} />
     </div>
   )
 }

@@ -50,3 +50,6 @@ next-env.d.ts
 
 # database backups (npm run db:backup)
 /backups/
+
+# Personal Claude Code permissions
+.claude/settings.local.json

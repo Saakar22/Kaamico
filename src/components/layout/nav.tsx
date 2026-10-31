@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Suspense, type ComponentType } from 'react'
-import { isNavItemActive, navigations, type NavKey } from '@/config/navigation'
+import { isNavItemActive, navigations, type NavItem, type NavKey } from '@/config/navigation'
+import { useT } from '@/i18n/client'
 import { cn } from '@/lib/cn'
 
 type NavProps = { nav: NavKey; label: string }
@@ -27,11 +28,18 @@ function withPathname(View: ComponentType<ViewProps>) {
   }
 }
 
+/** The translated label where there is one (customer and professional navs). */
+function useLabel() {
+  const t = useT()
+  return (item: NavItem) => (item.labelKey ? t(item.labelKey) : item.label)
+}
+
 const active = (pathname: string | null, item: Parameters<typeof isNavItemActive>[0]) =>
   pathname !== null && isNavItemActive(item, pathname)
 
 function BottomTabBarView({ nav, label, pathname }: ViewProps) {
   const items = navigations[nav]
+  const labelOf = useLabel()
   return (
     <nav
       aria-label={label}
@@ -55,7 +63,7 @@ function BottomTabBarView({ nav, label, pathname }: ViewProps) {
                 )}
               >
                 <Icon aria-hidden="true" className="size-6" strokeWidth={isActive ? 2.25 : 1.75} />
-                {item.label}
+                {labelOf(item)}
               </Link>
             </li>
           )
@@ -67,6 +75,7 @@ function BottomTabBarView({ nav, label, pathname }: ViewProps) {
 
 function TopNavLinksView({ nav, label, pathname }: ViewProps) {
   const items = navigations[nav]
+  const labelOf = useLabel()
   return (
     <nav aria-label={label} className="hidden md:block">
       <ul className="flex items-center gap-1">
@@ -82,7 +91,7 @@ function TopNavLinksView({ nav, label, pathname }: ViewProps) {
                   isActive ? 'text-brand-700' : 'text-ink-600 hover:text-ink-900',
                 )}
               >
-                {item.label}
+                {labelOf(item)}
               </Link>
             </li>
           )
@@ -94,6 +103,7 @@ function TopNavLinksView({ nav, label, pathname }: ViewProps) {
 
 function SidebarNavView({ nav, label, pathname }: ViewProps) {
   const items = navigations[nav]
+  const labelOf = useLabel()
   return (
     <nav aria-label={label}>
       <ul className="flex flex-col gap-1">
@@ -113,7 +123,7 @@ function SidebarNavView({ nav, label, pathname }: ViewProps) {
                 )}
               >
                 <Icon aria-hidden="true" className="size-5" />
-                {item.label}
+                {labelOf(item)}
               </Link>
             </li>
           )

@@ -16,9 +16,7 @@ export async function NotificationSlot({ scope = 'USER' }: { scope?: SessionScop
       initialUnread={await countUnread(actor.userId)}
       live={getEnv().REALTIME_MODE === 'sse'}
       emptyText={
-        scope === 'ADMIN'
-          ? 'Nothing yet. New ID documents to review appear here.'
-          : 'Nothing yet. Updates on your bookings appear here.'
+        scope === 'ADMIN' ? 'Nothing yet. New ID documents to review appear here.' : undefined
       }
     />
   )

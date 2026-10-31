@@ -11,6 +11,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Spinner } from '@/components/ui/spinner'
+import { useLocale, useT } from '@/i18n/client'
+import { htmlLang } from '@/i18n/config'
 import { apiFetch } from '@/lib/api-client'
 import { cn } from '@/lib/cn'
 import { formatIstDateTime } from '@/lib/time'
@@ -26,12 +28,14 @@ const POLL_MS = 30_000
 export function NotificationBell({
   initialUnread,
   live = false,
-  emptyText = 'Nothing yet. Updates on your bookings appear here.',
+  emptyText,
 }: {
   initialUnread: number
   live?: boolean
+  /** Defaults to the (translated) bookings message. */
   emptyText?: string
 }) {
+  const t = useT()
   const [unread, setUnread] = useState(initialUnread)
   const [items, setItems] = useState<NotificationView[] | null>(null)
   const [failed, setFailed] = useState(false)
@@ -99,7 +103,11 @@ export function NotificationBell({
             variant="tertiary"
             size="icon"
             className="relative text-ink-900"
-            aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+            aria-label={
+              unread > 0
+                ? t('notifications.titleUnread', { count: unread })
+                : t('notifications.title')
+            }
           >
             <Bell aria-hidden="true" className="size-5" />
             {unread > 0 && (
@@ -112,22 +120,22 @@ export function NotificationBell({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent aria-label="Notifications">
+        <PopoverContent aria-label={t('notifications.title')}>
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
-            <h2 className="font-semibold">Notifications</h2>
+            <h2 className="font-semibold">{t('notifications.title')}</h2>
             {unread > 0 && (
               <Button variant="tertiary" size="sm" onClick={() => markRead({ all: true })}>
                 <CheckCheck aria-hidden="true" />
-                Mark all read
+                {t('notifications.markAllRead')}
               </Button>
             )}
           </div>
           <div className="max-h-[min(28rem,70dvh)] overflow-y-auto">
             {failed ? (
               <p className="p-4 text-sm text-danger-700" role="alert">
-                Could not load notifications.{' '}
+                {t('notifications.loadFailed')}{' '}
                 <button type="button" className="underline" onClick={load}>
-                  Try again
+                  {t('notifications.tryAgain')}
                 </button>
               </p>
             ) : items === null ? (
@@ -135,7 +143,9 @@ export function NotificationBell({
                 <Spinner />
               </div>
             ) : items.length === 0 ? (
-              <p className="p-6 text-center text-sm text-ink-600">{emptyText}</p>
+              <p className="p-6 text-center text-sm text-ink-600">
+                {emptyText ?? t('notifications.empty')}
+              </p>
             ) : (
               <ul className="divide-y divide-border">
                 {items.map((n) => (
@@ -165,6 +175,8 @@ export function NotificationItem({
   notification: NotificationView
   onOpen?: () => void
 }) {
+  const t = useT()
+  const locale = useLocale()
   const content = (
     <>
       <span
@@ -176,12 +188,12 @@ export function NotificationItem({
       />
       <span className="flex min-w-0 flex-col gap-0.5">
         <span className={cn('text-sm', !n.read && 'font-semibold')}>
-          {!n.read && <span className="sr-only">Unread: </span>}
+          {!n.read && <span className="sr-only">{t('notifications.unread')}</span>}
           {n.title}
         </span>
         {n.body && <span className="text-sm text-ink-600">{n.body}</span>}
         <time dateTime={n.createdAt} className="text-xs text-ink-600">
-          {formatIstDateTime(new Date(n.createdAt))}
+          {formatIstDateTime(new Date(n.createdAt), htmlLang[locale])}
         </time>
       </span>
     </>

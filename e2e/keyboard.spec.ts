@@ -101,9 +101,11 @@ test('a customer books and accepts a counteroffer using only the keyboard', asyn
   const day = page.getByLabel('Day')
   await tabTo(page, day)
   const slots = page.getByRole('group', { name: 'Start time (IST)' }).getByRole('button')
-  for (let i = 0; i < 7 && !(await slots.first().isVisible()); i++) {
+  // From tomorrow on: a slot later today can be too close for offers to stay open.
+  for (let i = 0; i < 7; i++) {
     await page.keyboard.press('ArrowDown')
     await expect(slots.first().or(page.getByText('No free times that day.'))).toBeVisible()
+    if (await slots.first().isVisible()) break
   }
   await tabTo(page, slots.first())
   await page.keyboard.press('Enter')
