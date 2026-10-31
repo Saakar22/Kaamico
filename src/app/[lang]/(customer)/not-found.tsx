@@ -1,11 +1,13 @@
 import { RouteNotFound } from '@/components/patterns/route-not-found'
+import { getT } from '@/i18n/server'
 
-export default function NotFound() {
+export default async function NotFound() {
+  const t = await getT()
   return (
     <RouteNotFound
-      description="It may have been removed or belong to another account, or the link may be wrong."
+      description={t('pages.customerMissing')}
       homeHref="/dashboard"
-      homeLabel="Go to dashboard"
+      homeLabel={t('pages.dashboard')}
     />
   )
 }

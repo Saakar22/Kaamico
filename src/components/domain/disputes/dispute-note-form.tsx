@@ -5,10 +5,12 @@ import { useApiAction } from '@/components/domain/worker/use-api-action'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Textarea } from '@/components/ui/input'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 
 /** Adds information to an open report (both sides and Kaamico see it). */
 export function DisputeNoteForm({ disputeId }: { disputeId: string }) {
+  const t = useT()
   const { pending, error, fieldErrors, run } = useApiAction()
   const [note, setNote] = useState('')
 
@@ -19,15 +21,15 @@ export function DisputeNoteForm({ disputeId }: { disputeId: string }) {
         await apiFetch(`/api/v1/disputes/${disputeId}/evidence`, { body: { note } })
         setNote('')
       },
-      { success: 'Note added' },
+      { success: t('dispute.noteAdded') },
     )
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
       <FormField
-        label="Add information"
-        hint="Both sides and Kaamico can read notes."
+        label={t('dispute.addInfo')}
+        hint={t('dispute.addInfoHint')}
         error={fieldErrors.note}
       >
         {(field) => (
@@ -52,9 +54,9 @@ export function DisputeNoteForm({ disputeId }: { disputeId: string }) {
         className="self-start"
         disabled={note.trim().length < 2}
         loading={pending}
-        loadingText="Adding…"
+        loadingText={t('dispute.adding')}
       >
-        Add note
+        {t('dispute.addNote')}
       </Button>
     </form>
   )

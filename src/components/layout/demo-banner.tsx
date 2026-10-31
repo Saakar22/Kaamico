@@ -1,6 +1,7 @@
 import { FlaskConical } from 'lucide-react'
 import { connection } from 'next/server'
 import { getEnv } from '@/config/env'
+import { getT } from '@/i18n/server'
 
 /**
  * Site-wide notice on a public demo: a production server allowed to simulate OTP,
@@ -11,13 +12,14 @@ export async function DemoBanner() {
   await connection()
   const env = getEnv()
   if (env.NODE_ENV !== 'production' || !env.ALLOW_SIMULATION_IN_PRODUCTION) return null
+  const t = await getT()
   return (
     <div
       role="note"
       className="flex items-center justify-center gap-2 bg-accent-500 px-4 py-1.5 text-center text-sm font-medium text-on-accent"
     >
       <FlaskConical aria-hidden="true" className="size-4 shrink-0" />
-      Demo: sign-in codes, online payments and payouts are simulated. No real money moves.
+      {t('pages.demo')}
     </div>
   )
 }

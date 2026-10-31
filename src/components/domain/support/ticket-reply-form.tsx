@@ -5,18 +5,20 @@ import { useApiAction } from '@/components/domain/worker/use-api-action'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Textarea } from '@/components/ui/input'
+import { useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
 
 /** Adds a message to a help request (the owner or a Kaamico admin). */
 export function TicketReplyForm({
   ticketId,
   hint,
-  label = 'Your message',
+  label,
 }: {
   ticketId: string
   hint?: string
   label?: string
 }) {
+  const t = useT()
   const { pending, error, fieldErrors, run } = useApiAction()
   const [body, setBody] = useState('')
 
@@ -27,13 +29,13 @@ export function TicketReplyForm({
         await apiFetch(`/api/v1/support/tickets/${ticketId}/messages`, { body: { body } })
         setBody('')
       },
-      { success: 'Message sent' },
+      { success: t('support.messageSent') },
     )
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
-      <FormField label={label} hint={hint} error={fieldErrors.body}>
+      <FormField label={label ?? t('support.yourMessage')} hint={hint} error={fieldErrors.body}>
         {(field) => (
           <Textarea
             {...field}
@@ -54,9 +56,9 @@ export function TicketReplyForm({
         className="self-start"
         disabled={!body.trim()}
         loading={pending}
-        loadingText="Sending…"
+        loadingText={t('support.sending')}
       >
-        Send
+        {t('support.sendMessage')}
       </Button>
     </form>
   )

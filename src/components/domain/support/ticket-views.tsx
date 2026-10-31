@@ -3,58 +3,65 @@ import Link from 'next/link'
 import { EmptyState } from '@/components/patterns/states'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { htmlLang } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
+import type { MessageKey } from '@/i18n/translate'
 import { cn } from '@/lib/cn'
 import { formatIstDateTime } from '@/lib/time'
-import { TICKET_CATEGORY_LABELS } from '@/modules/support/labels'
+import { ticketCategoryLabel } from '@/modules/support/labels'
 import type { TicketSummary, TicketThread } from '@/modules/support/support'
 import { TicketReplyForm } from './ticket-reply-form'
 
 const STATUS: Record<
   TicketSummary['status'],
-  { label: string; tone: 'info' | 'warning' | 'success' | 'neutral' }
+  { label: MessageKey; tone: 'info' | 'warning' | 'success' | 'neutral' }
 > = {
-  OPEN: { label: 'Waiting for Kaamico', tone: 'info' },
-  IN_PROGRESS: { label: 'In progress', tone: 'warning' },
-  RESOLVED: { label: 'Resolved', tone: 'success' },
-  CLOSED: { label: 'Closed', tone: 'neutral' },
+  OPEN: { label: 'support.statusOpen', tone: 'info' },
+  IN_PROGRESS: { label: 'support.statusInProgress', tone: 'warning' },
+  RESOLVED: { label: 'support.statusResolved', tone: 'success' },
+  CLOSED: { label: 'support.statusClosed', tone: 'neutral' },
 }
 
-export function TicketStatusBadge({ status }: { status: TicketSummary['status'] }) {
-  return <Badge tone={STATUS[status].tone}>{STATUS[status].label}</Badge>
+export async function TicketStatusBadge({ status }: { status: TicketSummary['status'] }) {
+  const t = await getT()
+  return <Badge tone={STATUS[status].tone}>{t(STATUS[status].label)}</Badge>
 }
 
 /** The person's own help requests, most recent activity first. */
-export function TicketList({ tickets, basePath }: { tickets: TicketSummary[]; basePath: string }) {
+export async function TicketList({
+  tickets,
+  basePath,
+}: {
+  tickets: TicketSummary[]
+  basePath: string
+}) {
+  const [t, locale] = await Promise.all([getT(), getLocale()])
   if (tickets.length === 0) {
     return (
       <Card>
-        <EmptyState
-          icon={LifeBuoy}
-          title="No help requests yet"
-          description="Anything you send us appears here with our replies."
-        />
+        <EmptyState icon={LifeBuoy} title={t('support.none')} description={t('support.noneBody')} />
       </Card>
     )
   }
   return (
     <ul className="flex flex-col gap-3">
-      {tickets.map((t) => (
-        <li key={t.id}>
+      {tickets.map((ticket) => (
+        <li key={ticket.id}>
           <Link
-            href={`${basePath}/${t.id}`}
+            href={`${basePath}/${ticket.id}`}
             className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4 hover:border-brand-600"
           >
             <span className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold">{t.subject}</span>
-              <TicketStatusBadge status={t.status} />
-              {t.awaitingOwner && t.status === 'IN_PROGRESS' && (
-                <Badge tone="brand">New reply</Badge>
+              <span className="font-semibold">{ticket.subject}</span>
+              <TicketStatusBadge status={ticket.status} />
+              {ticket.awaitingOwner && ticket.status === 'IN_PROGRESS' && (
+                <Badge tone="brand">{t('support.newReply')}</Badge>
               )}
             </span>
             <span className="text-sm text-ink-600">
-              {TICKET_CATEGORY_LABELS[t.category]}
-              {t.bookingCode && ` · ${t.bookingCode}`} ·{' '}
-              {formatIstDateTime(new Date(t.lastMessageAt))}
+              {ticketCategoryLabel(ticket.category, locale)}
+              {ticket.bookingCode && ` · ${ticket.bookingCode}`} ·{' '}
+              {formatIstDateTime(new Date(ticket.lastMessageAt), htmlLang[locale])}
             </span>
           </Link>
         </li>
@@ -64,30 +71,31 @@ export function TicketList({ tickets, basePath }: { tickets: TicketSummary[]; ba
 }
 
 /** Messages in a request; `viewer` decides how senders are named. */
-export function TicketMessages({
+export async function TicketMessages({
   ticket,
   viewer,
 }: {
   ticket: TicketThread
   viewer: 'owner' | 'admin'
 }) {
+  const [t, locale] = await Promise.all([getT(), getLocale()])
   return (
-    <ol className="flex flex-col gap-3" aria-label="Messages">
+    <ol className="flex flex-col gap-3" aria-label={t('support.messages')}>
       {ticket.messages.map((m) => {
         const mine = viewer === 'admin' ? m.fromKaamico : !m.fromKaamico
         const name = m.fromKaamico
           ? viewer === 'admin'
             ? `${m.senderName ?? 'Admin'} (Kaamico)`
-            : 'Kaamico support'
+            : t('support.kaamicoSupport')
           : viewer === 'admin'
             ? (m.senderName ?? 'Customer')
-            : 'You'
+            : t('support.you')
         return (
           <li key={m.id} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
             <Card className={cn('max-w-[85%]', mine && 'bg-brand-50')}>
               <CardContent className="flex flex-col gap-1 py-3">
                 <span className="text-xs text-ink-600">
-                  {name} · {formatIstDateTime(new Date(m.createdAt))}
+                  {name} · {formatIstDateTime(new Date(m.createdAt), htmlLang[locale])}
                 </span>
                 <p className="whitespace-pre-line">{m.body}</p>
               </CardContent>
@@ -100,22 +108,19 @@ export function TicketMessages({
 }
 
 /** Thread plus reply box (or a closed note) for the request's owner. */
-export function OwnerTicketThread({ ticket }: { ticket: TicketThread }) {
+export async function OwnerTicketThread({ ticket }: { ticket: TicketThread }) {
+  const t = await getT()
   return (
     <div className="flex flex-col gap-4">
       <TicketMessages ticket={ticket} viewer="owner" />
       {ticket.status === 'CLOSED' ? (
         <p className="text-ink-600" role="status">
-          This request is closed. If you still need help, start a new one.
+          {t('support.closedNote')}
         </p>
       ) : (
         <TicketReplyForm
           ticketId={ticket.id}
-          hint={
-            ticket.status === 'RESOLVED'
-              ? 'Writing again reopens this request.'
-              : 'We usually reply within a day.'
-          }
+          hint={ticket.status === 'RESOLVED' ? t('support.reopens') : t('support.replyTime')}
         />
       )}
     </div>

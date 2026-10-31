@@ -5,6 +5,8 @@ import { SimulationBadge } from '@/components/domain/trust-badges'
 import { Logo } from '@/components/brand/logo'
 import { Card, CardContent } from '@/components/ui/card'
 import { Money } from '@/components/ui/money'
+import { htmlLang } from '@/i18n/config'
+import { getLocale, getT } from '@/i18n/server'
 import { AppError } from '@/lib/errors'
 import { formatIstDateTime } from '@/lib/time'
 import { requirePageActor } from '@/modules/auth/page-guards'
@@ -13,7 +15,9 @@ import { getReceipt } from '@/modules/payments/receipts'
 
 export const instant = false
 
-export const metadata: Metadata = { title: 'Receipt' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('receipt.metaTitle') }
+}
 
 async function load(actor: Actor, id: string) {
   try {
@@ -27,6 +31,8 @@ async function load(actor: Actor, id: string) {
 /** Printable booking receipt (§10.11). Not a GST tax invoice. */
 export default async function ReceiptPage({ params }: PageProps<'/[lang]/bookings/[id]/receipt'>) {
   const actor = await requirePageActor()
+  const [t, locale] = await Promise.all([getT(), getLocale()])
+  const lang = htmlLang[locale]
   const r = await load(actor, (await params).id)
 
   return (
@@ -39,38 +45,38 @@ export default async function ReceiptPage({ params }: PageProps<'/[lang]/booking
           <div className="flex items-start justify-between gap-3">
             <Logo />
             <div className="text-right text-sm">
-              <h1 className="font-display text-xl font-bold">Receipt</h1>
+              <h1 className="font-display text-xl font-bold">{t('receipt.title')}</h1>
               <p className="font-mono">{r.number}</p>
-              <p className="text-ink-600">{formatIstDateTime(new Date(r.issuedAt))}</p>
+              <p className="text-ink-600">{formatIstDateTime(new Date(r.issuedAt), lang)}</p>
             </div>
           </div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-            <dt className="text-ink-600">Booking</dt>
+            <dt className="text-ink-600">{t('receipt.booking')}</dt>
             <dd>
               {r.bookingCode} · {r.serviceName}
             </dd>
-            <dt className="text-ink-600">Customer</dt>
+            <dt className="text-ink-600">{t('receipt.customer')}</dt>
             <dd>{r.customerName}</dd>
-            <dt className="text-ink-600">Professional</dt>
+            <dt className="text-ink-600">{t('receipt.professional')}</dt>
             <dd>{r.workerName}</dd>
-            <dt className="text-ink-600">Area</dt>
+            <dt className="text-ink-600">{t('receipt.area')}</dt>
             <dd>{r.locality}</dd>
             {r.completedAt && (
               <>
-                <dt className="text-ink-600">Completed</dt>
-                <dd>{formatIstDateTime(new Date(r.completedAt))}</dd>
+                <dt className="text-ink-600">{t('receipt.completed')}</dt>
+                <dd>{formatIstDateTime(new Date(r.completedAt), lang)}</dd>
               </>
             )}
           </dl>
           <table className="w-full text-sm">
-            <caption className="sr-only">Charges</caption>
+            <caption className="sr-only">{t('receipt.charges')}</caption>
             <thead>
               <tr className="border-b border-border text-left text-ink-600">
                 <th scope="col" className="py-2 font-medium">
-                  Item
+                  {t('receipt.item')}
                 </th>
                 <th scope="col" className="py-2 text-right font-medium">
-                  Amount
+                  {t('receipt.amount')}
                 </th>
               </tr>
             </thead>
@@ -87,7 +93,7 @@ export default async function ReceiptPage({ params }: PageProps<'/[lang]/booking
             <tfoot>
               <tr className="text-base font-semibold">
                 <th scope="row" className="py-2 text-left">
-                  Total paid
+                  {t('receipt.total')}
                 </th>
                 <td className="py-2 text-right">
                   <Money paise={r.totalPaise} />
@@ -96,7 +102,7 @@ export default async function ReceiptPage({ params }: PageProps<'/[lang]/booking
               {r.platformFeePaise !== null && (
                 <tr className="text-ink-600">
                   <th scope="row" className="py-1 text-left font-normal">
-                    Kaamico fee (from the professional&apos;s share)
+                    {t('receipt.fee')}
                   </th>
                   <td className="py-1 text-right">
                     <Money paise={r.platformFeePaise} />
@@ -106,13 +112,10 @@ export default async function ReceiptPage({ params }: PageProps<'/[lang]/booking
             </tfoot>
           </table>
           <p className="flex flex-wrap items-center gap-2 text-sm">
-            Paid with: {r.paidWith}
-            {r.simulated && <SimulationBadge label="Simulated: no money moved" />}
+            {t('receipt.paidWith', { method: r.paidWith })}
+            {r.simulated && <SimulationBadge label={t('receipt.simulated')} />}
           </p>
-          <p className="text-xs text-ink-600">
-            This is a booking receipt, not a GST tax invoice. The price was agreed between you and
-            the professional before the job started.
-          </p>
+          <p className="text-xs text-ink-600">{t('receipt.notGst')}</p>
         </CardContent>
       </Card>
     </div>

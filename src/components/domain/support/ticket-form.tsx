@@ -6,8 +6,13 @@ import { useApiAction } from '@/components/domain/worker/use-api-action'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input, NativeSelect, Textarea } from '@/components/ui/input'
+import { useLocale, useT } from '@/i18n/client'
 import { apiFetch } from '@/lib/api-client'
-import { TICKET_CATEGORY_LABELS, type TicketCategory } from '@/modules/support/labels'
+import {
+  TICKET_CATEGORIES,
+  ticketCategoryLabel,
+  type TicketCategory,
+} from '@/modules/support/labels'
 
 /** A new help request, optionally about one booking. Opens the thread when sent. */
 export function TicketForm({
@@ -18,6 +23,8 @@ export function TicketForm({
   booking: { id: string; code: string } | null
 }) {
   const router = useRouter()
+  const t = useT()
+  const locale = useLocale()
   const { pending, error, fieldErrors, run } = useApiAction()
   const [category, setCategory] = useState<TicketCategory | ''>(booking ? 'BOOKING' : '')
   const [subject, setSubject] = useState('')
@@ -32,7 +39,7 @@ export function TicketForm({
         })
         router.push(`${basePath}/${ticketId}`)
       },
-      { success: 'Sent. We usually reply within a day.', refresh: false },
+      { success: t('support.sent'), refresh: false },
     )
   }
 
@@ -40,26 +47,27 @@ export function TicketForm({
     <form onSubmit={submit} className="flex flex-col gap-4">
       {booking && (
         <p className="text-sm text-ink-600">
-          About booking <span className="font-medium text-ink-900">{booking.code}</span>
+          {t('support.aboutBooking')}{' '}
+          <span className="font-medium text-ink-900">{booking.code}</span>
         </p>
       )}
-      <FormField label="Topic" required error={fieldErrors.category}>
+      <FormField label={t('support.topic')} required error={fieldErrors.category}>
         {(field) => (
           <NativeSelect
             {...field}
             value={category}
             onChange={(e) => setCategory(e.target.value as TicketCategory)}
           >
-            <option value="">Choose one</option>
-            {Object.entries(TICKET_CATEGORY_LABELS).map(([value, label]) => (
+            <option value="">{t('support.chooseOne')}</option>
+            {TICKET_CATEGORIES.map((value) => (
               <option key={value} value={value}>
-                {label}
+                {ticketCategoryLabel(value, locale)}
               </option>
             ))}
           </NativeSelect>
         )}
       </FormField>
-      <FormField label="Subject" required error={fieldErrors.subject}>
+      <FormField label={t('support.subject')} required error={fieldErrors.subject}>
         {(field) => (
           <Input
             {...field}
@@ -70,9 +78,9 @@ export function TicketForm({
         )}
       </FormField>
       <FormField
-        label="How can we help?"
+        label={t('support.howHelp')}
         required
-        hint="Please don't share card numbers or OTPs."
+        hint={t('support.noSecrets')}
         error={fieldErrors.message}
       >
         {(field) => (
@@ -95,9 +103,9 @@ export function TicketForm({
         className="self-start"
         disabled={!category}
         loading={pending}
-        loadingText="Sending…"
+        loadingText={t('support.sending')}
       >
-        Send to Kaamico
+        {t('support.send')}
       </Button>
     </form>
   )
