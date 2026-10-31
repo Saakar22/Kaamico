@@ -1,4 +1,4 @@
-import { CalendarClock, ChevronLeft, MapPin } from 'lucide-react'
+import { CalendarClock, ChevronLeft, MapPin, Star } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -98,6 +98,15 @@ export default async function WorkerRequestPage({
               <p className="flex items-start gap-2">
                 <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-ink-600" />
                 {t('wreq.away', { place: request.localityLabel, km: request.distanceKm })}
+              </p>
+              <p className="flex items-start gap-2">
+                <Star aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-ink-600" />
+                {request.customerRating
+                  ? t('rateCustomer.customerRating', {
+                      avg: request.customerRating.avg.toFixed(1),
+                      count: request.customerRating.count,
+                    })
+                  : t('rateCustomer.newCustomer')}
               </p>
               {request.price.listedPaise !== null && (
                 <p>

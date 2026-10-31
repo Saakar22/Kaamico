@@ -10,6 +10,7 @@ import { getT } from '@/i18n/server'
 import type { MessageKey } from '@/i18n/translate'
 import { getAccount } from '@/modules/auth/account'
 import { requirePageActor } from '@/modules/auth/page-guards'
+import { ownCustomerRating } from '@/modules/reviews/customer-ratings'
 
 export const instant = false
 
@@ -25,7 +26,11 @@ const LINKS: { href: string; label: MessageKey; icon: LucideIcon }[] = [
 
 export default async function ProfilePage() {
   const actor = await requirePageActor('CUSTOMER')
-  const [account, t] = await Promise.all([getAccount(actor), getT()])
+  const [account, t, rating] = await Promise.all([
+    getAccount(actor),
+    getT(),
+    ownCustomerRating(actor.userId),
+  ])
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -42,6 +47,19 @@ export default async function ProfilePage() {
           />
         </CardContent>
       </Card>
+      {rating && (
+        <Card>
+          <CardContent className="flex flex-col gap-1">
+            <h2 className="font-semibold">{t('rateCustomer.yourRating')}</h2>
+            <p className="text-sm text-ink-600">
+              {t('rateCustomer.yourRatingBody', {
+                avg: rating.avg.toFixed(1),
+                count: rating.count,
+              })}
+            </p>
+          </CardContent>
+        </Card>
+      )}
       <AppSettings />
       <nav aria-label={t('account.nav')}>
         <ul className="flex flex-col gap-3">

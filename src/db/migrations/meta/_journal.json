@@ -78,6 +78,13 @@
       "when": 1793437118252,
       "tag": "0010_catalog_hindi",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793441763681,
+      "tag": "0011_customer_ratings",
+      "breakpoints": true
     }
   ]
 }

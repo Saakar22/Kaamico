@@ -110,6 +110,9 @@ export const customerProfiles = pgTable('customer_profiles', {
   defaultAddressId: uuid().references(() => addresses.id, { onDelete: 'set null' }),
   bookingsCount: integer().notNull().default(0),
   cancellationsCount: integer().notNull().default(0),
+  /** Totals of professionals' private ratings of this customer (`customer_ratings`). */
+  ratingSum: integer().notNull().default(0),
+  ratingCount: integer().notNull().default(0),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 })

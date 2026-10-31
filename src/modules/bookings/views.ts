@@ -22,6 +22,10 @@ import { deriveStartCode } from './start-code'
 import { ACTIVE_JOB, OPEN_REQUEST, type BookingStatus } from './state-machine'
 import type { Locale } from '@/i18n/config'
 import { localized } from '@/modules/catalog/catalog'
+import {
+  customerRatingSummary,
+  type CustomerRatingSummary,
+} from '@/modules/reviews/customer-ratings'
 
 export type OfferView = {
   id: string
@@ -83,6 +87,8 @@ type BaseRow = {
   expires_at: Date | string | null
   customer_id: string
   customer_name: string | null
+  customer_rating_sum: number | null
+  customer_rating_count: number | null
   worker_id: string | null
   invited_worker_id: string
   invitation_id: string
@@ -123,7 +129,8 @@ async function loadBase(
   const [row] = await getDb().execute<BaseRow>(sql`
     select b.id, b.code, b.status, b.version, b.timing, b.requested_start,
            lower(b.slot) as slot_start, upper(b.slot) as slot_end, b.expires_at,
-           b.customer_id, cu.name as customer_name, b.worker_id,
+           b.customer_id, cu.name as customer_name, cp.rating_sum as customer_rating_sum,
+           cp.rating_count as customer_rating_count, b.worker_id,
            i.worker_id as invited_worker_id, i.id as invitation_id, i.status as invitation_status, i.distance_km,
            w.display_name as worker_name, w.photo_key as worker_photo,
            w.rating_sum as worker_rating_sum, w.rating_count as worker_rating_count,
@@ -136,6 +143,7 @@ async function loadBase(
     join booking_invitations i on i.booking_id = b.id
     join worker_profiles w on w.id = i.worker_id
     join users cu on cu.id = b.customer_id
+    left join customer_profiles cp on cp.user_id = b.customer_id
     join services s on s.id = b.service_id
     left join worker_service_pricing p on p.worker_id = i.worker_id and p.service_id = b.service_id
     where ${where}
@@ -341,6 +349,11 @@ async function workerProjection(row: BaseRow, actor: Actor, now: Date) {
     invitationId: row.invitation_id,
     invitationStatus: row.invitation_status,
     customerFirstName: (row.customer_name ?? 'Customer').trim().split(/\s+/)[0],
+    /** Professionals' private ratings of the customer, once there are enough to stay anonymous. */
+    customerRating: customerRatingSummary(
+      row.customer_rating_sum ?? 0,
+      row.customer_rating_count ?? 0,
+    ),
     distanceKm: Math.round(Number(row.distance_km) * 10) / 10,
     assigned,
     address: showAddress ? row.address_snapshot : null,
@@ -420,6 +433,7 @@ export type RequestListItem = {
   invitationStatus: string
   serviceName: string
   customerFirstName: string
+  customerRating: CustomerRatingSummary
   localityLabel: string
   distanceKm: number
   timing: 'ON_DEMAND' | 'SCHEDULED'
@@ -453,6 +467,8 @@ export async function listWorkerRequests(
     invitation_status: string
     service_name: string
     customer_name: string | null
+    customer_rating_sum: number | null
+    customer_rating_count: number | null
     locality_label: string
     distance_km: number | string
     timing: 'ON_DEMAND' | 'SCHEDULED'
@@ -464,13 +480,16 @@ export async function listWorkerRequests(
     offer_expires: Date | string | null
   }>(sql`
     select i.id as invitation_id, b.id as booking_id, b.code, b.status, i.status as invitation_status,
-           ${localized(locale, 's', 'name')} as service_name, cu.name as customer_name, b.locality_label, i.distance_km,
+           ${localized(locale, 's', 'name')} as service_name, cu.name as customer_name,
+           cp.rating_sum as customer_rating_sum, cp.rating_count as customer_rating_count,
+           b.locality_label, i.distance_km,
            b.timing, b.requested_start, b.expires_at,
            o.offered_by as offer_by, o.amount_paise as offer_amount, o.status as offer_status, o.expires_at as offer_expires
     from booking_invitations i
     join bookings b on b.id = i.booking_id
     join services s on s.id = b.service_id
     join users cu on cu.id = b.customer_id
+    left join customer_profiles cp on cp.user_id = b.customer_id
     left join lateral (
       select offered_by, amount_paise, status, expires_at from price_offers
       where booking_id = b.id and worker_id = i.worker_id order by round desc limit 1
@@ -486,6 +505,7 @@ export async function listWorkerRequests(
     invitationStatus: r.invitation_status,
     serviceName: r.service_name,
     customerFirstName: (r.customer_name ?? 'Customer').trim().split(/\s+/)[0],
+    customerRating: customerRatingSummary(r.customer_rating_sum ?? 0, r.customer_rating_count ?? 0),
     localityLabel: r.locality_label,
     distanceKm: Math.round(Number(r.distance_km) * 10) / 10,
     timing: r.timing,

@@ -86,7 +86,14 @@ export default async function WorkerRequestsPage({
                     <span className="font-semibold">
                       {t('wreq.forCustomer', { service: r.serviceName, name: r.customerFirstName })}
                     </span>
-                    <span className="text-xs text-ink-600">{r.code}</span>
+                    <span className="text-xs text-ink-600">
+                      {r.code}
+                      {r.customerRating &&
+                        ` · ${t('rateCustomer.customerRating', {
+                          avg: r.customerRating.avg.toFixed(1),
+                          count: r.customerRating.count,
+                        })}`}
+                    </span>
                     <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-600">
                       <span className="flex items-center gap-1">
                         <MapPin aria-hidden="true" className="size-4" />

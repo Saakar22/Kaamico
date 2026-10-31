@@ -17,6 +17,7 @@ import { DisputePanel } from '@/components/domain/disputes/dispute-panel'
 import { ReportProblemDialog } from '@/components/domain/disputes/report-problem-dialog'
 import { StatusActionBar } from '@/components/domain/booking/status-action-bar'
 import { WorkerPaymentPanel } from '@/components/domain/payments/worker-payment-panel'
+import { CustomerRatingForm } from '@/components/domain/reviews/customer-rating-form'
 import { statusLabel } from '@/components/domain/negotiation/booking-status'
 import { CancelBookingButton } from '@/components/domain/negotiation/cancel-booking-button'
 import { PageHeader } from '@/components/patterns/page-header'
@@ -31,6 +32,11 @@ import { getWorkerBooking } from '@/modules/bookings/views'
 import { bookingDispute, canReport } from '@/modules/disputes/disputes'
 import { commissionOf } from '@/modules/ledger/postings'
 import { bookingPayment, owesVisitFee } from '@/modules/payments/payments'
+import {
+  CUSTOMER_TAG_LABELS,
+  CUSTOMER_TAGS,
+  customerRatingState,
+} from '@/modules/reviews/customer-ratings'
 import { negotiationConfig } from '@/modules/negotiation/config'
 import { requireWorkerPage } from '@/modules/workers/page-guard'
 
@@ -59,6 +65,8 @@ export default async function WorkerJobPage({ params }: PageProps<'/[lang]/worke
   const visitFee = owesVisitFee(job) ? job.visitFeePaise : null
   const payment = job.status === 'COMPLETED' || visitFee ? await bookingPayment(job.id) : null
   const payable = visitFee ?? job.price.totalPaise
+  const customerRating =
+    job.status === 'COMPLETED' ? await customerRatingState(actor, job.id) : null
   // Only the assigned professional reaches this page, so the booking is theirs.
   const dispute = await bookingDispute(actor, {
     id: job.id,
@@ -148,6 +156,18 @@ export default async function WorkerJobPage({ params }: PageProps<'/[lang]/worke
             chargePending={chargePending}
           />
           {onSite && <ChargeProposalForm bookingId={job.id} customerFirstName={name} />}
+          {customerRating?.canRate && (
+            <CustomerRatingForm
+              bookingId={job.id}
+              customerName={name}
+              tags={CUSTOMER_TAGS.map((id) => ({ id, label: CUSTOMER_TAG_LABELS[id][locale] }))}
+            />
+          )}
+          {customerRating?.rating && (
+            <p className="text-sm text-ink-600" role="status">
+              {t('rateCustomer.done', { name, rating: customerRating.rating })}
+            </p>
+          )}
 
           <Card>
             <CardContent>

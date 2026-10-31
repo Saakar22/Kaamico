@@ -66,6 +66,40 @@ export const reviews = pgTable(
   ],
 )
 
+/**
+ * The professional's private rating of the customer for one completed booking (§14 P2).
+ * Never shown individually: professionals see a customer's average once there are
+ * enough ratings that no single one can be told apart. Eligibility enforced by trigger.
+ */
+export const customerRatings = pgTable(
+  'customer_ratings',
+  {
+    id: id(),
+    bookingId: uuid()
+      .notNull()
+      .unique()
+      .references(() => bookings.id),
+    workerId: uuid()
+      .notNull()
+      .references(() => workerProfiles.id),
+    customerId: uuid()
+      .notNull()
+      .references(() => users.id),
+    rating: smallint().notNull(),
+    tags: varchar({ length: 24 })
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    /** Seen only by Kaamico (support and safety). */
+    note: varchar({ length: 500 }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('customer_ratings_customer_idx').on(t.customerId),
+    check('customer_ratings_rating_range', sql`${t.rating} between 1 and 5`),
+  ],
+)
+
 export const verificationApplications = pgTable(
   'verification_applications',
   {

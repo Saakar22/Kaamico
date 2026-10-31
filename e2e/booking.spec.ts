@@ -219,6 +219,12 @@ test('a customer books and negotiates; the professional does the job; both track
     await expect(worker.getByText(new RegExp(`Meera paid ₹${total} in cash`))).toBeVisible()
     await customer.reload()
   }
+  // The professional privately rates the customer.
+  await worker.goto(job)
+  await worker.getByRole('radio', { name: '4 stars' }).click()
+  await worker.getByRole('button', { name: 'Paid promptly' }).click()
+  await worker.getByRole('button', { name: 'Save rating' }).click()
+  await expect(worker.getByText('You rated Meera 4 out of 5.')).toBeVisible()
   const paid = customer.getByRole('region', { name: /^Paid ₹/ })
   await expect(paid).toContainText(`₹${total}`)
   await paid.getByRole('link', { name: /^Receipt KMC\// }).click()

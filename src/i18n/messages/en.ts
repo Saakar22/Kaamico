@@ -830,6 +830,26 @@ export const en = {
     earnings: 'Your earnings',
     receipt: 'Receipt',
   },
+  rateCustomer: {
+    title: 'How was working with {name}?',
+    privacy:
+      'Only other professionals see an average, once enough have rated {name}. Your rating and note are never shown to {name}.',
+    rating: 'Rating',
+    starOne: '{count} star',
+    starOther: '{count} stars',
+    tags: 'What went well? (optional)',
+    note: 'Note for Kaamico (optional)',
+    noteHint: 'Only Kaamico support sees this, e.g. a safety concern.',
+    sending: 'Saving…',
+    submit: 'Save rating',
+    saved: 'Rating saved',
+    done: 'You rated {name} {rating} out of 5.',
+    customerRating: 'Customer rating {avg} from {count} professionals',
+    newCustomer: 'Not enough ratings yet',
+    yourRating: 'Your rating from professionals',
+    yourRatingBody:
+      '{avg} out of 5 from {count} professionals. They rate how the job went for them; individual ratings stay private.',
+  },
 }
 
 type Strings<T> = { [K in keyof T]: T[K] extends string ? string : Strings<T[K]> }
