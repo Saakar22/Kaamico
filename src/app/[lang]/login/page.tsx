@@ -3,12 +3,16 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { Logo } from '@/components/brand/logo'
+import { LanguageSwitch } from '@/components/layout/language-switch'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getT } from '@/i18n/server'
 import { getActor } from '@/modules/auth/actor'
 import { homePathFor, safeNextPath } from '@/modules/auth/redirects'
 import { LoginFlow } from './login-flow'
 
-export const metadata: Metadata = { title: 'Sign in' }
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('login.metaTitle') }
+}
 
 async function LoginGate({
   searchParams,
@@ -26,16 +30,20 @@ async function LoginGate({
   return <LoginFlow initialStep={actor?.needsOnboarding ? 'details' : 'phone'} next={next} />
 }
 
-export default function LoginPage(props: PageProps<'/[lang]/login'>) {
+export default async function LoginPage(props: PageProps<'/[lang]/login'>) {
+  const t = await getT()
   return (
     <main
       id="main-content"
       className="flex flex-1 flex-col items-center px-4 py-10 sm:justify-center"
     >
       <div className="flex w-full max-w-sm flex-col gap-8">
-        <Link href="/" className="inline-flex h-11 w-fit items-center rounded-md">
-          <Logo />
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/" className="inline-flex h-11 w-fit items-center rounded-md">
+            <Logo />
+          </Link>
+          <LanguageSwitch />
+        </div>
         <Suspense
           fallback={
             <div className="flex flex-col gap-4" aria-hidden="true">
@@ -48,13 +56,13 @@ export default function LoginPage(props: PageProps<'/[lang]/login'>) {
           <LoginGate searchParams={props.searchParams} />
         </Suspense>
         <p className="text-sm text-ink-600">
-          By continuing you agree to Kaamico&apos;s{' '}
+          {t('login.agreePrefix')}{' '}
           <Link href="/terms" className="font-medium text-brand-700 underline">
-            terms
+            {t('login.terms')}
           </Link>{' '}
-          and{' '}
+          {t('login.and')}{' '}
           <Link href="/privacy" className="font-medium text-brand-700 underline">
-            privacy policy
+            {t('login.privacy')}
           </Link>
           .
         </p>

@@ -3,6 +3,8 @@ import {
   BOOKING_TOPICS,
   draftAdminVerificationNotifications,
   draftNotifications,
+  draftPayoutNotification,
+  draftVerificationNotification,
   type BookingContext,
 } from './templates'
 
@@ -159,5 +161,40 @@ describe('admin verification notifications', () => {
     expect(
       draftAdminVerificationNotifications([], { id: 'x', workerName: 'R', resubmission: false }),
     ).toEqual([])
+  })
+})
+
+describe('notifications in each person’s language', () => {
+  it('writes to each side in their own language, with the service name in it', () => {
+    const mixed = { ...ctx, customerLocale: 'hi' as const, serviceNameHi: 'नल की मरम्मत' }
+    expect(draftNotifications('booking.en_route', {}, mixed)).toEqual([
+      expect.objectContaining({
+        userId: 'cust',
+        title: 'Rakesh रास्ते में हैं',
+        body: 'नल की मरम्मत · KMC-ABC234',
+      }),
+    ])
+    // The professional still reads English.
+    expect(draftNotifications('booking.cancelled', { by: 'SYSTEM' }, mixed)).toEqual([
+      expect.objectContaining({ userId: 'cust', title: 'आपकी बुकिंग रद्द हो गई' }),
+      expect.objectContaining({
+        userId: 'work',
+        title: 'A job was cancelled',
+        body: 'Tap repair · KMC-ABC234',
+      }),
+    ])
+  })
+
+  it('drafts payouts and verification results in Hindi too', () => {
+    expect(
+      draftPayoutNotification(
+        'payout.paid',
+        { workerUserId: 'w', amountPaise: 50_000, failureReason: null },
+        'hi',
+      )?.title,
+    ).toBe('₹500 का भुगतान भेजा गया')
+    expect(draftVerificationNotification('APPROVE', 'w', null, 'hi')?.title).toBe(
+      'आपकी जाँच पूरी हुई',
+    )
   })
 })

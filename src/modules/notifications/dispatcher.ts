@@ -3,6 +3,7 @@ import { and, asc, eq, isNull, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb } from '@/db/client'
 import { bookingCharges, notifications, outboxEvents, priceOffers } from '@/db/schema'
+import { isLocale, type Locale } from '@/i18n/config'
 import { logger } from '@/lib/logger'
 import type { Tx } from '@/modules/bookings/repo'
 import {
@@ -26,6 +27,8 @@ function failureReason(error: unknown): string {
   const root = error instanceof Error && error.cause instanceof Error ? error.cause : error
   return String(root instanceof Error ? root.message : root).slice(0, 1000)
 }
+/** A stored language, or English for anything unexpected. */
+const localeOf = (value: string | null | undefined): Locale => (isLocale(value) ? value : 'en')
 const isUuid = (v: unknown): v is string => typeof v === 'string' && z.uuid().safeParse(v).success
 
 async function bookingContext(
@@ -49,21 +52,27 @@ async function bookingContext(
   const [row] = await tx.execute<{
     code: string
     service_name: string
+    service_name_hi: string | null
     customer_id: string
     customer_name: string | null
+    customer_locale: string
     worker_user_id: string
     worker_name: string
+    worker_locale: string
     invitation_id: string
     final_amount_paise: number | null
   }>(sql`
-    select b.code, s.name as service_name, b.customer_id, cu.name as customer_name,
-           w.user_id as worker_user_id, w.display_name as worker_name, i.id as invitation_id,
+    select b.code, s.name as service_name, s.name_hi as service_name_hi, b.customer_id,
+           cu.name as customer_name, cu.preferred_locale as customer_locale,
+           w.user_id as worker_user_id, w.display_name as worker_name,
+           wu.preferred_locale as worker_locale, i.id as invitation_id,
            b.final_amount_paise
     from bookings b
     join services s on s.id = b.service_id
     join users cu on cu.id = b.customer_id
     join booking_invitations i on i.booking_id = b.id
     join worker_profiles w on w.id = i.worker_id
+    join users wu on wu.id = w.user_id
     where b.id = ${payload.bookingId}
     order by (i.worker_id = coalesce(${about}::uuid, b.worker_id)) desc nulls last
     limit 1`)
@@ -83,10 +92,13 @@ async function bookingContext(
     bookingId: payload.bookingId,
     code: row.code,
     serviceName: row.service_name,
+    serviceNameHi: row.service_name_hi,
     customerUserId: row.customer_id,
     customerFirstName: firstName(row.customer_name, 'Customer'),
+    customerLocale: localeOf(row.customer_locale),
     workerUserId: row.worker_user_id,
     workerFirstName: firstName(row.worker_name, 'Your professional'),
+    workerLocale: localeOf(row.worker_locale),
     invitationId: row.invitation_id,
     totalPaise: row.final_amount_paise,
     offer: offer ? { offeredBy: offer.offeredBy, amountPaise: offer.amountPaise } : null,
@@ -96,11 +108,23 @@ async function bookingContext(
 
 async function verificationDraft(tx: Tx, payload: Record<string, unknown>) {
   if (!isUuid(payload.applicationId)) return null
-  const [row] = await tx.execute<{ user_id: string; decision_reason: string | null }>(sql`
-    select w.user_id, a.decision_reason from verification_applications a
-    join worker_profiles w on w.id = a.worker_id where a.id = ${payload.applicationId}`)
+  const [row] = await tx.execute<{
+    user_id: string
+    decision_reason: string | null
+    locale: string
+  }>(sql`
+    select w.user_id, a.decision_reason, u.preferred_locale as locale
+    from verification_applications a
+    join worker_profiles w on w.id = a.worker_id
+    join users u on u.id = w.user_id
+    where a.id = ${payload.applicationId}`)
   return row
-    ? draftVerificationNotification(payload.decision, row.user_id, row.decision_reason)
+    ? draftVerificationNotification(
+        payload.decision,
+        row.user_id,
+        row.decision_reason,
+        localeOf(row.locale),
+      )
     : null
 }
 
@@ -128,15 +152,23 @@ async function payoutDraft(tx: Tx, topic: string, payload: Record<string, unknow
     user_id: string
     amount_paise: number
     failure_reason: string | null
+    locale: string
   }>(sql`
-    select w.user_id, p.amount_paise, p.failure_reason from payouts p
-    join worker_profiles w on w.id = p.worker_id where p.id = ${payload.payoutId}`)
+    select w.user_id, p.amount_paise, p.failure_reason, u.preferred_locale as locale
+    from payouts p
+    join worker_profiles w on w.id = p.worker_id
+    join users u on u.id = w.user_id
+    where p.id = ${payload.payoutId}`)
   return row
-    ? draftPayoutNotification(topic, {
-        workerUserId: row.user_id,
-        amountPaise: row.amount_paise,
-        failureReason: row.failure_reason,
-      })
+    ? draftPayoutNotification(
+        topic,
+        {
+          workerUserId: row.user_id,
+          amountPaise: row.amount_paise,
+          failureReason: row.failure_reason,
+        },
+        localeOf(row.locale),
+      )
     : null
 }
 

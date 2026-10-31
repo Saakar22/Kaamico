@@ -6,9 +6,17 @@ import { htmlLang, LOCALE_COOKIE, type Locale } from '@/i18n/config'
 
 const YEAR_SECONDS = 365 * 24 * 60 * 60
 
-/** Saves the language for the proxy and reloads the page in it. */
+/** Saves the language for the proxy (and the account) and reloads the page in it. */
 export function chooseLanguage(locale: Locale) {
   document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${YEAR_SECONDS}; samesite=lax`
+  // Signed in: keep it on the account too, for other devices and notifications. Signed
+  // out this fails quietly; the reload does not wait for it.
+  void fetch('/api/v1/me/language', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ locale }),
+    keepalive: true,
+  }).catch(() => {})
   window.location.reload()
 }
 

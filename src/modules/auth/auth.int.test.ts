@@ -5,6 +5,7 @@ import { POST as logout } from '@/app/api/v1/auth/logout/route'
 import { POST as requestOtp } from '@/app/api/v1/auth/otp/request/route'
 import { POST as verifyOtp } from '@/app/api/v1/auth/otp/verify/route'
 import { POST as onboarding } from '@/app/api/v1/me/onboarding/route'
+import { PUT as setLanguage } from '@/app/api/v1/me/language/route'
 import { GET as me } from '@/app/api/v1/me/route'
 import { connectTestDb, hasTestDatabase, truncateAll } from '@/test/db'
 import { requireApiActor } from './actor'
@@ -373,6 +374,56 @@ describe.skipIf(!hasTestDatabase)('authentication and authorisation', () => {
       const res = await login({ email: 'admin@kaamico.test', password: 'admin-pass-123' })
       await sql`update users set roles = '{CUSTOMER}', password_hash = null`
       expect((await call(me, req('/api/v1/me', { cookie: cookieOf(res) }))).status).toBe(401)
+    })
+  })
+
+  describe('language', () => {
+    const verifyWith = async (phone: string, langCookie?: string) => {
+      const otp = await json(
+        await call(requestOtp, req('/api/v1/auth/otp/request', { body: { phone } })),
+      )
+      return call(
+        verifyOtp,
+        req('/api/v1/auth/otp/verify', {
+          body: { phone, code: otp.simulatedCode },
+          ...(langCookie ? { cookie: `kmc_lang=${langCookie}` } : {}),
+        }),
+      )
+    }
+    const savedLocale = async (phone: string) =>
+      (await sql`select preferred_locale from users where phone = ${`+91${phone}`}`)[0]
+        .preferred_locale
+
+    it('keeps the language a new account signed up in, and brings it back on a new device', async () => {
+      const phone = newPhone()
+      expect((await verifyWith(phone, 'hi')).status).toBe(200)
+      expect(await savedLocale(phone)).toBe('hi')
+      // Another browser with no choice yet gets the saved language.
+      const again = await verifyWith(phone)
+      expect(again.headers.get('set-cookie')).toContain('kmc_lang=hi')
+    })
+
+    it('saves a switch made while signed in', async () => {
+      const { phone, cookie } = await signIn()
+      const res = await call(
+        setLanguage,
+        req('/api/v1/me/language', { method: 'PUT', body: { locale: 'hi' }, cookie }),
+      )
+      expect(res.status).toBe(200)
+      expect(await savedLocale(phone)).toBe('hi')
+      const bad = await call(
+        setLanguage,
+        req('/api/v1/me/language', { method: 'PUT', body: { locale: 'fr' }, cookie }),
+      )
+      expect(bad.status).toBe(400)
+      expect(
+        (
+          await call(
+            setLanguage,
+            req('/api/v1/me/language', { method: 'PUT', body: { locale: 'hi' } }),
+          )
+        ).status,
+      ).toBe(401)
     })
   })
 })

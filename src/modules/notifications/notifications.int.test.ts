@@ -76,6 +76,18 @@ describe.skipIf(!hasTestDatabase)('notifications', () => {
     expect((await inbox(w.userId))[1].link).toBe(`/worker/bookings/${bookingId}`)
   })
 
+  it('writes to each person in their saved language', async () => {
+    const w = await world.worker()
+    const c = await world.customer()
+    await sql`update users set preferred_locale = 'hi' where id = ${w.userId}`
+    await sql`update services set name_hi = 'नल की मरम्मत' where id = ${world.serviceId}`
+    await createBooking(c.actor, world.request(c, w), world.key())
+    await dispatchOutbox()
+    const [n] = await sql`select title, body from notifications where user_id = ${w.userId}`
+    expect(n.title).toBe('नया अनुरोध: नल की मरम्मत')
+    expect(n.body).toMatch(/ से · KMC-/)
+  })
+
   it('backs off failed events and parks them after the last attempt', async () => {
     const w = await world.worker()
     const c = await world.customer()
