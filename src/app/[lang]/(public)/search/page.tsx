@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
 import { CategoryGrid } from '@/components/domain/catalog/category-card'
+import { CategoryImage } from '@/components/domain/catalog/category-image'
 import { SearchBar } from '@/components/domain/catalog/search-bar'
 import { OpenLocationButton } from '@/components/domain/location/location-chip'
 import {
@@ -126,9 +127,33 @@ async function SortTabs({ filters }: { filters: Filters }) {
 }
 
 /** A plain GET form, so filters work without JavaScript; collapsible on phones. */
-async function FilterPanel({ filters }: { filters: Filters }) {
+async function FilterPanel({ filters, sidebar = false }: { filters: Filters; sidebar?: boolean }) {
   const t = await getT()
   const active = [filters.now, filters.maxPrice, filters.minRating].filter(Boolean).length
+  const form = <FilterForm filters={filters} active={active} />
+  if (sidebar) {
+    // Desktop: always open, so the column beside the results is never empty.
+    return (
+      <section
+        aria-labelledby="filters-title"
+        className="flex flex-col rounded-xl bg-surface shadow-[var(--shadow-lift)] ring-1 ring-border"
+      >
+        <h2
+          id="filters-title"
+          className="flex min-h-12 items-center gap-2 px-4 pt-2 font-display text-lg font-semibold"
+        >
+          <SlidersHorizontal aria-hidden="true" className="size-4" />
+          {t('searchPage.filters')}
+          {active > 0 && (
+            <span className="font-sans text-sm font-normal text-ink-600">
+              {t('searchPage.filtersOn', { count: active })}
+            </span>
+          )}
+        </h2>
+        {form}
+      </section>
+    )
+  }
   return (
     <details
       className="group rounded-md border border-border bg-surface"
@@ -141,55 +166,62 @@ async function FilterPanel({ filters }: { filters: Filters }) {
           <span className="text-ink-600">{t('searchPage.filtersOn', { count: active })}</span>
         )}
       </summary>
-      <form action="/search" className="flex flex-col gap-4 border-t border-border p-4">
-        <input type="hidden" name="service" value={filters.service} />
-        {filters.sort !== 'recommended' && <input type="hidden" name="sort" value={filters.sort} />}
-        <label className="flex min-h-11 items-center gap-3">
-          <Checkbox name="when" value="now" defaultChecked={filters.now} />
-          <span>
-            {t('searchPage.availableNow')}
-            <span className="block text-sm text-ink-600">{t('searchPage.availableNowHint')}</span>
-          </span>
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium">
-          {t('searchPage.priceUpTo')}
-          <NativeSelect
-            name="maxPrice"
-            defaultValue={filters.maxPrice ? String(filters.maxPrice) : ''}
-          >
-            <option value="">{t('searchPage.anyPrice')}</option>
-            {MAX_PRICES.map((p) => (
-              <option key={p} value={p}>
-                ₹{p.toLocaleString('en-IN')}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium">
-          {t('searchPage.rating')}
-          <NativeSelect name="minRating" defaultValue={filters.minRating ?? ''}>
-            <option value="">{t('searchPage.anyRating')}</option>
-            {MIN_RATINGS.map((r) => (
-              <option key={r} value={r}>
-                {t('searchPage.starsAndAbove', { rating: r })}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
-        <div className="flex gap-2">
-          <Button type="submit">{t('searchPage.applyFilters')}</Button>
-          {active > 0 && (
-            <Button variant="tertiary" asChild>
-              <Link
-                href={hrefFor(filters, { now: false, maxPrice: undefined, minRating: undefined })}
-              >
-                {t('searchPage.clear')}
-              </Link>
-            </Button>
-          )}
-        </div>
-      </form>
+      {form}
     </details>
+  )
+}
+
+async function FilterForm({ filters, active }: { filters: Filters; active: number }) {
+  const t = await getT()
+  return (
+    <form action="/search" className="flex flex-col gap-4 border-t border-border p-4">
+      <input type="hidden" name="service" value={filters.service} />
+      {filters.sort !== 'recommended' && <input type="hidden" name="sort" value={filters.sort} />}
+      <label className="flex min-h-11 items-center gap-3">
+        <Checkbox name="when" value="now" defaultChecked={filters.now} />
+        <span>
+          {t('searchPage.availableNow')}
+          <span className="block text-sm text-ink-600">{t('searchPage.availableNowHint')}</span>
+        </span>
+      </label>
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
+        {t('searchPage.priceUpTo')}
+        <NativeSelect
+          name="maxPrice"
+          defaultValue={filters.maxPrice ? String(filters.maxPrice) : ''}
+        >
+          <option value="">{t('searchPage.anyPrice')}</option>
+          {MAX_PRICES.map((p) => (
+            <option key={p} value={p}>
+              ₹{p.toLocaleString('en-IN')}
+            </option>
+          ))}
+        </NativeSelect>
+      </label>
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
+        {t('searchPage.rating')}
+        <NativeSelect name="minRating" defaultValue={filters.minRating ?? ''}>
+          <option value="">{t('searchPage.anyRating')}</option>
+          {MIN_RATINGS.map((r) => (
+            <option key={r} value={r}>
+              {t('searchPage.starsAndAbove', { rating: r })}
+            </option>
+          ))}
+        </NativeSelect>
+      </label>
+      <div className="flex gap-2">
+        <Button type="submit">{t('searchPage.applyFilters')}</Button>
+        {active > 0 && (
+          <Button variant="tertiary" asChild>
+            <Link
+              href={hrefFor(filters, { now: false, maxPrice: undefined, minRating: undefined })}
+            >
+              {t('searchPage.clear')}
+            </Link>
+          </Button>
+        )}
+      </div>
+    </form>
   )
 }
 
@@ -369,7 +401,7 @@ async function ProfessionalResults({
         </p>
       )}
       <ol
-        className="flex flex-col divide-y divide-border border-y border-border"
+        className="flex flex-col divide-y divide-border rounded-xl bg-surface px-4 shadow-[var(--shadow-lift)] ring-1 ring-border sm:px-6"
         aria-label={t('searchPage.professionals')}
       >
         {result.items.map((pro) => (
@@ -426,6 +458,15 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
         {service.category.name}
       </Link>
       <PageHeader
+        leading={
+          <span className="relative hidden size-16 shrink-0 overflow-hidden rounded-lg sm:block">
+            <CategoryImage
+              slug={service.category.slug}
+              iconKey={service.category.iconKey}
+              sizes="64px"
+            />
+          </span>
+        }
         title={service.name}
         description={
           location ? (
@@ -447,8 +488,13 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
         </Card>
       ) : (
         <div className="grid gap-5 md:grid-cols-[16rem_minmax(0,1fr)] md:items-start">
-          <div className="md:sticky md:top-20">
-            <FilterPanel filters={filters} />
+          <div className="md:sticky md:top-24">
+            <div className="md:hidden">
+              <FilterPanel filters={filters} />
+            </div>
+            <div className="hidden md:block">
+              <FilterPanel filters={filters} sidebar />
+            </div>
           </div>
           <div className="flex min-w-0 flex-col gap-4">
             <SortTabs filters={filters} />

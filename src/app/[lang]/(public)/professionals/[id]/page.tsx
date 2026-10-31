@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
+import { CategoryImage } from '@/components/domain/catalog/category-image'
 import { FavoriteSlot } from '@/components/domain/professionals/favorite-slot'
 import { RatingStars, RatingSummary } from '@/components/domain/professionals/rating'
 import { VerificationBadge } from '@/components/domain/trust-badges'
@@ -65,61 +66,86 @@ async function loadProfile(id: string, locale: Locale): Promise<PublicProfile> {
   }
 }
 
-async function ProfileHeader({ profile }: { profile: PublicProfile }) {
+async function ProfileHeader({
+  profile,
+  serviceId,
+}: {
+  profile: PublicProfile
+  serviceId?: string
+}) {
   const [t, locale] = await Promise.all([getT(), getLocale()])
+  // The cover shows the trade: the searched service's category, else their first service's.
+  const trade = (profile.services.find((s) => s.serviceId === serviceId) ?? profile.services[0])
+    ?.category
   return (
-    <header className="flex items-start gap-4">
-      <Avatar
-        name={profile.displayName}
-        src={profile.photoUrl}
-        size="lg"
-        className="size-14 text-base sm:size-20 sm:text-xl"
-      />
-      <div className="flex min-w-0 flex-col gap-2">
-        <h1 className="font-display text-4xl leading-none font-semibold sm:text-5xl">
-          {profile.displayName}
-        </h1>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <VerificationBadge status="VERIFIED" />
-          {profile.isNew && (
-            <Badge tone="info">
-              <Sprout aria-hidden="true" />
-              {t('badges.newOnKaamico')}
-            </Badge>
-          )}
-          <RatingSummary avg={profile.rating.avg} count={profile.rating.count} />
-        </div>
-        {profile.verifiedOn && (
-          <p className="text-sm text-ink-600">
-            {t('profile.idCheckedOn', { date: fullDate(locale, new Date(profile.verifiedOn)) })}
-          </p>
+    <header className="flex flex-col">
+      <div className="relative h-36 overflow-hidden rounded-xl bg-night sm:h-52">
+        {trade && (
+          <CategoryImage
+            slug={trade.slug}
+            iconKey="wrench"
+            sizes="(min-width: 1200px) 1152px, 100vw"
+            priority
+          />
         )}
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-600">
-          <li className="flex items-center gap-1.5">
-            <BriefcaseBusiness aria-hidden="true" className="size-4" />
-            {t('proCard.jobsDone', { count: profile.completedJobs })}
-            {profile.yearsExperience > 0 && (
-              <> · {t('proCard.yearsExperience', { count: profile.yearsExperience })}</>
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-gradient-to-t from-night/60 to-transparent"
+        />
+      </div>
+      <div className="flex flex-col gap-4 px-1 sm:flex-row sm:items-start sm:gap-6 sm:px-6">
+        <Avatar
+          name={profile.displayName}
+          src={profile.photoUrl}
+          size="lg"
+          className="-mt-12 size-24 text-2xl ring-4 ring-surface sm:-mt-16 sm:size-32 sm:text-3xl"
+        />
+        <div className="flex min-w-0 flex-col gap-2 sm:pt-5">
+          <h1 className="font-display text-4xl leading-none font-semibold sm:text-5xl">
+            {profile.displayName}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <VerificationBadge status="VERIFIED" />
+            {profile.isNew && (
+              <Badge tone="info">
+                <Sprout aria-hidden="true" />
+                {t('badges.newOnKaamico')}
+              </Badge>
             )}
-          </li>
-          {profile.languages.length > 0 && (
-            <li className="flex items-center gap-1.5">
-              <Languages aria-hidden="true" className="size-4" />
-              {t('proCard.speaks', {
-                languages: languageNames(profile.languages, htmlLang[locale]),
-              })}
-            </li>
+            <RatingSummary avg={profile.rating.avg} count={profile.rating.count} />
+          </div>
+          {profile.verifiedOn && (
+            <p className="text-sm text-ink-600">
+              {t('profile.idCheckedOn', { date: fullDate(locale, new Date(profile.verifiedOn)) })}
+            </p>
           )}
-          {profile.city && (
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-600">
             <li className="flex items-center gap-1.5">
-              <MapPin aria-hidden="true" className="size-4" />
-              {t('profile.worksIn', { city: profile.city })}
+              <BriefcaseBusiness aria-hidden="true" className="size-4" />
+              {t('proCard.jobsDone', { count: profile.completedJobs })}
+              {profile.yearsExperience > 0 && (
+                <> · {t('proCard.yearsExperience', { count: profile.yearsExperience })}</>
+              )}
             </li>
-          )}
-        </ul>
-        <Suspense fallback={null}>
-          <FavoriteSlot workerId={profile.workerId} name={profile.displayName} />
-        </Suspense>
+            {profile.languages.length > 0 && (
+              <li className="flex items-center gap-1.5">
+                <Languages aria-hidden="true" className="size-4" />
+                {t('proCard.speaks', {
+                  languages: languageNames(profile.languages, htmlLang[locale]),
+                })}
+              </li>
+            )}
+            {profile.city && (
+              <li className="flex items-center gap-1.5">
+                <MapPin aria-hidden="true" className="size-4" />
+                {t('profile.worksIn', { city: profile.city })}
+              </li>
+            )}
+          </ul>
+          <Suspense fallback={null}>
+            <FavoriteSlot workerId={profile.workerId} name={profile.displayName} />
+          </Suspense>
+        </div>
       </div>
     </header>
   )
@@ -324,7 +350,7 @@ async function BookPanel({ profile, serviceId }: { profile: PublicProfile; servi
   const [t, locale] = await Promise.all([getT(), getLocale()])
   const service = profile.services.find((s) => s.serviceId === serviceId) ?? profile.services[0]
   return (
-    <div className="fixed inset-x-0 bottom-16 z-30 border-t border-border bg-surface px-4 py-3 shadow-[0_-4px_16px_rgb(0_0_0/0.06)] md:static md:rounded-md md:border md:p-5 md:shadow-none">
+    <div className="fixed inset-x-0 bottom-16 z-30 border-t border-border bg-surface px-4 py-3 shadow-[0_-4px_16px_rgb(0_0_0/0.06)] md:static md:rounded-xl md:border-0 md:p-6 md:shadow-[var(--shadow-float)] md:ring-1 md:ring-border">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-3 md:flex-col md:items-stretch">
         {service && (
           <p className="flex min-w-0 flex-col">
@@ -372,7 +398,7 @@ async function ProfileContent({ params, searchParams }: Props) {
         <ChevronLeft aria-hidden="true" className="size-4" />
         {t('profile.backToResults')}
       </Link>
-      <ProfileHeader profile={profile} />
+      <ProfileHeader profile={profile} serviceId={offered} />
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-16">
         <div className="flex min-w-0 flex-col gap-12">
           {profile.bio && (
@@ -390,7 +416,7 @@ async function ProfileContent({ params, searchParams }: Props) {
           <ReviewList reviews={reviews} total={reviewTotal} />
         </div>
         <aside
-          className="flex flex-col gap-6 lg:sticky lg:top-20"
+          className="flex flex-col gap-6 lg:sticky lg:top-24"
           aria-label={t('profile.booking')}
         >
           <BookPanel profile={profile} serviceId={offered} />

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { CategoryIcon } from '@/components/domain/catalog/category-icon'
+import { CategoryImage } from '@/components/domain/catalog/category-image'
 import { ServiceCard } from '@/components/domain/catalog/service-card'
 import { OpenLocationButton } from '@/components/domain/location/location-chip'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -56,13 +56,25 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
           <ChevronLeft aria-hidden="true" className="size-4" />
           {t('category.allServices')}
         </Link>
-        <div className="flex items-start gap-4">
-          <CategoryIcon iconKey={category.iconKey} className="size-14" />
-          <div className="flex flex-col gap-1">
-            <h1 className="font-display text-4xl leading-none font-semibold sm:text-5xl">
+        {/* Photo banner: what this kind of work looks like, with the name set on it. */}
+        <div className="relative flex min-h-56 items-end overflow-hidden rounded-xl bg-night sm:min-h-72">
+          <CategoryImage
+            slug={category.slug}
+            iconKey={category.iconKey}
+            sizes="(min-width: 1200px) 1152px, 100vw"
+            priority
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-gradient-to-t from-night via-night/45 to-transparent"
+          />
+          <div className="relative flex flex-col gap-1 p-5 sm:p-8">
+            <h1 className="font-display text-4xl leading-none font-semibold text-on-night sm:text-6xl">
               {category.name}
             </h1>
-            {category.description && <p className="text-lg text-ink-600">{category.description}</p>}
+            {category.description && (
+              <p className="text-lg text-on-night-muted">{category.description}</p>
+            )}
           </div>
         </div>
         {location ? (
@@ -78,33 +90,35 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
         )}
       </header>
 
-      <ul className="flex max-w-4xl flex-col divide-y divide-border border-y border-border">
-        {category.services.map((service) => (
-          <li key={service.id}>
-            <ServiceCard service={service} hasLocation={location !== null} />
-          </li>
-        ))}
-      </ul>
-
-      <section aria-labelledby="faq-title" className="flex max-w-4xl flex-col gap-3 pt-4">
-        <h2 id="faq-title" className="font-display text-2xl font-semibold">
-          {t('category.faqTitle')}
-        </h2>
-        <div className="flex flex-col divide-y divide-border border-y border-border">
-          {FAQS.map((f) => (
-            <details key={f.q} className="group">
-              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 font-medium [&::-webkit-details-marker]:hidden">
-                {t(f.q)}
-                <Plus
-                  aria-hidden="true"
-                  className="size-4 shrink-0 text-ink-600 transition-transform group-open:rotate-45 motion-reduce:transition-none"
-                />
-              </summary>
-              <p className="max-w-prose pb-4 text-ink-600">{t(f.a)}</p>
-            </details>
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <ul className="flex flex-col divide-y divide-border rounded-xl bg-surface px-5 shadow-[var(--shadow-lift)] ring-1 ring-border sm:px-7">
+          {category.services.map((service) => (
+            <li key={service.id}>
+              <ServiceCard service={service} hasLocation={location !== null} />
+            </li>
           ))}
-        </div>
-      </section>
+        </ul>
+
+        <section aria-labelledby="faq-title" className="flex flex-col gap-3 lg:sticky lg:top-24">
+          <h2 id="faq-title" className="font-display text-xl font-semibold">
+            {t('category.faqTitle')}
+          </h2>
+          <div className="flex flex-col divide-y divide-border border-y border-border">
+            {FAQS.map((f) => (
+              <details key={f.q} className="group">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 font-medium [&::-webkit-details-marker]:hidden">
+                  {t(f.q)}
+                  <Plus
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-ink-600 transition-transform group-open:rotate-45 motion-reduce:transition-none"
+                  />
+                </summary>
+                <p className="max-w-prose pb-4 text-ink-600">{t(f.a)}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      </div>
     </>
   )
 }
@@ -119,13 +133,7 @@ async function CategorySkeleton() {
       aria-label={t('category.loading')}
     >
       <Skeleton className="h-6 w-28" />
-      <div className="flex gap-4">
-        <Skeleton className="size-14 rounded-md" />
-        <div className="flex flex-1 flex-col gap-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-72 max-w-full" />
-        </div>
-      </div>
+      <Skeleton className="h-56 rounded-xl sm:h-72" />
       <div className="flex max-w-4xl flex-col gap-6">
         {Array.from({ length: 4 }, (_, i) => (
           <Skeleton key={i} className="h-32" />
