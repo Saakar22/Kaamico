@@ -205,7 +205,7 @@ async function ServiceSearch({ q }: { q?: string }) {
           description={t('searchPage.findDescription')}
         />
         <SearchBar className="max-w-2xl" />
-        <CategoryGrid categories={categories} columns={2} />
+        <CategoryGrid categories={categories} />
       </div>
     )
   }

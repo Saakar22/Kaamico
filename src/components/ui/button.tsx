@@ -16,6 +16,9 @@ export const buttonVariants = cva(
         secondary:
           'border border-border bg-surface text-ink-900 shadow-[0_1px_0_rgb(0_0_0/0.04)] hover:border-ink-600/40 hover:bg-surface-muted active:bg-surface-muted',
         tertiary: 'text-brand-700 hover:bg-brand-50 active:bg-brand-50',
+        // Marigold on the night surface (home and dashboard panels); always dark text.
+        accent:
+          'bg-accent-500 text-on-accent shadow-[inset_0_-2px_0_rgb(0_0_0/0.12)] hover:bg-accent-600 active:shadow-none',
         destructive:
           'border border-danger-700 bg-surface text-danger-700 hover:bg-danger-700/5 active:bg-danger-700/10',
         // Filled red is reserved for the confirm button inside confirmation dialogs.

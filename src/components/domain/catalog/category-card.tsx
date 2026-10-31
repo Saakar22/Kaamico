@@ -1,90 +1,112 @@
+import { ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 import { Money } from '@/components/ui/money'
-import { RateList, RateRow } from '@/components/patterns/rate-list'
 import { getT } from '@/i18n/server'
 import { cn } from '@/lib/cn'
 import type { CategorySummary } from '@/modules/catalog/catalog'
-import { CategoryIcon } from './category-icon'
+import { CategoryImage } from './category-image'
 
-/**
- * Categories as a rate list: each row links to the category and shows its guide
- * "typically from" price, so the directory doubles as a first look at prices.
- */
-export async function CategoryGrid({
-  categories,
-  columns = 1,
-  label,
+/** A photo tile: the category's photo, its name and the guide "from" price. */
+async function CategoryTile({
+  category,
+  priority,
 }: {
-  categories: CategorySummary[]
-  /** Two columns from `lg` up, like a printed rate card. */
-  columns?: 1 | 2
-  label?: string
+  category: CategorySummary
+  priority?: boolean
 }) {
   const t = await getT()
   return (
-    <RateList
-      label={label}
-      className={cn(columns === 2 && 'lg:grid lg:grid-cols-2 lg:gap-x-12 lg:border-t-0')}
-    >
-      {categories.map((c) => (
-        <RateRow
-          key={c.id}
-          href={`/services/${c.slug}`}
-          leading={<CategoryIcon iconKey={c.iconKey} plain />}
-          label={c.name}
-          className={cn(columns === 2 && 'lg:border-border lg:[&:nth-child(-n+2)]:border-t')}
-          price={
-            c.referenceFromPaise !== null ? (
-              <>
-                <span className="sr-only">{t('catalog.typicallyFrom')} </span>
-                <Money paise={c.referenceFromPaise} />
-              </>
-            ) : undefined
-          }
-          priceNote={
-            c.referenceFromPaise !== null ? (
-              <span aria-hidden="true">{t('catalog.typicallyFrom').toLowerCase()}</span>
-            ) : undefined
-          }
-          detail={t(c.servicesCount === 1 ? 'catalog.serviceOne' : 'catalog.serviceOther', {
-            count: c.servicesCount,
-          })}
+    <Link href={`/services/${category.slug}`} className="group flex flex-col gap-2.5">
+      <span className="relative aspect-[3/2] overflow-hidden rounded-lg bg-mist sm:aspect-[4/3]">
+        <CategoryImage
+          slug={category.slug}
+          iconKey={category.iconKey}
+          sizes="(min-width: 1024px) 220px, (min-width: 640px) 30vw, 45vw"
+          priority={priority}
+          className="transition-transform duration-500 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
-      ))}
-    </RateList>
+      </span>
+      <span className="flex flex-col gap-0.5 px-0.5">
+        <span className="font-semibold text-ink-900 group-hover:text-brand-700">
+          {category.name}
+        </span>
+        {category.referenceFromPaise !== null && (
+          <span className="text-sm text-ink-600">
+            {t('catalog.typicallyFrom')}{' '}
+            <Money paise={category.referenceFromPaise} className="font-semibold text-ink-900" />
+          </span>
+        )}
+      </span>
+    </Link>
   )
 }
 
-/** Wider row for /services with the category's description as well. */
+/** Categories as photo tiles (home, search). */
+export function CategoryGrid({
+  categories,
+  label,
+  className,
+}: {
+  categories: CategorySummary[]
+  label?: string
+  className?: string
+}) {
+  return (
+    <ul
+      aria-label={label}
+      className={cn(
+        'grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-4 lg:grid-cols-5',
+        className,
+      )}
+    >
+      {categories.map((c, i) => (
+        <li key={c.id}>
+          <CategoryTile category={c} priority={i < 5} />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** A wide row for /services: photo, name, description, count and guide price. */
 export async function CategoryCard({ category }: { category: CategorySummary }) {
   const t = await getT()
   return (
-    <RateRow
+    <Link
       href={`/services/${category.slug}`}
-      leading={<CategoryIcon iconKey={category.iconKey} />}
-      label={<span className="font-display text-xl font-semibold">{category.name}</span>}
-      price={
-        category.referenceFromPaise !== null ? (
-          <>
-            <span className="sr-only">{t('catalog.typicallyFrom')} </span>
-            <Money paise={category.referenceFromPaise} />
-          </>
-        ) : undefined
-      }
-      priceNote={
-        category.referenceFromPaise !== null ? (
-          <span aria-hidden="true">{t('catalog.typicallyFrom').toLowerCase()}</span>
-        ) : undefined
-      }
-      detail={
-        <>
-          {category.description && <span className="block">{category.description}</span>}
-          <span className="block">
-            {t(category.servicesCount === 1 ? 'catalog.serviceOne' : 'catalog.serviceOther', {
-              count: category.servicesCount,
-            })}
-          </span>
-        </>
-      }
-    />
+      className="group flex items-center gap-4 rounded-xl bg-surface p-3 shadow-[var(--shadow-lift)] ring-1 ring-border transition-shadow hover:shadow-[var(--shadow-float)] motion-reduce:transition-none sm:gap-5"
+    >
+      <span className="relative size-24 shrink-0 overflow-hidden rounded-lg sm:h-28 sm:w-40">
+        <CategoryImage
+          slug={category.slug}
+          iconKey={category.iconKey}
+          sizes="(min-width: 640px) 160px, 96px"
+        />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="font-display text-xl font-semibold group-hover:text-brand-700">
+          {category.name}
+        </span>
+        {category.description && (
+          <span className="line-clamp-2 text-sm text-ink-600">{category.description}</span>
+        )}
+        <span className="text-sm text-ink-600">
+          {t(category.servicesCount === 1 ? 'catalog.serviceOne' : 'catalog.serviceOther', {
+            count: category.servicesCount,
+          })}
+          {category.referenceFromPaise !== null && (
+            <>
+              {' · '}
+              {t('catalog.typicallyFrom')}{' '}
+              <Money paise={category.referenceFromPaise} className="font-semibold text-ink-900" />
+            </>
+          )}
+        </span>
+      </span>
+      <ChevronRight
+        aria-hidden="true"
+        className="mr-1 size-5 shrink-0 text-ink-600 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+      />
+    </Link>
   )
 }
