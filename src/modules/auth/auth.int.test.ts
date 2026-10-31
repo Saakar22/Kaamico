@@ -297,6 +297,28 @@ describe.skipIf(!hasTestDatabase)('authentication and authorisation', () => {
       expect(await sql`select 1 from customer_profiles`).toHaveLength(1)
     })
 
+    it('sends a new customer where they were heading, and a new professional to setup', async () => {
+      const customer = await signIn()
+      const res = await onboard(customer.cookie, {
+        name: 'Asha',
+        role: 'CUSTOMER',
+        next: '/profile',
+      })
+      expect((await json(res)).redirectTo).toBe('/profile')
+
+      const outside = await signIn()
+      const away = await onboard(outside.cookie, {
+        name: 'Asha',
+        role: 'CUSTOMER',
+        next: '//evil.example',
+      })
+      expect((await json(away)).redirectTo).toBe('/dashboard')
+
+      const worker = await signIn()
+      const setup = await onboard(worker.cookie, { name: 'Ravi', role: 'WORKER', next: '/profile' })
+      expect((await json(setup)).redirectTo).toBe('/worker/dashboard')
+    })
+
     it('lets a customer add the WORKER role and creates an unverified worker profile', async () => {
       const { cookie } = await signIn()
       await onboard(cookie, { name: 'Ravi Kumar', role: 'CUSTOMER' })

@@ -1,7 +1,6 @@
 'use client'
 
 import { ArrowLeft, BriefcaseBusiness, House } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { useEffect, useState, type FormEvent } from 'react'
 import { SimulationBadge } from '@/components/domain/trust-badges'
 import { Button } from '@/components/ui/button'
@@ -11,6 +10,7 @@ import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
 import { useErrorMessage, useT } from '@/i18n/client'
 import type { Translate } from '@/i18n/translate'
 import { ApiError, apiFetch } from '@/lib/api-client'
+import { hardNavigate } from '@/lib/navigate'
 
 type Step = 'phone' | 'code' | 'details'
 
@@ -34,7 +34,6 @@ function messageFor(error: unknown, t: Translate, fallback: (error: unknown) => 
 }
 
 export function LoginFlow({ initialStep, next }: { initialStep: Step; next?: string }) {
-  const router = useRouter()
   const t = useT()
   const errorMessage = useErrorMessage()
   const [step, setStep] = useState<Step>(initialStep)
@@ -88,8 +87,7 @@ export function LoginFlow({ initialStep, next }: { initialStep: Step; next?: str
         setStep('details')
         return
       }
-      router.replace(result.redirectTo)
-      router.refresh()
+      await hardNavigate(result.redirectTo)
     })
   }
 
@@ -97,11 +95,10 @@ export function LoginFlow({ initialStep, next }: { initialStep: Step; next?: str
     event.preventDefault()
     return run(async () => {
       const result = await apiFetch<{ redirectTo: string }>('/api/v1/me/onboarding', {
-        body: { name, role },
+        body: { name, role, next },
         idempotencyKey: onboardingKey,
       })
-      router.replace(result.redirectTo)
-      router.refresh()
+      await hardNavigate(result.redirectTo)
     })
   }
 

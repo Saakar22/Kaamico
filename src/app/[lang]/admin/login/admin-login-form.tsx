@@ -1,15 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { ApiError, apiFetch } from '@/lib/api-client'
+import { hardNavigate } from '@/lib/navigate'
 
 export function AdminLoginForm({ next }: { next?: string }) {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string>()
@@ -23,8 +22,7 @@ export function AdminLoginForm({ next }: { next?: string }) {
       const result = await apiFetch<{ redirectTo: string }>('/api/v1/auth/admin/login', {
         body: { email, password, next },
       })
-      router.replace(result.redirectTo)
-      router.refresh()
+      await hardNavigate(result.redirectTo)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Something went wrong. Please try again.')
       setPending(false)

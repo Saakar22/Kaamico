@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { getDb } from '@/db/client'
 import { customerProfiles, users, workerProfiles } from '@/db/schema'
 import { forbidden } from '@/lib/errors'
-import { homePathFor } from './redirects'
+import { homePathFor, safeNextPath } from './redirects'
 import type { Actor, Role } from './types'
 
 export const onboardingInput = z.object({
@@ -15,6 +15,8 @@ export const onboardingInput = z.object({
     .max(60, 'Name must be at most 60 characters'),
   // ADMIN can never be self-assigned: it is not an accepted value here.
   role: z.enum(['CUSTOMER', 'WORKER']),
+  /** Where a new customer was heading before signing in (`/login?next=`). */
+  next: z.string().max(300).optional(),
 })
 export type OnboardingInput = z.infer<typeof onboardingInput>
 
@@ -50,6 +52,9 @@ export async function completeOnboarding(
     }
 
     const roles = user.roles as Role[]
-    return { roles, redirectTo: homePathFor({ roles, needsOnboarding: false }) }
+    const home = homePathFor({ roles, needsOnboarding: false })
+    // A new professional goes to setup first; a customer continues where they were going.
+    const redirectTo = input.role === 'WORKER' ? home : safeNextPath(input.next, home)
+    return { roles, redirectTo }
   })
 }
