@@ -1,7 +1,7 @@
-import { Lock } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { CategoryGrid } from '@/components/domain/catalog/category-card'
+import { FairPricingDemo } from '@/components/domain/negotiation/fair-pricing-demo'
 import { Button } from '@/components/ui/button'
 import { Money } from '@/components/ui/money'
 import { brand } from '@/config/brand'
@@ -10,55 +10,10 @@ import type { MessageKey } from '@/i18n/translate'
 import { listCategories } from '@/modules/catalog/catalog'
 import { listCities } from '@/modules/seo/cities'
 
-const STEPS: { title: MessageKey; body: MessageKey }[] = [
-  { title: 'home.step1Title', body: 'home.step1Body' },
-  { title: 'home.step2Title', body: 'home.step2Body' },
-  { title: 'home.step3Title', body: 'home.step3Body' },
-]
-
 const TRUST: MessageKey[] = ['home.trust1', 'home.trust2', 'home.trust3']
 
 /** The category the hero photo shows, so its caption can carry a real price. */
 const HERO_CATEGORY = 'electrical'
-
-/**
- * An illustration of the negotiation, built from the product's own pieces: the listed
- * price, the customer's offer, the professional's final offer and the locked price.
- * Decorative (the numbered steps beside it say the same), so it is hidden from assistive tech.
- */
-async function NegotiationExample() {
-  const t = await getT()
-  return (
-    <div
-      aria-hidden="true"
-      className="flex flex-col gap-3 rounded-xl bg-surface p-5 shadow-[var(--shadow-float)] ring-1 ring-border sm:p-6"
-    >
-      <div className="flex items-baseline justify-between border-b border-border pb-3 text-sm text-ink-600">
-        <span>Tap repair · Kothrud</span>
-        <span>
-          {t('price.listed')} <Money paise={29000} className="font-semibold text-ink-900" />
-        </span>
-      </div>
-      <div className="ml-auto flex w-[76%] flex-col gap-1 rounded-lg rounded-br-sm bg-fill-brand px-4 py-3 text-on-fill">
-        <span className="text-xs">{t('offer.yours')}</span>
-        <Money paise={24000} className="font-display text-3xl font-semibold" />
-      </div>
-      <div className="flex w-[76%] flex-col gap-1 rounded-lg rounded-bl-sm bg-surface-muted px-4 py-3">
-        <span className="flex items-center justify-between gap-2 text-xs text-ink-600">
-          {t('offer.theirs', { name: 'Rakesh' })}
-          <span className="rounded-sm bg-accent-100 px-1.5 py-0.5 font-semibold text-warning-800">
-            {t('offer.final')}
-          </span>
-        </span>
-        <Money paise={26500} className="font-display text-3xl font-semibold" />
-      </div>
-      <div className="mt-1 flex items-center gap-2 rounded-lg bg-accent-100 px-4 py-3 font-semibold text-ink-900 ring-1 ring-accent-500/50">
-        <Lock className="size-4 shrink-0 text-warning-800" />
-        {t('thread.priceLocked')} <Money paise={26500} />
-      </div>
-    </div>
-  )
-}
 
 /** Section heading, shared so every section opens the same way. */
 function SectionTitle({ id, children }: { id: string; children: React.ReactNode }) {
@@ -138,30 +93,10 @@ export default async function HomePage() {
 
       <section
         aria-labelledby="fair-pricing-title"
-        className="grid items-center gap-12 border-t border-border pt-12 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,25rem)] lg:gap-24"
+        className="flex flex-col gap-8 border-t border-border pt-12 sm:pt-16"
       >
-        <div className="flex flex-col gap-8">
-          <SectionTitle id="fair-pricing-title">{t('home.stepsTitle')}</SectionTitle>
-          {/* A real sequence, so it is numbered. */}
-          <ol className="flex flex-col">
-            {STEPS.map((step, i) => (
-              <li
-                key={step.title}
-                className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 border-t border-border py-5 last:border-b"
-              >
-                <span
-                  aria-hidden="true"
-                  className="row-span-2 font-display text-2xl leading-7 font-semibold text-brand-700 tabular-nums"
-                >
-                  {i + 1}
-                </span>
-                <h3 className="text-lg font-semibold">{t(step.title)}</h3>
-                <p className="max-w-[36rem] text-ink-600">{t(step.body)}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-        <NegotiationExample />
+        <SectionTitle id="fair-pricing-title">{t('home.stepsTitle')}</SectionTitle>
+        <FairPricingDemo />
       </section>
 
       <section

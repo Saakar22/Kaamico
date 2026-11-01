@@ -64,6 +64,8 @@
   --animate-slide-up: slide-up 200ms ease-out;
   --animate-slide-in-right: slide-in-right 200ms ease-out;
   --animate-slide-in-left: slide-in-left 200ms ease-out;
+  /* The home page's pricing demo: the active step's bar fills, then the next step plays. */
+  --animate-step-progress: step-progress 6s linear forwards;
 
   @keyframes fade-in {
     from {
@@ -89,6 +91,14 @@
   @keyframes slide-in-left {
     from {
       transform: translateX(-100%);
+    }
+  }
+  @keyframes step-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
     }
   }
 }
