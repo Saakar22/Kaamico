@@ -83,18 +83,18 @@ export default async function WorkerDashboardPage() {
         // The professional's money and workload at a glance, with going online beside it.
         <section
           aria-label={t('wdash.earnedWeek')}
-          className="grid gap-6 rounded-xl bg-night p-5 text-on-night shadow-[var(--shadow-float)] sm:p-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10"
+          className="grid gap-6 rounded-xl bg-surface p-5 shadow-[var(--shadow-lift)] ring-1 ring-border sm:p-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10"
         >
           <div className="flex flex-col gap-6">
             <Link href="/worker/earnings" className="group flex flex-col gap-1 self-start">
-              <span className="text-on-night-muted group-hover:text-on-night">
+              <span className="text-ink-600 group-hover:text-brand-700">
                 {t('wdash.earnedWeek')}
               </span>
               <Money
                 paise={earnings.netPaise}
                 className="font-display text-5xl leading-none font-semibold sm:text-6xl"
               />
-              <span className="text-sm text-on-night-muted">{t('wdash.afterFee')}</span>
+              <span className="text-sm text-ink-600">{t('wdash.afterFee')}</span>
             </Link>
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <Link
@@ -104,7 +104,7 @@ export default async function WorkerDashboardPage() {
                   // Marigold when someone is waiting on a reply.
                   jobs.requestsAwaitingReply > 0
                     ? 'bg-accent-500 text-on-accent hover:bg-accent-600'
-                    : 'bg-night-raised hover:bg-on-night/15',
+                    : 'bg-surface-muted hover:bg-brand-50',
                 )}
               >
                 <span className="text-xs leading-tight sm:text-sm">{t('wdash.awaiting')}</span>
@@ -112,16 +112,16 @@ export default async function WorkerDashboardPage() {
                   {jobs.requestsAwaitingReply}
                 </span>
               </Link>
-              <div className="flex flex-col gap-1 rounded-lg bg-night-raised p-3 sm:p-4">
-                <span className="text-xs leading-tight text-on-night-muted sm:text-sm">
+              <div className="flex flex-col gap-1 rounded-lg bg-surface-muted p-3 sm:p-4">
+                <span className="text-xs leading-tight text-ink-600 sm:text-sm">
                   {t('wdash.jobsToday')}
                 </span>
                 <span className="font-display text-3xl font-semibold tabular-nums">
                   {jobs.today.length}
                 </span>
               </div>
-              <div className="flex flex-col gap-1 rounded-lg bg-night-raised p-3 sm:p-4">
-                <span className="text-xs leading-tight text-on-night-muted sm:text-sm">
+              <div className="flex flex-col gap-1 rounded-lg bg-surface-muted p-3 sm:p-4">
+                <span className="text-xs leading-tight text-ink-600 sm:text-sm">
                   {t('wdash.doneWeek')}
                 </span>
                 <span className="font-display text-3xl font-semibold tabular-nums">
@@ -131,7 +131,7 @@ export default async function WorkerDashboardPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {SETTINGS.slice(0, 3).map((s) => (
-                <Button key={s.href} asChild variant="night" size="sm">
+                <Button key={s.href} asChild variant="secondary" size="sm">
                   <Link href={s.href}>
                     <s.icon aria-hidden="true" />
                     {t(s.label)}
@@ -140,12 +140,12 @@ export default async function WorkerDashboardPage() {
               ))}
             </div>
           </div>
-          <div className="self-start rounded-lg bg-surface p-5 text-ink-900">
+          <div className="self-start rounded-lg bg-surface-muted p-5">
             <OnlineToggle status={status} verified={verified} />
           </div>
         </section>
       ) : (
-        <div className="rounded-xl bg-mist p-5">
+        <div className="rounded-xl bg-surface-muted p-5">
           <OnlineToggle status={status} verified={verified} />
         </div>
       )}
@@ -164,7 +164,9 @@ export default async function WorkerDashboardPage() {
             </Link>
           </div>
           {jobs.today.length === 0 ? (
-            <p className="rounded-xl bg-mist px-5 py-6 text-ink-600">{t('wdash.noJobs')}</p>
+            <p className="rounded-xl bg-surface-muted px-5 py-6 text-ink-600">
+              {t('wdash.noJobs')}
+            </p>
           ) : (
             <ul className="flex flex-col divide-y divide-border rounded-xl bg-surface px-4 shadow-[var(--shadow-lift)] ring-1 ring-border sm:px-6">
               {jobs.today.map((j) => (

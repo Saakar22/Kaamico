@@ -17,7 +17,7 @@ async function CategoryTile({
   const t = await getT()
   return (
     <Link href={`/services/${category.slug}`} className="group flex flex-col gap-2.5">
-      <span className="relative aspect-[3/2] overflow-hidden rounded-lg bg-mist sm:aspect-[4/3]">
+      <span className="relative aspect-[4/5] overflow-hidden rounded-lg bg-surface-muted">
         <CategoryImage
           slug={category.slug}
           iconKey={category.iconKey}
@@ -26,8 +26,8 @@ async function CategoryTile({
           className="transition-transform duration-500 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
       </span>
-      <span className="flex flex-col gap-0.5 px-0.5">
-        <span className="font-semibold text-ink-900 group-hover:text-brand-700">
+      <span className="flex flex-col gap-0.5">
+        <span className="font-display text-lg leading-tight font-semibold text-ink-900 group-hover:text-brand-700">
           {category.name}
         </span>
         {category.referenceFromPaise !== null && (

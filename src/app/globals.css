@@ -32,13 +32,20 @@
 }
 
 /*
- * Display type is Anek set slightly condensed: headings read like a shop's painted
- * signboard rather than a rounded app font. Hindi uses Anek Devanagari at the same width.
+ * Display type is Anek (Ek Type, Mumbai) at its natural width, tightly spaced: confident
+ * without shouting. Hindi uses Anek Devanagari.
  */
 @utility font-display {
   font-family: var(--font-display);
-  font-stretch: 88%;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.025em;
+}
+
+/*
+ * One grade for every photo, so stock shot in different light reads as one set: a touch
+ * less saturation and a touch more contrast.
+ */
+@utility photo-grade {
+  filter: saturate(0.88) contrast(1.03);
 }
 
 /*

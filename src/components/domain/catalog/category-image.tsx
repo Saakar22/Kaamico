@@ -22,7 +22,7 @@ export function categoryPhoto(slug: string): string | null {
 
 /**
  * A category's photo filling its (positioned, sized) parent. Categories without a photo
- * get a neem tile with the category icon, so new categories still look intentional.
+ * get a quiet tile with the category icon, so new categories still look intentional.
  * Decorative: the category name is always shown next to it.
  */
 export function CategoryImage({
@@ -44,9 +44,12 @@ export function CategoryImage({
     return (
       <span
         aria-hidden="true"
-        className={cn('absolute inset-0 flex items-center justify-center bg-night', className)}
+        className={cn(
+          'absolute inset-0 flex items-center justify-center bg-surface-muted',
+          className,
+        )}
       >
-        <CategoryIcon iconKey={iconKey} plain className="size-10 text-on-night-muted" />
+        <CategoryIcon iconKey={iconKey} plain className="size-10 text-brand-700" />
       </span>
     )
   }
@@ -57,7 +60,7 @@ export function CategoryImage({
       fill
       sizes={sizes}
       priority={priority}
-      className={cn('object-cover', className)}
+      className={cn('object-cover photo-grade', className)}
     />
   )
 }

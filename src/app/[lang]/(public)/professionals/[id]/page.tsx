@@ -11,7 +11,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { CategoryImage } from '@/components/domain/catalog/category-image'
 import { FavoriteSlot } from '@/components/domain/professionals/favorite-slot'
 import { RatingStars, RatingSummary } from '@/components/domain/professionals/rating'
 import { VerificationBadge } from '@/components/domain/trust-badges'
@@ -66,41 +65,18 @@ async function loadProfile(id: string, locale: Locale): Promise<PublicProfile> {
   }
 }
 
-async function ProfileHeader({
-  profile,
-  serviceId,
-}: {
-  profile: PublicProfile
-  serviceId?: string
-}) {
+async function ProfileHeader({ profile }: { profile: PublicProfile }) {
   const [t, locale] = await Promise.all([getT(), getLocale()])
-  // The cover shows the trade: the searched service's category, else their first service's.
-  const trade = (profile.services.find((s) => s.serviceId === serviceId) ?? profile.services[0])
-    ?.category
   return (
-    <header className="flex flex-col">
-      <div className="relative h-36 overflow-hidden rounded-xl bg-night sm:h-52">
-        {trade && (
-          <CategoryImage
-            slug={trade.slug}
-            iconKey="wrench"
-            sizes="(min-width: 1200px) 1152px, 100vw"
-            priority
-          />
-        )}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-t from-night/60 to-transparent"
-        />
-      </div>
-      <div className="flex flex-col gap-4 px-1 sm:flex-row sm:items-start sm:gap-6 sm:px-6">
+    <header className="flex flex-col border-b border-border pb-8">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-8">
         <Avatar
           name={profile.displayName}
           src={profile.photoUrl}
           size="lg"
-          className="-mt-12 size-24 text-2xl ring-4 ring-surface sm:-mt-16 sm:size-32 sm:text-3xl"
+          className="size-24 text-2xl sm:size-36 sm:text-4xl"
         />
-        <div className="flex min-w-0 flex-col gap-2 sm:pt-5">
+        <div className="flex min-w-0 flex-col gap-2">
           <h1 className="font-display text-4xl leading-none font-semibold sm:text-5xl">
             {profile.displayName}
           </h1>
@@ -398,7 +374,7 @@ async function ProfileContent({ params, searchParams }: Props) {
         <ChevronLeft aria-hidden="true" className="size-4" />
         {t('profile.backToResults')}
       </Link>
-      <ProfileHeader profile={profile} serviceId={offered} />
+      <ProfileHeader profile={profile} />
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-16">
         <div className="flex min-w-0 flex-col gap-12">
           {profile.bio && (

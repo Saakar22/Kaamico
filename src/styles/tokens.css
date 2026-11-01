@@ -12,15 +12,7 @@
   /* Marigold wash behind highlights (offers, "needs your reply"). */
   --color-accent-100: #fdf1cf;
 
-  /*
-   * Brand surfaces. Night is Kaamico's signature: a deep neem green used for the hero,
-   * the trust band and the professional's earnings panel. Mist is a soft green-grey for
-   * quieter panels. Text on night uses on-night tokens.
-   */
-  --color-night: #0f2e24;
-  --color-night-raised: #17402f;
-  --color-on-night: #f3f7f4;
-  --color-on-night-muted: #b9cbc2;
+  /* A soft green-grey, used behind avatars. */
   --color-mist: #eaf2ed;
 
   --color-ink-900: #16191d;
@@ -57,14 +49,14 @@
   --color-overlay: #1b1f24;
 
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  /* Photo panels and hero surfaces. */
-  --radius-xl: 22px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  /* Photos and raised panels: crisp corners read as considered, not bubbly. */
+  --radius-xl: 14px;
 
   /* Depth, used sparingly: a lifted card, and a floating panel (search, booking, earnings). */
-  --shadow-lift: 0 1px 2px rgb(15 46 36 / 0.06), 0 4px 12px -2px rgb(15 46 36 / 0.08);
-  --shadow-float: 0 2px 4px rgb(15 46 36 / 0.06), 0 16px 40px -8px rgb(15 46 36 / 0.22);
+  --shadow-lift: 0 1px 2px rgb(22 25 29 / 0.05), 0 2px 8px -2px rgb(22 25 29 / 0.06);
+  --shadow-float: 0 1px 2px rgb(22 25 29 / 0.06), 0 12px 32px -12px rgb(22 25 29 / 0.18);
 
   /* Overlays: 150–200 ms ease-out; components add motion-reduce:animate-none. */
   --animate-fade-in: fade-in 150ms ease-out;
@@ -102,8 +94,8 @@
 }
 
 /*
- * Dark theme (P1): the same semantic tokens with dark values. It follows the device
- * setting unless the person picked Light or Dark (stored on <html data-theme>). The two
+ * Dark theme (P1): the same semantic tokens with dark values. Kaamico is light unless the
+ * person picked Dark, or "system" to follow the device (stored on <html data-theme>). The two
  * blocks hold the same values; keep them in step. Contrast pairs were checked at ≥ 4.5:1
  * for text and ≥ 3:1 for graphics.
  */
@@ -111,7 +103,7 @@
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root[data-theme='system'] {
     color-scheme: dark;
     --color-brand-50: #0f2b22;
     --color-brand-600: #3dbb88;
@@ -134,8 +126,6 @@
     --color-overlay: #000000;
     --color-mist: #15231d;
     --color-accent-100: #3a2f10;
-    --color-night: #0b2219;
-    --color-night-raised: #133126;
   }
 }
 :root[data-theme='dark'] {
@@ -161,8 +151,6 @@
   --color-overlay: #000000;
   --color-mist: #15231d;
   --color-accent-100: #3a2f10;
-  --color-night: #0b2219;
-  --color-night-raised: #133126;
 }
 
 @theme inline {

@@ -13,8 +13,8 @@ import { canPromptInstall, promptInstall, subscribeInstall } from './install'
 import { applyThemeChoice, readThemeChoice, type ThemeChoice } from './theme'
 
 const THEMES: { value: ThemeChoice; label: MessageKey; description: MessageKey }[] = [
-  { value: 'system', label: 'settings.system', description: 'settings.systemHint' },
   { value: 'light', label: 'settings.light', description: 'settings.lightHint' },
+  { value: 'system', label: 'settings.system', description: 'settings.systemHint' },
   { value: 'dark', label: 'settings.dark', description: 'settings.darkHint' },
 ]
 
@@ -27,7 +27,7 @@ type Platform = { installed: boolean; ios: boolean }
 export function AppSettings() {
   const t = useT()
   const locale = useLocale()
-  const [theme, setTheme] = useState<ThemeChoice>('system')
+  const [theme, setTheme] = useState<ThemeChoice>('light')
   const [platform, setPlatform] = useState<Platform | null>(null)
   const canPrompt = useSyncExternalStore(subscribeInstall, canPromptInstall, () => false)
 

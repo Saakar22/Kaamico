@@ -48,7 +48,7 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
 
   return (
     <>
-      <header className="flex flex-col gap-4">
+      <header className="flex flex-col gap-6">
         <Link
           href="/services"
           className="inline-flex h-11 w-fit items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
@@ -56,38 +56,36 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
           <ChevronLeft aria-hidden="true" className="size-4" />
           {t('category.allServices')}
         </Link>
-        {/* Photo banner: what this kind of work looks like, with the name set on it. */}
-        <div className="relative flex min-h-56 items-end overflow-hidden rounded-xl bg-night sm:min-h-72">
-          <CategoryImage
-            slug={category.slug}
-            iconKey={category.iconKey}
-            sizes="(min-width: 1200px) 1152px, 100vw"
-            priority
-          />
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-gradient-to-t from-night via-night/45 to-transparent"
-          />
-          <div className="relative flex flex-col gap-1 p-5 sm:p-8">
-            <h1 className="font-display text-4xl leading-none font-semibold text-on-night sm:text-6xl">
+        {/* The name and what it covers, beside a photo of the work. */}
+        <div className="grid items-end gap-6 sm:grid-cols-[minmax(0,1fr)_16rem] lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12">
+          <div className="flex flex-col gap-3">
+            <h1 className="font-display text-5xl leading-none font-semibold sm:text-6xl lg:text-7xl">
               {category.name}
             </h1>
             {category.description && (
-              <p className="text-lg text-on-night-muted">{category.description}</p>
+              <p className="max-w-[36rem] text-lg text-ink-600">{category.description}</p>
+            )}
+            {location ? (
+              <p className="flex items-center gap-1.5 text-sm text-ink-600">
+                <MapPin aria-hidden="true" className="size-4 text-brand-600" />
+                {t('category.pricesFrom', { place: location.label })}
+              </p>
+            ) : (
+              <div className="flex flex-col items-start gap-3 rounded-md bg-surface-muted p-4 sm:flex-row sm:items-center sm:justify-between">
+                <p>{t('category.setLocation')}</p>
+                <OpenLocationButton />
+              </div>
             )}
           </div>
-        </div>
-        {location ? (
-          <p className="flex items-center gap-1.5 text-sm text-ink-600">
-            <MapPin aria-hidden="true" className="size-4 text-brand-600" />
-            {t('category.pricesFrom', { place: location.label })}
-          </p>
-        ) : (
-          <div className="flex flex-col items-start gap-3 rounded-md bg-surface-muted p-4 sm:flex-row sm:items-center sm:justify-between">
-            <p>{t('category.setLocation')}</p>
-            <OpenLocationButton />
+          <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-surface-muted sm:aspect-[4/3]">
+            <CategoryImage
+              slug={category.slug}
+              iconKey={category.iconKey}
+              sizes="(min-width: 1024px) 384px, (min-width: 640px) 256px, 100vw"
+              priority
+            />
           </div>
-        )}
+        </div>
       </header>
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">

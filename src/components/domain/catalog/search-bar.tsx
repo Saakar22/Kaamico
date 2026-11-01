@@ -10,7 +10,7 @@ export async function SearchBar({
 }: {
   defaultValue?: string
   className?: string
-  /** `hero`: a floating white panel for photo backgrounds (home page). */
+  /** `hero`: the home page's main action, a raised panel with a hairline edge. */
   size?: 'md' | 'lg' | 'hero'
 }) {
   const hero = size === 'hero'
@@ -21,7 +21,7 @@ export async function SearchBar({
       role="search"
       className={cn(
         'flex w-full gap-2',
-        hero && 'rounded-xl bg-surface p-2 shadow-[var(--shadow-float)]',
+        hero && 'rounded-xl bg-surface p-2 shadow-[var(--shadow-float)] ring-1 ring-border',
         className,
       )}
     >

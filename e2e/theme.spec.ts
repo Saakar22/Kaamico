@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import postgres from 'postgres'
 import { expectAccessible, signInAs } from './helpers'
 
@@ -13,7 +13,12 @@ test.describe('dark mode', () => {
     await page.emulateMedia({ colorScheme: 'dark' })
   })
 
+  // Kaamico is light by default; the scans opt in to following the (dark) device.
+  const followDevice = (page: Page) =>
+    page.addInitScript(() => localStorage.setItem('kmc-theme', 'system'))
+
   test('public pages pass the accessibility scan in dark', async ({ page }) => {
+    await followDevice(page)
     for (const path of ['/', '/services/plumbing', '/in/pune/plumbing', '/login']) {
       await page.goto(path)
       await expect(page.locator('main')).toBeVisible()
@@ -28,6 +33,7 @@ test.describe('dark mode', () => {
   }, info) => {
     test.setTimeout(180_000)
     const tag = `theme-${info.project.name}`
+    await followDevice(page)
     const priya = await one(
       sql<{ id: string }[]>`select id from users where phone = '+919000000001'`,
     )
@@ -63,7 +69,7 @@ test.describe('dark mode', () => {
     }
   })
 
-  test('a chosen theme is remembered and wins over the device setting', async ({
+  test('Kaamico is light by default and a chosen theme is remembered', async ({
     page,
     context,
     baseURL,
@@ -74,24 +80,25 @@ test.describe('dark mode', () => {
     await signInAs(sql, context, baseURL!, priya.id, { tag: `theme-choice-${info.project.name}` })
     const background = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
 
+    // Light even on a dark device, until the person chooses otherwise.
     await page.goto('/profile')
     const appearance = page.getByRole('radiogroup', { name: 'Appearance' })
-    await expect(appearance.getByRole('radio', { name: /Same as this device/ })).toBeChecked()
-    expect(await background()).toBe('rgb(18, 20, 23)')
-
-    await appearance.getByRole('radio', { name: /^Light/ }).click()
+    await expect(appearance.getByRole('radio', { name: /^Light/ })).toBeChecked()
     expect(await background()).toBe('rgb(255, 255, 255)')
+
+    await appearance.getByRole('radio', { name: /Same as this device/ }).click()
+    expect(await background()).toBe('rgb(18, 20, 23)')
     // Applied before the first paint on the next page, not after hydration.
     await page.goto('/')
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
-    expect(await background()).toBe('rgb(255, 255, 255)')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'system')
+    expect(await background()).toBe('rgb(18, 20, 23)')
 
     await page.goto('/profile')
     // The stored choice is read after hydration.
-    await expect(appearance.getByRole('radio', { name: /^Light/ })).toBeChecked()
-    await appearance.getByRole('radio', { name: /Same as this device/ }).click()
+    await expect(appearance.getByRole('radio', { name: /Same as this device/ })).toBeChecked()
+    await appearance.getByRole('radio', { name: /^Light/ }).click()
     await expect(page.locator('html')).not.toHaveAttribute('data-theme')
-    expect(await background()).toBe('rgb(18, 20, 23)')
+    expect(await background()).toBe('rgb(255, 255, 255)')
   })
 })
 
