@@ -97,7 +97,10 @@ async function CategoryContent({ params }: { params: Props['params'] }) {
           ))}
         </ul>
 
-        <section aria-labelledby="faq-title" className="flex flex-col gap-3 lg:sticky lg:top-24">
+        <section
+          aria-labelledby="faq-title"
+          className="flex flex-col gap-3 lg:sticky lg:top-36 xl:top-24"
+        >
           <h2 id="faq-title" className="font-display text-xl font-semibold">
             {t('category.faqTitle')}
           </h2>

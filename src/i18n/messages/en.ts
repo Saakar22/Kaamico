@@ -12,6 +12,7 @@ export const en = {
     mainNav: 'Main',
     proNav: 'Professional',
     forProfessionals: 'For professionals',
+    categories: 'Service categories',
   },
   nav: {
     home: 'Home',

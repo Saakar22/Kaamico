@@ -488,7 +488,7 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
         </Card>
       ) : (
         <div className="grid gap-5 md:grid-cols-[16rem_minmax(0,1fr)] md:items-start">
-          <div className="md:sticky md:top-24">
+          <div className="md:sticky md:top-36 xl:top-24">
             <div className="md:hidden">
               <FilterPanel filters={filters} />
             </div>

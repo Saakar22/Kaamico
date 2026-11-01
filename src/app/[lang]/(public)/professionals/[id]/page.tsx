@@ -392,7 +392,7 @@ async function ProfileContent({ params, searchParams }: Props) {
           <ReviewList reviews={reviews} total={reviewTotal} />
         </div>
         <aside
-          className="flex flex-col gap-6 lg:sticky lg:top-24"
+          className="flex flex-col gap-6 lg:sticky lg:top-36 xl:top-24"
           aria-label={t('profile.booking')}
         >
           <BookPanel profile={profile} serviceId={offered} />

@@ -4,6 +4,7 @@ import { Logo } from '@/components/brand/logo'
 import { getT } from '@/i18n/server'
 import { cn } from '@/lib/cn'
 import { AdminMobileMenu } from './admin-mobile-menu'
+import { DiscoveryHeader } from './discovery-header'
 import { LanguageSwitch } from './language-switch'
 import { BottomTabBar, SidebarNav, TopNavLinks } from './nav'
 
@@ -33,28 +34,48 @@ export async function CustomerShell({
   children,
   headerSlot,
   actions,
+  discovery,
 }: {
   children: ReactNode
   /** Extra header content, e.g. the location chip (Phase 5). */
   headerSlot?: ReactNode
   /** Header icons on the right, e.g. the notification bell. */
   actions?: ReactNode
+  /**
+   * Public pages: search and category tabs in a header that collapses on scroll
+   * (see DiscoveryHeader). Without it the header is the plain bar.
+   */
+  discovery?: { search: ReactNode; compactSearch: ReactNode; categories: ReactNode }
 }) {
   const t = await getT()
+  const start = (
+    <>
+      <HomeLink compact={Boolean(headerSlot)} />
+      {headerSlot && (
+        <div className={cn('min-w-0', discovery ? 'shrink' : 'flex-1')}>{headerSlot}</div>
+      )}
+    </>
+  )
+  const end = (
+    <>
+      <TopNavLinks nav="customer" label={t('shell.mainNav')} />
+      <LanguageSwitch />
+      {actions}
+    </>
+  )
   return (
     <>
       <SkipLink label={t('shell.skipToContent')} />
-      <header className="sticky top-0 z-30 border-b border-border bg-surface">
-        <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
-          <HomeLink compact={Boolean(headerSlot)} />
-          {headerSlot && <div className="min-w-0 flex-1">{headerSlot}</div>}
-          <div className={cn('flex items-center gap-1', !headerSlot && 'ml-auto')}>
-            <TopNavLinks nav="customer" label={t('shell.mainNav')} />
-            <LanguageSwitch />
-            {actions}
+      {discovery ? (
+        <DiscoveryHeader bar={{ start, end }} {...discovery} />
+      ) : (
+        <header className="sticky top-0 z-30 border-b border-border bg-surface">
+          <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
+            {start}
+            <div className={cn('flex items-center gap-1', !headerSlot && 'ml-auto')}>{end}</div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
       <main
         id={MAIN_ID}
         className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 pb-24 sm:px-6 md:pb-10"

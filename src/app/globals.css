@@ -5,16 +5,23 @@
   html {
     -webkit-text-size-adjust: 100%;
     /*
-     * Anything scrolled into view (focus, anchors, find-in-page) clears the sticky header
-     * and, on phones, the fixed bottom tab bar (WCAG 2.4.11 Focus Not Obscured).
+     * Anything scrolled into view (focus, anchors, find-in-page) clears the header and,
+     * on phones, the fixed bottom tab bar (WCAG 2.4.11 Focus Not Obscured). Below xl the
+     * public pages' collapsed header keeps its search row (125px).
      */
-    scroll-padding-top: 5rem;
+    scroll-padding-top: 8.5rem;
     scroll-padding-bottom: 5.5rem;
   }
 
   @media (min-width: 48rem) {
     html {
       scroll-padding-bottom: 1rem;
+    }
+  }
+
+  @media (min-width: 80rem) {
+    html {
+      scroll-padding-top: 5rem;
     }
   }
 

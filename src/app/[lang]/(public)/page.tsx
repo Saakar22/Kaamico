@@ -2,7 +2,6 @@ import { Lock } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { CategoryGrid } from '@/components/domain/catalog/category-card'
-import { SearchBar } from '@/components/domain/catalog/search-bar'
 import { Button } from '@/components/ui/button'
 import { Money } from '@/components/ui/money'
 import { brand } from '@/config/brand'
@@ -76,10 +75,10 @@ export default async function HomePage() {
   const heroCategory = categories.find((c) => c.slug === HERO_CATEGORY)
   return (
     <div className="flex flex-col gap-16 sm:gap-20">
-      {/* Hero: the promise and search on the left; a professional at work on the right. */}
+      {/* Hero: the promise on the left (search is in the header above); a professional at work on the right. */}
       <section
         aria-labelledby="hero-title"
-        className="grid items-center gap-10 pt-4 sm:pt-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] lg:gap-16"
+        className="grid items-center gap-10 pt-2 sm:pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] lg:gap-16"
       >
         <div className="flex flex-col gap-7">
           <h1
@@ -91,7 +90,6 @@ export default async function HomePage() {
           <p className="max-w-[34rem] text-lg leading-relaxed text-ink-600">
             {t('brand.description')}
           </p>
-          <SearchBar size="hero" className="max-w-xl" />
           <p className="font-display text-lg text-ink-600">{brand.campaignLine}</p>
         </div>
         <figure className="relative">

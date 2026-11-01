@@ -14,6 +14,7 @@ export const hi: Messages = {
     mainNav: 'मुख्य',
     proNav: 'प्रोफ़ेशनल',
     forProfessionals: 'प्रोफ़ेशनल्स के लिए',
+    categories: 'सेवाओं की श्रेणियाँ',
   },
   nav: {
     home: 'होम',
