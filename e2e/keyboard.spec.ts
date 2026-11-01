@@ -102,8 +102,16 @@ test('a customer books and accepts a counteroffer using only the keyboard', asyn
   await tabTo(page, day.getByRole('radio'))
   const slots = page.getByRole('group', { name: 'Start time (IST)' }).getByRole('button')
   // From tomorrow on: a slot later today can be too close for offers to stay open.
+  const focusedDay = day.locator(':focus')
   for (let i = 0; i < 7; i++) {
+    // Radix moves focus after the key is released, so a quick press can focus the next day
+    // without choosing it; Space then chooses it. Waiting for the choice means the previous
+    // day's result is not read.
+    const before = await focusedDay.getAttribute('aria-label')
     await page.keyboard.press('ArrowDown')
+    await expect(focusedDay).not.toHaveAttribute('aria-label', before!)
+    if (!(await focusedDay.isChecked())) await page.keyboard.press('Space')
+    await expect(focusedDay).toBeChecked()
     await expect(slots.first().or(page.getByText('No free times that day.'))).toBeVisible()
     if (await slots.first().isVisible()) break
   }
