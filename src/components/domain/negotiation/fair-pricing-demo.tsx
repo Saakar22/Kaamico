@@ -50,12 +50,12 @@ function Arrive({
   className?: string
   children: ReactNode
 }) {
-  const style = { '--delay': `${150 + order * 140}ms` } as CSSProperties
+  const style = { '--delay': `${60 + order * 70}ms` } as CSSProperties
   return (
     <div
       style={style}
       className={cn(
-        'opacity-0 transition-[opacity,translate] duration-500 ease-out motion-reduce:translate-x-0 motion-reduce:translate-y-0 motion-reduce:transition-none',
+        'opacity-0 transition-[opacity,translate] duration-300 ease-out motion-reduce:translate-x-0 motion-reduce:translate-y-0 motion-reduce:transition-none',
         'group-data-[active=true]/scene:translate-x-0 group-data-[active=true]/scene:translate-y-0 group-data-[active=true]/scene:opacity-100 group-data-[active=true]/scene:delay-(--delay)',
         from === 'below' && 'translate-y-3',
         from === 'left' && '-translate-x-4',
@@ -166,8 +166,8 @@ function LockedScene({ active }: { active: boolean }) {
       <Arrive order={1} className="flex flex-col items-center gap-2 py-2">
         <span
           className={cn(
-            'flex size-14 items-center justify-center rounded-full bg-accent-100 text-warning-800 ring-1 ring-accent-500/50 transition-transform duration-500 ease-out motion-reduce:transition-none',
-            active ? 'scale-100 delay-300' : 'scale-50',
+            'flex size-14 items-center justify-center rounded-full bg-accent-100 text-warning-800 ring-1 ring-accent-500/50 transition-transform duration-300 ease-out motion-reduce:transition-none',
+            active ? 'scale-100 delay-150' : 'scale-50',
           )}
         >
           <Lock aria-hidden="true" className="size-6" />

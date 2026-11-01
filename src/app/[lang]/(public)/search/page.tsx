@@ -9,11 +9,10 @@ import {
 } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { connection } from 'next/server'
 import { Suspense } from 'react'
-import { CategoryGrid } from '@/components/domain/catalog/category-card'
 import { CategoryImage } from '@/components/domain/catalog/category-image'
-import { SearchBar } from '@/components/domain/catalog/search-bar'
 import { OpenLocationButton } from '@/components/domain/location/location-chip'
 import {
   nextSlotLabel,
@@ -30,12 +29,7 @@ import { htmlLang } from '@/i18n/config'
 import { getLocale, getT } from '@/i18n/server'
 import type { MessageKey } from '@/i18n/translate'
 import { cn } from '@/lib/cn'
-import {
-  getCategoryBySlug,
-  getService,
-  listCategories,
-  searchServices,
-} from '@/modules/catalog/catalog'
+import { getCategoryBySlug, getService, searchServices } from '@/modules/catalog/catalog'
 import type { CustomerLocation } from '@/modules/location/location'
 import { getCustomerLocation } from '@/modules/location/server'
 import { matchingConfig } from '@/modules/matching/config'
@@ -228,19 +222,8 @@ async function FilterForm({ filters, active }: { filters: Filters; active: numbe
 async function ServiceSearch({ q }: { q?: string }) {
   const [t, locale] = await Promise.all([getT(), getLocale()])
   const query = q?.trim() ?? ''
-  if (query.length < 2) {
-    const categories = await listCategories(locale)
-    return (
-      <div className="flex flex-col gap-6">
-        <PageHeader
-          title={t('searchPage.findTitle')}
-          description={t('searchPage.findDescription')}
-        />
-        <SearchBar className="max-w-2xl" />
-        <CategoryGrid categories={categories} />
-      </div>
-    )
-  }
+  // Nothing typed: the home page has the search and categories (the header search too).
+  if (query.length < 2) redirect('/')
   const matches = await searchServices(query.slice(0, 60), 10, locale)
   return (
     <div className="flex flex-col gap-6">
@@ -248,7 +231,6 @@ async function ServiceSearch({ q }: { q?: string }) {
         title={t('searchPage.servicesFor', { query })}
         description={t('searchPage.pickService')}
       />
-      <SearchBar defaultValue={query} className="max-w-2xl" />
       {matches.length === 0 ? (
         <Card>
           <EmptyState

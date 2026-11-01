@@ -32,6 +32,8 @@ const YEAR_SECONDS = 365 * 24 * 60 * 60
  * 2. An optimistic sign-in gate: private areas without a session cookie go to the login
  *    page. Real checks (valid session, role, ownership) happen on the server in layouts
  *    and API handlers.
+ * 3. A search with nothing to search for goes to the home page, which has the search and
+ *    categories (a real redirect: one from the streamed page would be a meta refresh).
  */
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
@@ -47,6 +49,15 @@ export function proxy(request: NextRequest) {
       sameSite: 'lax',
     })
     return response
+  }
+
+  const params = request.nextUrl.searchParams
+  if (
+    pathname === '/search' &&
+    !params.get('service') &&
+    (params.get('q')?.trim().length ?? 0) < 2
+  ) {
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
   const isPrivate = PRIVATE.some((p) => under(pathname, p)) && !ADMIN_PUBLIC.includes(pathname)

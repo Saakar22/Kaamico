@@ -5,17 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <title>You're offline · Kaamico</title>
+    <script>
+      try {
+        var t = localStorage.getItem('kmc-theme')
+        if (t === 'system' || t === 'dark') document.documentElement.dataset.theme = t
+      } catch (e) {}
+    </script>
     <style>
       /* Self-contained: shown by the service worker when there is no connection. */
+      /* Light unless the person chose Dark, or "system" on a dark device (as on the site). */
       :root {
-        color-scheme: light dark;
+        color-scheme: light;
         --bg: #ffffff;
         --ink: #1b1f24;
         --muted: #4b5563;
         --brand: #0b6e4f;
       }
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #121417;
+        --ink: #eceef1;
+        --muted: #a7afba;
+      }
       @media (prefers-color-scheme: dark) {
-        :root {
+        :root[data-theme='system'] {
+          color-scheme: dark;
           --bg: #121417;
           --ink: #eceef1;
           --muted: #a7afba;

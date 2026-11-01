@@ -1,7 +1,7 @@
 // Kaamico service worker: makes the app installable and shows a friendly offline page.
 // It deliberately caches nothing else: pages hold personal data (bookings, earnings),
 // and prices and availability must always be live. Bump VERSION when offline.html changes.
-const VERSION = 'v1'
+const VERSION = 'v2'
 const CACHE = `kmc-offline-${VERSION}`
 const OFFLINE_URL = '/offline.html'
 

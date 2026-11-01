@@ -12,7 +12,6 @@ import {
   LifeBuoy,
   MessageSquareWarning,
   ScrollText,
-  Search,
   ShieldAlert,
   ShieldCheck,
   User,
@@ -37,7 +36,6 @@ export type NavItem = {
 
 export const customerNav: NavItem[] = [
   { href: '/', label: 'Home', labelKey: 'nav.home', icon: House, matchNested: false },
-  { href: '/search', label: 'Search', labelKey: 'nav.search', icon: Search },
   { href: '/bookings', label: 'Bookings', labelKey: 'nav.bookings', icon: CalendarCheck },
   { href: '/profile', label: 'Account', labelKey: 'nav.account', icon: User },
 ]

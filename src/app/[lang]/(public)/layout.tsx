@@ -3,9 +3,13 @@ import { SearchBar } from '@/components/domain/catalog/search-bar'
 import { NotificationSlot } from '@/components/domain/notifications/notification-slot'
 import { LocationSlot, LocationSlotSkeleton } from '@/components/domain/location/location-slot'
 import { CategoryNav } from '@/components/layout/category-nav'
+import { SearchQuerySync } from '@/components/layout/search-query-sync'
 import { CustomerShell } from '@/components/layout/shells'
 import { getLocale, getT } from '@/i18n/server'
 import { listCategories } from '@/modules/catalog/catalog'
+
+/** The header's large and compact search inputs. */
+const SEARCH_INPUTS = ['header-search', 'header-search-compact']
 
 /** The category tabs under the header's search. */
 async function HeaderCategories() {
@@ -37,12 +41,17 @@ export default function PublicLayout({ children }: LayoutProps<'/[lang]'>) {
       discovery={{
         search: (
           <SearchBar
-            id="header-search"
+            id={SEARCH_INPUTS[0]}
             size="lg"
             className="max-w-3xl xl:rounded-xl xl:bg-surface xl:p-2 xl:shadow-[var(--shadow-float)] xl:ring-1 xl:ring-border"
           />
         ),
-        compactSearch: <SearchBar id="header-search-compact" size="compact" />,
+        compactSearch: (
+          <>
+            <SearchBar id={SEARCH_INPUTS[1]} size="compact" />
+            <SearchQuerySync inputIds={SEARCH_INPUTS} />
+          </>
+        ),
         categories: (
           <Suspense fallback={null}>
             <HeaderCategories />

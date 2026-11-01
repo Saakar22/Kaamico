@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { CategoryCard } from '@/components/domain/catalog/category-card'
-import { SearchBar } from '@/components/domain/catalog/search-bar'
 import { PageHeader } from '@/components/patterns/page-header'
 import { EmptyState } from '@/components/patterns/states'
 import { getLocale, getT } from '@/i18n/server'
@@ -17,7 +16,6 @@ export default async function ServicesPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={t('services.title')} description={t('services.description')} />
-      <SearchBar className="max-w-2xl" />
       {categories.length === 0 ? (
         <EmptyState title={t('services.emptyTitle')} description={t('services.emptyBody')} />
       ) : (
